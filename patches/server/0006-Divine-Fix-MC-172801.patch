@@ -1,0 +1,25 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Wed, 29 May 2024 23:02:26 +0800
+Subject: [PATCH] Divine: Fix MC-172801
+
+
+diff --git a/src/main/java/net/minecraft/world/entity/LivingEntity.java b/src/main/java/net/minecraft/world/entity/LivingEntity.java
+index 2164413ca25dc6c1ae52e687f0786418ee4dda10..5ef2883ad977bacd2d8d8703b41e39be41d80492 100644
+--- a/src/main/java/net/minecraft/world/entity/LivingEntity.java
++++ b/src/main/java/net/minecraft/world/entity/LivingEntity.java
+@@ -3071,7 +3071,13 @@ public abstract class LivingEntity extends Entity implements Attackable {
+     }
+ 
+     protected float getFlyingSpeed() {
+-        return this.getControllingPassenger() instanceof net.minecraft.world.entity.player.Player ? this.getSpeed() * 0.1F : 0.02F;
++        // DivineMC start - Fix MC-172801
++        float flyingSpeed = 0.02F;
++        if (this.getAttributes().hasAttribute(Attributes.FLYING_SPEED)) {
++            flyingSpeed = (float) (this.getAttribute(Attributes.FLYING_SPEED).getValue() * 0.049999999254942D);
++        }
++        return this.getControllingPassenger() instanceof net.minecraft.world.entity.player.Player ? this.getSpeed() * 0.1F : flyingSpeed;
++        // DivineMC end
+     }
+ 
+     public float getSpeed() {
