@@ -1,0 +1,208 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Wed, 29 May 2024 22:34:03 +0800
+Subject: [PATCH] Rebrand and Disable version checking
+
+
+diff --git a/src/main/java/com/destroystokyo/paper/Metrics.java b/src/main/java/com/destroystokyo/paper/Metrics.java
+index b52a805150e95d7d27403d3c18088b335a355011..4fa5ca79ea9c015fad4f814ab1e05190b6a30b43 100644
+--- a/src/main/java/com/destroystokyo/paper/Metrics.java
++++ b/src/main/java/com/destroystokyo/paper/Metrics.java
+@@ -593,7 +593,7 @@ public class Metrics {
+             boolean logFailedRequests = config.getBoolean("logFailedRequests", false);
+             // Only start Metrics, if it's enabled in the config
+             if (config.getBoolean("enabled", true)) {
+-                Metrics metrics = new Metrics("Luminol", serverUUID, logFailedRequests, Bukkit.getLogger()); // Folia - we have our own bstats page //Luminol
++                Metrics metrics = new Metrics("LevelBukkit", serverUUID, logFailedRequests, Bukkit.getLogger()); // Folia - we have our own bstats page //Luminol //LevelBukkit
+ 
+                 metrics.addCustomChart(new Metrics.SimplePie("minecraft_version", () -> {
+                     String minecraftVersion = Bukkit.getVersion();
+@@ -611,7 +611,7 @@ public class Metrics {
+                 } else {
+                     paperVersion = "unknown";
+                 }
+-                metrics.addCustomChart(new Metrics.SimplePie("luminol_version", () -> paperVersion)); // Folia - we have our own bstats page //Luminol
++                metrics.addCustomChart(new Metrics.SimplePie("levelbukkit_version", () -> paperVersion)); // Folia - we have our own bstats page //Luminol //LevelBukkit
+ 
+                 metrics.addCustomChart(new Metrics.DrilldownPie("java_version", () -> {
+                     Map<String, Map<String, Integer>> map = new HashMap<>();
+diff --git a/src/main/java/com/destroystokyo/paper/PaperVersionFetcher.java b/src/main/java/com/destroystokyo/paper/PaperVersionFetcher.java
+index 7707908064a75ecf02677a0110207e194c3eefd1..ee220e13c0720cb78c565217bfa955fdf2078926 100644
+--- a/src/main/java/com/destroystokyo/paper/PaperVersionFetcher.java
++++ b/src/main/java/com/destroystokyo/paper/PaperVersionFetcher.java
+@@ -1,28 +1,12 @@
+ package com.destroystokyo.paper;
+ 
+ import com.destroystokyo.paper.util.VersionFetcher;
+-import com.google.common.base.Charsets;
+-import com.google.common.io.Resources;
+-import com.google.gson.*;
+ import net.kyori.adventure.text.Component;
+-import net.kyori.adventure.text.event.ClickEvent;
+ import net.kyori.adventure.text.format.NamedTextColor;
+-import net.kyori.adventure.text.format.TextDecoration;
+-import net.kyori.adventure.text.TextComponent;
+ 
+ import javax.annotation.Nonnull;
+-import javax.annotation.Nullable;
+-import java.io.*;
+-import java.net.HttpURLConnection;
+-import java.net.URL;
+-import java.util.stream.StreamSupport;
+ 
+ public class PaperVersionFetcher implements VersionFetcher {
+-    private static final java.util.regex.Pattern VER_PATTERN = java.util.regex.Pattern.compile("^([0-9\\.]*)\\-.*R"); // R is an anchor, will always give '-R' at end
+-    private static final String GITHUB_BRANCH_NAME = "master";
+-    private static final String DOWNLOAD_PAGE = "https://github.com/LuminolMC/Luminol"; //Luminol
+-    private static @Nullable String mcVer;
+-
+     @Override
+     public long getCacheTime() {
+         return 720000;
+@@ -31,119 +15,6 @@ public class PaperVersionFetcher implements VersionFetcher {
+     @Nonnull
+     @Override
+     public Component getVersionMessage(@Nonnull String serverVersion) {
+-        String[] parts = serverVersion.substring("git-Luminol-".length()).split("[-\\s]"); // Folia //Luminol
+-        final Component updateMessage = getUpdateStatusMessage("LuminolMC/Luminol", GITHUB_BRANCH_NAME, parts[0]); // Folia //Luminol
+-        final Component history = getHistory();
+-
+-        return history != null ? TextComponent.ofChildren(updateMessage, Component.newline(), history) : updateMessage;
+-    }
+-
+-    private static @Nullable String getMinecraftVersion() {
+-        if (mcVer == null) {
+-            java.util.regex.Matcher matcher = VER_PATTERN.matcher(org.bukkit.Bukkit.getBukkitVersion());
+-            if (matcher.find()) {
+-                String result = matcher.group();
+-                mcVer = result.substring(0, result.length() - 2); // strip 'R' anchor and trailing '-'
+-            } else {
+-                org.bukkit.Bukkit.getLogger().warning("Unable to match version to pattern! Report to PaperMC!");
+-                org.bukkit.Bukkit.getLogger().warning("Pattern: " + VER_PATTERN.toString());
+-                org.bukkit.Bukkit.getLogger().warning("Version: " + org.bukkit.Bukkit.getBukkitVersion());
+-            }
+-        }
+-
+-        return mcVer;
+-    }
+-
+-    private static Component getUpdateStatusMessage(@Nonnull String repo, @Nonnull String branch, @Nonnull String versionInfo) {
+-        int distance;
+-        try {
+-            int jenkinsBuild = Integer.parseInt(versionInfo);
+-            distance = fetchDistanceFromSiteApi(jenkinsBuild, getMinecraftVersion());
+-        } catch (NumberFormatException ignored) {
+-            versionInfo = versionInfo.replace("\"", "");
+-            distance = fetchDistanceFromGitHub(repo, branch, versionInfo);
+-        }
+-
+-        switch (distance) {
+-            case -1:
+-                return Component.text("Error obtaining version information", NamedTextColor.YELLOW);
+-            case 0:
+-                return Component.text("You are running the latest version", NamedTextColor.GREEN);
+-            case -2:
+-                return Component.text("Unknown version", NamedTextColor.YELLOW);
+-            default:
+-                return Component.text("You are " + distance + " version(s) behind", NamedTextColor.YELLOW)
+-                        .append(Component.newline())
+-                        .append(Component.text("Download the new version at: ")
+-                                .append(Component.text(DOWNLOAD_PAGE, NamedTextColor.GOLD)
+-                                        .hoverEvent(Component.text("Click to open", NamedTextColor.WHITE))
+-                                        .clickEvent(ClickEvent.openUrl(DOWNLOAD_PAGE))));
+-        }
+-    }
+-
+-    private static int fetchDistanceFromSiteApi(int jenkinsBuild, @Nullable String siteApiVersion) {
+-        if (siteApiVersion == null) { return -1; }
+-        try {
+-            try (BufferedReader reader = Resources.asCharSource(
+-                new URL("https://api.papermc.io/v2/projects/folia/versions/" + siteApiVersion), // Folia
+-                Charsets.UTF_8
+-            ).openBufferedStream()) {
+-                JsonObject json = new Gson().fromJson(reader, JsonObject.class);
+-                JsonArray builds = json.getAsJsonArray("builds");
+-                int latest = StreamSupport.stream(builds.spliterator(), false)
+-                    .mapToInt(e -> e.getAsInt())
+-                    .max()
+-                    .getAsInt();
+-                return latest - jenkinsBuild;
+-            } catch (JsonSyntaxException ex) {
+-                ex.printStackTrace();
+-                return -1;
+-            }
+-        } catch (IOException e) {
+-            e.printStackTrace();
+-            return -1;
+-        }
+-    }
+-
+-    // Contributed by Techcable <Techcable@outlook.com> in GH-65
+-    private static int fetchDistanceFromGitHub(@Nonnull String repo, @Nonnull String branch, @Nonnull String hash) {
+-        try {
+-            HttpURLConnection connection = (HttpURLConnection) new URL("https://api.github.com/repos/" + repo + "/compare/" + branch + "..." + hash).openConnection();
+-            connection.connect();
+-            if (connection.getResponseCode() == HttpURLConnection.HTTP_NOT_FOUND) return -2; // Unknown commit
+-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), Charsets.UTF_8))) {
+-                JsonObject obj = new Gson().fromJson(reader, JsonObject.class);
+-                String status = obj.get("status").getAsString();
+-                switch (status) {
+-                    case "identical":
+-                        return 0;
+-                    case "behind":
+-                        return obj.get("behind_by").getAsInt();
+-                    default:
+-                        return -1;
+-                }
+-            } catch (JsonSyntaxException | NumberFormatException e) {
+-                e.printStackTrace();
+-                return -1;
+-            }
+-        } catch (IOException e) {
+-            e.printStackTrace();
+-            return -1;
+-        }
+-    }
+-
+-    @Nullable
+-    private Component getHistory() {
+-        final VersionHistoryManager.VersionData data = VersionHistoryManager.INSTANCE.getVersionData();
+-        if (data == null) {
+-            return null;
+-        }
+-
+-        final String oldVersion = data.getOldVersion();
+-        if (oldVersion == null) {
+-            return null;
+-        }
+-
+-        return Component.text("Previous version: " + oldVersion, NamedTextColor.GRAY, TextDecoration.ITALIC);
++        return Component.text("You are running the latest version", NamedTextColor.GREEN);  // LevelBukkit: Version check disabled.
+     }
+ }
+diff --git a/src/main/java/me/earthme/luminol/config/modules/misc/ServerModNameConfig.java b/src/main/java/me/earthme/luminol/config/modules/misc/ServerModNameConfig.java
+index 94e7c8910e3623163528a844fd7a08b3ffe5826b..efaf1850323bcc67870c0151b663ccff8939924b 100644
+--- a/src/main/java/me/earthme/luminol/config/modules/misc/ServerModNameConfig.java
++++ b/src/main/java/me/earthme/luminol/config/modules/misc/ServerModNameConfig.java
+@@ -6,7 +6,7 @@ import me.earthme.luminol.config.IConfigModule;
+ 
+ public class ServerModNameConfig implements IConfigModule {
+     @ConfigInfo(baseName = "name")
+-    public static String serverModName = "Luminol";
++    public static String serverModName = "LevelBukkit";
+ 
+     @ConfigInfo(baseName = "vanilla_spoof")
+     public static boolean fakeVanilla = false;
+diff --git a/src/main/java/org/bukkit/craftbukkit/util/Versioning.java b/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
+index 9699d7dcca5cf67f50ad05c0e875de424a4e00c5..fcd2abfb70c646c319c79e63a0daeef3c86f423c 100644
+--- a/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
++++ b/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
+@@ -11,7 +11,7 @@ public final class Versioning {
+     public static String getBukkitVersion() {
+         String result = "Unknown-Version";
+ 
+-        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/me.earthme.luminol/luminol-api/pom.properties"); // Folia //Luminol
++        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/dev.paged.lb/levelbukkit-api/pom.properties"); // Folia //Luminol //LevelBukkit
+         Properties properties = new Properties();
+ 
+         if (stream != null) {
