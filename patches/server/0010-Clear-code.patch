@@ -1,0 +1,534 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Thu, 30 May 2024 09:37:05 +0800
+Subject: [PATCH] Clear code
+
+
+diff --git a/src/main/java/net/minecraft/server/level/ServerEntity.java b/src/main/java/net/minecraft/server/level/ServerEntity.java
+index 16373e0c5ea38199fab3eb289bf2a5fcf0dd7439..2cdef9ef1b5829a574c43abd8b6a2ba29dae4792 100644
+--- a/src/main/java/net/minecraft/server/level/ServerEntity.java
++++ b/src/main/java/net/minecraft/server/level/ServerEntity.java
+@@ -5,8 +5,6 @@ import com.mojang.datafixers.util.Pair;
+ import com.mojang.logging.LogUtils;
+ import java.util.ArrayList;
+ import java.util.Collection;
+-import java.util.Collections;
+-import java.util.Iterator;
+ import java.util.List;
+ import java.util.Objects;
+ import java.util.Set;
+@@ -106,9 +104,7 @@ public class ServerEntity {
+         if (!list.equals(this.lastPassengers)) {
+             this.broadcastAndSend(new ClientboundSetPassengersPacket(this.entity)); // CraftBukkit
+             ServerEntity.removedPassengers(list, this.lastPassengers).forEach((entity) -> {
+-                if (entity instanceof ServerPlayer) {
+-                    ServerPlayer entityplayer = (ServerPlayer) entity;
+-
++                if (entity instanceof ServerPlayer entityplayer) {
+                     entityplayer.connection.teleport(entityplayer.getX(), entityplayer.getY(), entityplayer.getZ(), entityplayer.getYRot(), entityplayer.getXRot());
+                 }
+ 
+@@ -118,21 +114,18 @@ public class ServerEntity {
+ 
+         Entity entity = this.entity;
+ 
+-        if (!this.trackedPlayers.isEmpty() && entity instanceof ItemFrame) { // Paper - Perf: Only tick item frames if players can see it
+-            ItemFrame entityitemframe = (ItemFrame) entity;
+-
++        if (!this.trackedPlayers.isEmpty() && entity instanceof ItemFrame entityitemframe) { // Paper - Perf: Only tick item frames if players can see it
+             if (true || this.tickCount % 10 == 0) { // CraftBukkit - Moved below, should always enter this block
+                 ItemStack itemstack = entityitemframe.getItem();
+ 
+                 if (this.level.paperConfig().maps.itemFrameCursorUpdateInterval > 0 && this.tickCount % this.level.paperConfig().maps.itemFrameCursorUpdateInterval == 0 && itemstack.getItem() instanceof MapItem) { // CraftBukkit - Moved this.tickCounter % 10 logic here so item frames do not enter the other blocks // Paper - Make item frame map cursor update interval configurable
+-                    Integer integer = entityitemframe.cachedMapId; // Paper - Perf: Cache map ids on item frames
++                    int integer = entityitemframe.cachedMapId; // Paper - Perf: Cache map ids on item frames
+                     MapItemSavedData worldmap = MapItem.getSavedData(integer, this.level);
+ 
+                     if (worldmap != null) {
+-                        Iterator<ServerPlayerConnection> iterator = this.trackedPlayers.iterator(); // CraftBukkit
+-
+-                        while (iterator.hasNext()) {
+-                            ServerPlayer entityplayer = iterator.next().getPlayer(); // CraftBukkit
++                        // CraftBukkit
++                        for (ServerPlayerConnection trackedPlayer : this.trackedPlayers) {
++                            ServerPlayer entityplayer = trackedPlayer.getPlayer(); // CraftBukkit
+ 
+                             worldmap.tickCarriedBy(entityplayer, itemstack);
+                             Packet<?> packet = worldmap.getUpdatePacket(integer, entityplayer);
+@@ -279,9 +272,7 @@ public class ServerEntity {
+     }
+ 
+     private static Stream<Entity> removedPassengers(List<Entity> passengers, List<Entity> lastPassengers) {
+-        return lastPassengers.stream().filter((entity) -> {
+-            return !passengers.contains(entity);
+-        });
++        return lastPassengers.stream().filter((entity) -> !passengers.contains(entity));
+     }
+ 
+     public void removePairing(ServerPlayer player) {
+@@ -290,7 +281,7 @@ public class ServerEntity {
+     }
+ 
+     public void addPairing(ServerPlayer player) {
+-        List<Packet<ClientGamePacketListener>> list = new ArrayList();
++        List<Packet<ClientGamePacketListener>> list = new ArrayList<>();
+ 
+         Objects.requireNonNull(list);
+         this.sendPairingData(player, list::add);
+@@ -342,10 +333,7 @@ public class ServerEntity {
+         if (this.entity instanceof LivingEntity) {
+             List<Pair<EquipmentSlot, ItemStack>> list = Lists.newArrayList();
+             EquipmentSlot[] aenumitemslot = EquipmentSlot.values();
+-            int i = aenumitemslot.length;
+-
+-            for (int j = 0; j < i; ++j) {
+-                EquipmentSlot enumitemslot = aenumitemslot[j];
++            for (EquipmentSlot enumitemslot : aenumitemslot) {
+                 ItemStack itemstack = ((LivingEntity) this.entity).getItemBySlot(enumitemslot);
+ 
+                 if (!itemstack.isEmpty()) {
+@@ -372,9 +360,7 @@ public class ServerEntity {
+ 
+         Entity entity = this.entity;
+ 
+-        if (entity instanceof Mob) {
+-            Mob entityinsentient = (Mob) entity;
+-
++        if (entity instanceof Mob entityinsentient) {
+             if (entityinsentient.isLeashed()) {
+                 sender.accept(new ClientboundSetEntityLinkPacket(entityinsentient, entityinsentient.getLeashHolder()));
+             }
+diff --git a/src/main/java/net/minecraft/world/entity/decoration/ItemFrame.java b/src/main/java/net/minecraft/world/entity/decoration/ItemFrame.java
+index fe95aa9389f7d11e1380445a1eeca50cae549edb..05cc82b4511c794a49f6421c9afe14fada4a1598 100644
+--- a/src/main/java/net/minecraft/world/entity/decoration/ItemFrame.java
++++ b/src/main/java/net/minecraft/world/entity/decoration/ItemFrame.java
+@@ -1,8 +1,11 @@
+ package net.minecraft.world.entity.decoration;
+ 
+ import com.mojang.logging.LogUtils;
++
++import java.util.Objects;
+ import java.util.OptionalInt;
+ import javax.annotation.Nullable;
++
+ import io.papermc.paper.event.player.PlayerItemFrameChangeEvent; // Paper - Add PlayerItemFrameChangeEvent
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Direction;
+@@ -39,15 +42,14 @@ import net.minecraft.world.level.gameevent.GameEvent;
+ import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
+ import net.minecraft.world.phys.AABB;
+ import net.minecraft.world.phys.Vec3;
+-import org.apache.commons.lang3.Validate;
+ import org.slf4j.Logger;
+ 
+ public class ItemFrame extends HangingEntity {
+ 
+-    private static final Logger LOGGER = LogUtils.getLogger();
+     public static final EntityDataAccessor<ItemStack> DATA_ITEM = SynchedEntityData.defineId(ItemFrame.class, EntityDataSerializers.ITEM_STACK);
+     public static final EntityDataAccessor<Integer> DATA_ROTATION = SynchedEntityData.defineId(ItemFrame.class, EntityDataSerializers.INT);
+     public static final int NUM_ROTATIONS = 8;
++    private static final Logger LOGGER = LogUtils.getLogger();
+     public float dropChance;
+     public boolean fixed;
+     public Integer cachedMapId; // Paper - Perf: Cache map ids on item frames
+@@ -67,6 +69,40 @@ public class ItemFrame extends HangingEntity {
+         this.setDirection(facing);
+     }
+ 
++    // CraftBukkit start - break out BB calc into own method
++    public static AABB calculateBoundingBox(@Nullable Entity entity, BlockPos blockPosition, Direction direction, int width, int height) {
++        {
++            double d0 = 0.46875D;
++            double d1 = (double) blockPosition.getX() + 0.5D - (double) direction.getStepX() * 0.46875D;
++            double d2 = (double) blockPosition.getY() + 0.5D - (double) direction.getStepY() * 0.46875D;
++            double d3 = (double) blockPosition.getZ() + 0.5D - (double) direction.getStepZ() * 0.46875D;
++
++            if (entity != null) {
++                entity.setPosRaw(d1, d2, d3);
++            }
++            double d4 = width;
++            double d5 = height;
++            double d6 = width;
++            Direction.Axis enumdirection_enumaxis = direction.getAxis();
++
++            switch (enumdirection_enumaxis) {
++                case X:
++                    d4 = 1.0D;
++                    break;
++                case Y:
++                    d5 = 1.0D;
++                    break;
++                case Z:
++                    d6 = 1.0D;
++            }
++
++            d4 /= 32.0D;
++            d5 /= 32.0D;
++            d6 /= 32.0D;
++            return new AABB(d1 - d4, d2 - d5, d3 - d6, d1 + d4, d2 + d5, d3 + d6);
++        }
++    }
++
+     @Override
+     protected float getEyeHeight(Pose pose, EntityDimensions dimensions) {
+         return 0.0F;
+@@ -80,7 +116,7 @@ public class ItemFrame extends HangingEntity {
+ 
+     @Override
+     public void setDirection(Direction facing) {
+-        Validate.notNull(facing);
++        Objects.requireNonNull(facing);
+         this.direction = facing;
+         if (facing.getAxis().isHorizontal()) {
+             this.setXRot(0.0F);
+@@ -103,52 +139,18 @@ public class ItemFrame extends HangingEntity {
+             // CraftBukkit end
+         }
+     }
+-
+-    // CraftBukkit start - break out BB calc into own method
+-    public static AABB calculateBoundingBox(@Nullable Entity entity, BlockPos blockPosition, Direction direction, int width, int height) {
+-        {
+-            double d0 = 0.46875D;
+-            double d1 = (double) blockPosition.getX() + 0.5D - (double) direction.getStepX() * 0.46875D;
+-            double d2 = (double) blockPosition.getY() + 0.5D - (double) direction.getStepY() * 0.46875D;
+-            double d3 = (double) blockPosition.getZ() + 0.5D - (double) direction.getStepZ() * 0.46875D;
+-
+-            if (entity != null) {
+-                entity.setPosRaw(d1, d2, d3);
+-            }
+-            double d4 = (double) width;
+-            double d5 = (double) height;
+-            double d6 = (double) width;
+-            Direction.Axis enumdirection_enumaxis = direction.getAxis();
+-
+-            switch (enumdirection_enumaxis) {
+-                case X:
+-                    d4 = 1.0D;
+-                    break;
+-                case Y:
+-                    d5 = 1.0D;
+-                    break;
+-                case Z:
+-                    d6 = 1.0D;
+-            }
+-
+-            d4 /= 32.0D;
+-            d5 /= 32.0D;
+-            d6 /= 32.0D;
+-            return new AABB(d1 - d4, d2 - d5, d3 - d6, d1 + d4, d2 + d5, d3 + d6);
+-        }
+-    }
+     // CraftBukkit end
+ 
+     @Override
+     public boolean survives() {
+         if (this.fixed) {
+             return true;
+-        } else if (!this.level().noCollision((Entity) this)) {
++        } else if (!this.level().noCollision(this)) {
+             return false;
+         } else {
+             BlockState iblockdata = this.level().getBlockState(this.pos.relative(this.direction.getOpposite()));
+ 
+-            return !iblockdata.isSolid() && (!this.direction.getAxis().isHorizontal() || !DiodeBlock.isDiode(iblockdata)) ? false : this.level().getEntities((Entity) this, this.getBoundingBox(), ItemFrame.HANGING_ENTITY).isEmpty();
++            return (iblockdata.isSolid() || (this.direction.getAxis().isHorizontal() && DiodeBlock.isDiode(iblockdata))) && this.level().getEntities(this, this.getBoundingBox(), ItemFrame.HANGING_ENTITY).isEmpty();
+         }
+     }
+ 
+@@ -177,7 +179,7 @@ public class ItemFrame extends HangingEntity {
+     @Override
+     public boolean hurt(DamageSource source, float amount) {
+         if (this.fixed) {
+-            return !source.is(DamageTypeTags.BYPASSES_INVULNERABILITY) && !source.isCreativePlayer() ? false : super.hurt(source, amount);
++            return (source.is(DamageTypeTags.BYPASSES_INVULNERABILITY) || source.isCreativePlayer()) && super.hurt(source, amount);
+         } else if (this.isInvulnerableTo(source)) {
+             return false;
+         } else if (!source.is(DamageTypeTags.IS_EXPLOSION) && !this.getItem().isEmpty()) {
+@@ -190,7 +192,8 @@ public class ItemFrame extends HangingEntity {
+                 // Paper start - Add PlayerItemFrameChangeEvent
+                 if (source.getEntity() instanceof Player player) {
+                     var event = new PlayerItemFrameChangeEvent((org.bukkit.entity.Player) player.getBukkitEntity(), (org.bukkit.entity.ItemFrame) this.getBukkitEntity(), this.getItem().asBukkitCopy(), PlayerItemFrameChangeEvent.ItemFrameChangeAction.REMOVE);
+-                    if (!event.callEvent()) return true; // return true here because you aren't cancelling the damage, just the change
++                    if (!event.callEvent())
++                        return true; // return true here because you aren't cancelling the damage, just the change
+                     this.setItem(ItemStack.fromBukkitCopy(event.getItemStack()), false);
+                 }
+                 // Paper end - Add PlayerItemFrameChangeEvent
+@@ -258,9 +261,7 @@ public class ItemFrame extends HangingEntity {
+                 }
+ 
+             } else {
+-                if (entity instanceof Player) {
+-                    Player entityhuman = (Player) entity;
+-
++                if (entity instanceof Player entityhuman) {
+                     if (entityhuman.getAbilities().instabuild) {
+                         this.removeFramedMap(itemstack);
+                         return;
+@@ -299,8 +300,8 @@ public class ItemFrame extends HangingEntity {
+ 
+             if (worldmap != null) {
+                 synchronized (worldmap) { // Folia - make map data thread-safe
+-                worldmap.removedFromFrame(this.pos, this.getId());
+-                worldmap.setDirty(true);
++                    worldmap.removedFromFrame(this.pos, this.getId());
++                    worldmap.setDirty(true);
+                 } // Folia - make map data thread-safe
+             }
+ 
+@@ -309,7 +310,11 @@ public class ItemFrame extends HangingEntity {
+     }
+ 
+     public ItemStack getItem() {
+-        return (ItemStack) this.getEntityData().get(ItemFrame.DATA_ITEM);
++        return this.getEntityData().get(ItemFrame.DATA_ITEM);
++    }
++
++    public void setItem(ItemStack stack) {
++        this.setItem(stack, true);
+     }
+ 
+     public OptionalInt getFramedMapId() {
+@@ -335,10 +340,6 @@ public class ItemFrame extends HangingEntity {
+         return this.getFramedMapId().isPresent();
+     }
+ 
+-    public void setItem(ItemStack stack) {
+-        this.setItem(stack, true);
+-    }
+-
+     public void setItem(ItemStack value, boolean update) {
+         // CraftBukkit start
+         this.setItem(value, update, true);
+@@ -400,7 +401,7 @@ public class ItemFrame extends HangingEntity {
+     }
+ 
+     public int getRotation() {
+-        return (Integer) this.getEntityData().get(ItemFrame.DATA_ROTATION);
++        return this.getEntityData().get(ItemFrame.DATA_ROTATION);
+     }
+ 
+     public void setRotation(int value) {
+diff --git a/src/main/java/net/minecraft/world/level/saveddata/maps/MapItemSavedData.java b/src/main/java/net/minecraft/world/level/saveddata/maps/MapItemSavedData.java
+index df799198d4d77a1827002d6d192ebaea3007d5b8..a82b8532017904b8a2296d945621b8e2afda4763 100644
+--- a/src/main/java/net/minecraft/world/level/saveddata/maps/MapItemSavedData.java
++++ b/src/main/java/net/minecraft/world/level/saveddata/maps/MapItemSavedData.java
+@@ -42,7 +42,6 @@ import org.bukkit.Bukkit;
+ import org.bukkit.craftbukkit.CraftServer;
+ import org.bukkit.craftbukkit.CraftWorld;
+ import org.bukkit.craftbukkit.map.CraftMapView;
+-import org.bukkit.craftbukkit.util.CraftChatMessage;
+ // CraftBukkit end
+ 
+ public class MapItemSavedData extends SavedData {
+@@ -130,7 +129,7 @@ public class MapItemSavedData extends SavedData {
+                 dimension = StringTag.valueOf("bukkit:_invalidworld_");
+             }
+         }
+-        DataResult<ResourceKey<Level>> dataresult = DimensionType.parseLegacy(new Dynamic(NbtOps.INSTANCE, dimension)); // CraftBukkit - decompile error
++        DataResult<ResourceKey<Level>> dataresult = DimensionType.parseLegacy(new Dynamic<>(NbtOps.INSTANCE, dimension)); // CraftBukkit - decompile error
+         // Paper end - fix "Not a string" spam
+         Logger logger = MapItemSavedData.LOGGER;
+ 
+@@ -145,13 +144,12 @@ public class MapItemSavedData extends SavedData {
+ 
+                 CraftWorld world = (CraftWorld) Bukkit.getWorld(uniqueId);
+                 // Check if the stored world details are correct.
+-                if (world == null) {
+-                    /* All Maps which do not have their valid world loaded are set to a dimension which hopefully won't be reached.
+-                       This is to prevent them being corrupted with the wrong map data. */
+-                    // PAIL: Use Vanilla exception handling for now
+-                } else {
++                if (world != null) {
+                     return world.getHandle().dimension();
+                 }
++                /* All Maps which do not have their valid world loaded are set to a dimension which hopefully won't be reached.
++                   This is to prevent them being corrupted with the wrong map data. */
++                // PAIL: Use Vanilla exception handling for now
+             }
+             throw new IllegalArgumentException("Invalid map dimension: " + nbt.get("dimension"));
+             // CraftBukkit end
+@@ -197,9 +195,7 @@ public class MapItemSavedData extends SavedData {
+         Logger logger = MapItemSavedData.LOGGER;
+ 
+         Objects.requireNonNull(logger);
+-        dataresult.resultOrPartial(logger::error).ifPresent((nbtbase) -> {
+-            nbt.put("dimension", nbtbase);
+-        });
++        dataresult.resultOrPartial(logger::error).ifPresent((nbtbase) -> nbt.put("dimension", nbtbase));
+         // CraftBukkit start
+         if (true) {
+             if (this.uniqueId == null) {
+@@ -227,21 +223,15 @@ public class MapItemSavedData extends SavedData {
+         nbt.putBoolean("unlimitedTracking", this.unlimitedTracking);
+         nbt.putBoolean("locked", this.locked);
+         ListTag nbttaglist = new ListTag();
+-        Iterator iterator = this.bannerMarkers.values().iterator();
+-
+-        while (iterator.hasNext()) {
+-            MapBanner mapiconbanner = (MapBanner) iterator.next();
+ 
++        for (MapBanner mapiconbanner : this.bannerMarkers.values()) {
+             nbttaglist.add(mapiconbanner.save());
+         }
+ 
+         nbt.put("banners", nbttaglist);
+         ListTag nbttaglist1 = new ListTag();
+-        Iterator iterator1 = this.frameMarkers.values().iterator();
+-
+-        while (iterator1.hasNext()) {
+-            MapFrame worldmapframe = (MapFrame) iterator1.next();
+ 
++        for (MapFrame worldmapframe : this.frameMarkers.values()) {
+             nbttaglist1.add(worldmapframe.save());
+         }
+ 
+@@ -416,7 +406,7 @@ public class MapItemSavedData extends SavedData {
+         }
+ 
+         MapDecoration mapicon = new MapDecoration(type, b0, b1, b2, text);
+-        MapDecoration mapicon1 = (MapDecoration) this.decorations.put(key, mapicon);
++        MapDecoration mapicon1 = this.decorations.put(key, mapicon);
+ 
+         if (!mapicon.equals(mapicon1)) {
+             if (mapicon1 != null && mapicon1.type().shouldTrackCount()) {
+@@ -434,18 +424,15 @@ public class MapItemSavedData extends SavedData {
+ 
+     @Nullable
+     public synchronized Packet<?> getUpdatePacket(int id, Player player) { // Folia - make map data thread-safe
+-        MapItemSavedData.HoldingPlayer worldmap_worldmaphumantracker = (MapItemSavedData.HoldingPlayer) this.carriedByPlayers.get(player);
++        MapItemSavedData.HoldingPlayer worldmap_worldmaphumantracker = this.carriedByPlayers.get(player);
+ 
+         return worldmap_worldmaphumantracker == null ? null : worldmap_worldmaphumantracker.nextUpdatePacket(id);
+     }
+ 
+     public synchronized void setColorsDirty(int x, int z) { // Folia - make map data thread-safe
+         // Folia - make dirty only after updating data - moved down
+-        Iterator iterator = this.carriedBy.iterator();
+-
+-        while (iterator.hasNext()) {
+-            MapItemSavedData.HoldingPlayer worldmap_worldmaphumantracker = (MapItemSavedData.HoldingPlayer) iterator.next();
+ 
++        for (HoldingPlayer worldmap_worldmaphumantracker : this.carriedBy) {
+             worldmap_worldmaphumantracker.markColorsDirty(x, z);
+         }
+         this.setDirty(); // Folia - make dirty only after updating data - moved from above
+@@ -458,7 +445,7 @@ public class MapItemSavedData extends SavedData {
+     }
+ 
+     public synchronized MapItemSavedData.HoldingPlayer getHoldingPlayer(Player player) { // Folia - make map data thread-safe
+-        MapItemSavedData.HoldingPlayer worldmap_worldmaphumantracker = (MapItemSavedData.HoldingPlayer) this.carriedByPlayers.get(player);
++        MapItemSavedData.HoldingPlayer worldmap_worldmaphumantracker = this.carriedByPlayers.get(player);
+ 
+         if (worldmap_worldmaphumantracker == null) {
+             worldmap_worldmaphumantracker = new MapItemSavedData.HoldingPlayer(player);
+@@ -500,10 +487,10 @@ public class MapItemSavedData extends SavedData {
+     }
+ 
+     public synchronized void checkBanners(BlockGetter world, int x, int z) { // Folia - make map data thread-safe
+-        Iterator iterator = this.bannerMarkers.values().iterator();
++        Iterator<MapBanner> iterator = this.bannerMarkers.values().iterator();
+ 
+         while (iterator.hasNext()) {
+-            MapBanner mapiconbanner = (MapBanner) iterator.next();
++            MapBanner mapiconbanner = iterator.next();
+ 
+             if (mapiconbanner.getPos().getX() == x && mapiconbanner.getPos().getZ() == z) {
+                 MapBanner mapiconbanner1 = MapBanner.fromWorld(world, mapiconbanner.getPos());
+@@ -543,7 +530,7 @@ public class MapItemSavedData extends SavedData {
+     }
+ 
+     public synchronized boolean isExplorationMap() { // Folia - make map data thread-safe
+-        Iterator iterator = this.decorations.values().iterator();
++        Iterator<MapDecoration> iterator = this.decorations.values().iterator();
+ 
+         MapDecoration mapicon;
+ 
+@@ -552,7 +539,7 @@ public class MapItemSavedData extends SavedData {
+                 return false;
+             }
+ 
+-            mapicon = (MapDecoration) iterator.next();
++            mapicon = iterator.next();
+         } while (!mapicon.type().isExplorationMapElement());
+ 
+         return true;
+@@ -563,7 +550,7 @@ public class MapItemSavedData extends SavedData {
+         this.trackedDecorationCount = 0;
+ 
+         for (int i = 0; i < icons.size(); ++i) {
+-            MapDecoration mapicon = (MapDecoration) icons.get(i);
++            MapDecoration mapicon = icons.get(i);
+ 
+             this.decorations.put("icon-" + i, mapicon);
+             if (mapicon.type().shouldTrackCount()) {
+@@ -647,7 +634,7 @@ public class MapItemSavedData extends SavedData {
+             if ((true || this.dirtyDecorations) && this.tick++ % 5 == 0) { // CraftBukkit - custom maps don't update this yet
+                 this.dirtyDecorations = false;
+                 // CraftBukkit start
+-                java.util.Collection<MapDecoration> icons = new java.util.ArrayList<MapDecoration>();
++                java.util.Collection<MapDecoration> icons = new java.util.ArrayList<>();
+ 
+                 if (vanillaMaps) addSeenPlayers(icons); // Paper
+ 
+diff --git a/src/main/java/org/bukkit/craftbukkit/map/CraftMapView.java b/src/main/java/org/bukkit/craftbukkit/map/CraftMapView.java
+index c3266c43a073cb7d7eff10d1a1b15f0a2265b859..54f23d1457cea309c97adcf7f7c3bd930fe354b3 100644
+--- a/src/main/java/org/bukkit/craftbukkit/map/CraftMapView.java
++++ b/src/main/java/org/bukkit/craftbukkit/map/CraftMapView.java
+@@ -20,9 +20,9 @@ import org.bukkit.map.MapView;
+ 
+ public final class CraftMapView implements MapView {
+ 
+-    private final Map<CraftPlayer, RenderData> renderCache = new HashMap<CraftPlayer, RenderData>();
+-    private final List<MapRenderer> renderers = new ArrayList<MapRenderer>();
+-    private final Map<MapRenderer, Map<CraftPlayer, CraftMapCanvas>> canvases = new HashMap<MapRenderer, Map<CraftPlayer, CraftMapCanvas>>();
++    private final Map<CraftPlayer, RenderData> renderCache = new HashMap<>();
++    private final List<MapRenderer> renderers = new ArrayList<>();
++    private final Map<MapRenderer, Map<CraftPlayer, CraftMapCanvas>> canvases = new HashMap<>();
+     protected final MapItemSavedData worldMap;
+ 
+     public CraftMapView(MapItemSavedData worldMap) {
+@@ -43,7 +43,7 @@ public final class CraftMapView implements MapView {
+ 
+     @Override
+     public boolean isVirtual() {
+-        return this.renderers.size() > 0 && !(this.renderers.get(0) instanceof CraftMapRenderer);
++        return !this.renderers.isEmpty() && !(this.renderers.get(0) instanceof CraftMapRenderer);
+     }
+ 
+     @Override
+@@ -99,14 +99,14 @@ public final class CraftMapView implements MapView {
+ 
+     @Override
+     public List<MapRenderer> getRenderers() {
+-        return new ArrayList<MapRenderer>(this.renderers);
++        return new ArrayList<>(this.renderers);
+     }
+ 
+     @Override
+     public void addRenderer(MapRenderer renderer) {
+         if (!this.renderers.contains(renderer)) {
+             this.renderers.add(renderer);
+-            this.canvases.put(renderer, new HashMap<CraftPlayer, CraftMapCanvas>());
++            this.canvases.put(renderer, new HashMap<>());
+             renderer.initialize(this);
+         }
+     }
+@@ -138,14 +138,9 @@ public final class CraftMapView implements MapView {
+ 
+     public RenderData render(CraftPlayer player) {
+         boolean context = this.isContextual();
+-        RenderData render = this.renderCache.get(context ? player : null);
++        RenderData render = this.renderCache.computeIfAbsent(context ? player : null, k -> new RenderData());
+ 
+-        if (render == null) {
+-            render = new RenderData();
+-            this.renderCache.put(context ? player : null, render);
+-        }
+-
+-        if (context && this.renderCache.containsKey(null)) {
++        if (context) {
+             this.renderCache.remove(null);
+         }
+ 
