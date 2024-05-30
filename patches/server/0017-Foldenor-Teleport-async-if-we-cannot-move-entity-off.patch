@@ -1,0 +1,3532 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Thu, 30 May 2024 17:09:59 +0800
+Subject: [PATCH] Foldenor: Teleport async if we cannot move entity off main
+
+
+diff --git a/src/main/java/net/minecraft/world/entity/Entity.java b/src/main/java/net/minecraft/world/entity/Entity.java
+index 9293fb2dec97e6c6bf5abe5eb7d1878bb7f200d1..829ae181ba9fad1c2558dfcbeb5bed92022e3177 100644
+--- a/src/main/java/net/minecraft/world/entity/Entity.java
++++ b/src/main/java/net/minecraft/world/entity/Entity.java
+@@ -9,6 +9,7 @@ import com.google.common.collect.UnmodifiableIterator;
+ import com.mojang.logging.LogUtils;
+ import it.unimi.dsi.fastutil.objects.Object2DoubleArrayMap;
+ import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
++
+ import java.util.Arrays;
+ import java.util.Collections;
+ import java.util.HashSet;
+@@ -24,6 +25,7 @@ import java.util.function.BiConsumer;
+ import java.util.function.Predicate;
+ import java.util.stream.Stream;
+ import javax.annotation.Nullable;
++
+ import net.minecraft.BlockUtil;
+ import net.minecraft.CrashReport;
+ import net.minecraft.CrashReportCategory;
+@@ -161,127 +163,8 @@ import org.bukkit.plugin.PluginManager;
+ 
+ public abstract class Entity implements Nameable, EntityAccess, CommandSource, ScoreHolder {
+ 
+-    // CraftBukkit start
+-    private static final int CURRENT_LEVEL = 2;
+-    public boolean preserveMotion = true; // Paper - Fix Entity Teleportation and cancel velocity if teleported; keep initial motion on first setPositionRotation
+-    static boolean isLevelAtLeast(CompoundTag tag, int level) {
+-        return tag.contains("Bukkit.updateLevel") && tag.getInt("Bukkit.updateLevel") >= level;
+-    }
+-
+-    // Paper start - Share random for entities to make them more random
+-    public static RandomSource SHARED_RANDOM = new RandomRandomSource();
+-    public static final class RandomRandomSource extends java.util.Random implements net.minecraft.world.level.levelgen.BitRandomSource { // Folia - region threading
+-        private boolean locked = false;
+-
+-        @Override
+-        public synchronized void setSeed(long seed) {
+-            if (locked) {
+-                LOGGER.error("Ignoring setSeed on Entity.SHARED_RANDOM", new Throwable());
+-            } else {
+-                super.setSeed(seed);
+-                locked = true;
+-            }
+-        }
+-
+-        @Override
+-        public RandomSource fork() {
+-            return new net.minecraft.world.level.levelgen.LegacyRandomSource(this.nextLong());
+-        }
+-
+-        @Override
+-        public net.minecraft.world.level.levelgen.PositionalRandomFactory forkPositional() {
+-            return new net.minecraft.world.level.levelgen.LegacyRandomSource.LegacyPositionalRandomFactory(this.nextLong());
+-        }
+-
+-        // these below are added to fix reobf issues that I don't wanna deal with right now
+-        @Override
+-        public int next(int bits) {
+-            return super.next(bits);
+-        }
+-
+-        @Override
+-        public int nextInt(int origin, int bound) {
+-            return net.minecraft.world.level.levelgen.BitRandomSource.super.nextInt(origin, bound);
+-        }
+-
+-        @Override
+-        public long nextLong() {
+-            return net.minecraft.world.level.levelgen.BitRandomSource.super.nextLong();
+-        }
+-
+-        @Override
+-        public int nextInt() {
+-            return net.minecraft.world.level.levelgen.BitRandomSource.super.nextInt();
+-        }
+-
+-        @Override
+-        public int nextInt(int bound) {
+-            return net.minecraft.world.level.levelgen.BitRandomSource.super.nextInt(bound);
+-        }
+-
+-        @Override
+-        public boolean nextBoolean() {
+-            return net.minecraft.world.level.levelgen.BitRandomSource.super.nextBoolean();
+-        }
+-
+-        @Override
+-        public float nextFloat() {
+-            return net.minecraft.world.level.levelgen.BitRandomSource.super.nextFloat();
+-        }
+-
+-        @Override
+-        public double nextDouble() {
+-            return net.minecraft.world.level.levelgen.BitRandomSource.super.nextDouble();
+-        }
+-
+-        @Override
+-        public double nextGaussian() {
+-            return super.nextGaussian();
+-        }
+-    }
+-    // Paper end - Share random for entities to make them more random
+-    public org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason spawnReason; // Paper - Entity#getEntitySpawnReason
+-
+-    public com.destroystokyo.paper.loottable.PaperLootableInventoryData lootableData; // Paper
+-    public boolean collisionLoadChunks = false; // Paper
+-    private volatile CraftEntity bukkitEntity; // Folia - region threading
+-
+-    public @org.jetbrains.annotations.Nullable net.minecraft.server.level.ChunkMap.TrackedEntity tracker; // Paper
+-    public CraftEntity getBukkitEntity() {
+-        if (this.bukkitEntity == null) {
+-            // Paper start - Folia schedulers
+-            synchronized (this) {
+-                if (this.bukkitEntity == null) {
+-                    return this.bukkitEntity = CraftEntity.getEntity(this.level.getCraftServer(), this);
+-                }
+-            }
+-            // Paper end - Folia schedulers
+-        }
+-        return this.bukkitEntity;
+-    }
+-
+-    // Paper start
+-    public CraftEntity getBukkitEntityRaw() {
+-        return this.bukkitEntity;
+-    }
+-    // Paper end
+-
+-    @Override
+-    public CommandSender getBukkitSender(CommandSourceStack wrapper) {
+-        return this.getBukkitEntity();
+-    }
+-
+-    // CraftBukkit - SPIGOT-6907: re-implement LivingEntity#setMaximumAir()
+-    public int getDefaultMaxAirSupply() {
+-        return Entity.TOTAL_AIR_SUPPLY;
+-    }
+-    // CraftBukkit end
+-
+-    private static final Logger LOGGER = LogUtils.getLogger();
+     public static final String ID_TAG = "id";
+     public static final String PASSENGERS_TAG = "Passengers";
+-    private static final AtomicInteger ENTITY_COUNTER = new AtomicInteger();
+-    private static final List<ItemStack> EMPTY_LIST = Collections.emptyList();
+     public static final int BOARDING_COOLDOWN = 60;
+     public static final int TOTAL_AIR_SUPPLY = 300;
+     public static final int MAX_ENTITY_TAG_COUNT = 1024;
+@@ -291,107 +174,119 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     public static final float BREATHING_DISTANCE_BELOW_EYES = 0.11111111F;
+     public static final int BASE_TICKS_REQUIRED_TO_FREEZE = 140;
+     public static final int FREEZE_HURT_FREQUENCY = 40;
++    public static final String UUID_TAG = "UUID";
++    // Paper end
++    public static final float DEFAULT_BB_WIDTH = 0.6F;
++    public static final float DEFAULT_BB_HEIGHT = 1.8F;
++    // CraftBukkit end
++    public static final int FLAG_INVISIBLE = 5;
++    /**
++     * This flag will perform an async load on the chunks determined by
++     * the entity's bounding box before teleporting the entity.
++     */
++    public static final long TELEPORT_FLAG_LOAD_CHUNK = 1L << 0;
++    /**
++     * This flag requires the entity being teleported to be a root vehicle.
++     * Thus, if you want to teleport a non-root vehicle, you must dismount
++     * the target entity before calling teleport, otherwise the
++     * teleport will be refused.
++     */
++    public static final long TELEPORT_FLAG_TELEPORT_PASSENGERS = 1L << 1;
++    /**
++     * The flag will dismount any passengers and dismout from the current vehicle
++     * to teleport if and only if dismounting would result in the teleport being allowed.
++     */
++    public static final long TELEPORT_FLAG_UNMOUNT = 1L << 2;
++    protected static final EntityDataAccessor<Byte> DATA_SHARED_FLAGS_ID = SynchedEntityData.defineId(Entity.class, EntityDataSerializers.BYTE);
++    protected static final int FLAG_ONFIRE = 0;
++    protected static final int FLAG_GLOWING = 6;
++    protected static final int FLAG_FALL_FLYING = 7;
++    protected static final EntityDataAccessor<net.minecraft.world.entity.Pose> DATA_POSE = SynchedEntityData.defineId(Entity.class, EntityDataSerializers.POSE);
++    // CraftBukkit start
++    private static final int CURRENT_LEVEL = 2;
++    private static final Logger LOGGER = LogUtils.getLogger();
++    private static final AtomicInteger ENTITY_COUNTER = new AtomicInteger();
++    private static final List<ItemStack> EMPTY_LIST = Collections.emptyList();
+     private static final AABB INITIAL_AABB = new AABB(0.0D, 0.0D, 0.0D, 0.0D, 0.0D, 0.0D);
+     private static final double WATER_FLOW_SCALE = 0.014D;
+     private static final double LAVA_FAST_FLOW_SCALE = 0.007D;
+     private static final double LAVA_SLOW_FLOW_SCALE = 0.0023333333333333335D;
+-    public static final String UUID_TAG = "UUID";
++    private static final int FLAG_SHIFT_KEY_DOWN = 1;
++    private static final int FLAG_SPRINTING = 3;
++    private static final int FLAG_SWIMMING = 4;
++    private static final EntityDataAccessor<Integer> DATA_AIR_SUPPLY_ID = SynchedEntityData.defineId(Entity.class, EntityDataSerializers.INT);
++    private static final EntityDataAccessor<Optional<Component>> DATA_CUSTOM_NAME = SynchedEntityData.defineId(Entity.class, EntityDataSerializers.OPTIONAL_COMPONENT);
++    private static final EntityDataAccessor<Boolean> DATA_CUSTOM_NAME_VISIBLE = SynchedEntityData.defineId(Entity.class, EntityDataSerializers.BOOLEAN);
++    private static final EntityDataAccessor<Boolean> DATA_SILENT = SynchedEntityData.defineId(Entity.class, EntityDataSerializers.BOOLEAN);
++    private static final EntityDataAccessor<Boolean> DATA_NO_GRAVITY = SynchedEntityData.defineId(Entity.class, EntityDataSerializers.BOOLEAN);
++    private static final EntityDataAccessor<Integer> DATA_TICKS_FROZEN = SynchedEntityData.defineId(Entity.class, EntityDataSerializers.INT);
++    private static final java.util.Map<Class<? extends Entity>, Boolean> cachedOverrides = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
++    private static final java.util.concurrent.atomic.AtomicLong CREATE_PORTAL_DOUBLE_CHECK = new java.util.concurrent.atomic.AtomicLong();
++    private static final java.util.concurrent.atomic.AtomicLong TELEPORT_HOLD_TICKET_GEN = new java.util.concurrent.atomic.AtomicLong();
++    // Paper start - Share random for entities to make them more random
++    public static RandomSource SHARED_RANDOM = new RandomRandomSource();
+     private static double viewScale = 1.0D;
++    public final RandomSource random;
++    // Spigot start
++    public final org.spigotmc.ActivationRange.ActivationType activationType = org.spigotmc.ActivationRange.initializeEntityActivationType(this);
++    public final boolean defaultActivationState;
++    // Paper start - detailed watchdog information
++    public final Object posLock = new Object(); // Paper - log detailed entity tick information
++    protected final SynchedEntityData entityData;
++    // Paper end - make end portalling safe
++    // Paper start - optimise entity tracking
++    final org.spigotmc.TrackingRange.TrackingRangeType trackingRangeType = org.spigotmc.TrackingRange.getTrackingRangeType(this);
+     private final EntityType<?> type;
+-    private int id;
++    private final Set<TagKey<Fluid>> fluidOnEyes;
++    private final VecDeltaCodec packetPositionCodec;
++    private final Set<String> tags;
++    private final double[] pistonDeltas;
++    /**
++     * Overriding this field will cause memory leaks.
++     */
++    private final boolean hardCollides;
++    public boolean preserveMotion = true; // Paper - Fix Entity Teleportation and cancel velocity if teleported; keep initial motion on first setPositionRotation
++    // Paper end - Share random for entities to make them more random
++    public org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason spawnReason; // Paper - Entity#getEntitySpawnReason
++    public com.destroystokyo.paper.loottable.PaperLootableInventoryData lootableData; // Paper
++    public boolean collisionLoadChunks = false; // Paper
++    public @org.jetbrains.annotations.Nullable net.minecraft.server.level.ChunkMap.TrackedEntity tracker; // Paper
+     public boolean blocksBuilding;
+     public ImmutableList<Entity> passengers;
+-    protected int boardingCooldown;
+-    @Nullable
+-    private Entity vehicle;
+-    private Level level;
+     public double xo;
+     public double yo;
+     public double zo;
+     public Vec3 position; // Gale - JettPack - optimize sun burn tick - private -> public
+     public BlockPos blockPosition; // Pufferfish - private->public
+-    private ChunkPos chunkPosition;
+-    private Vec3 deltaMovement;
+-    private float yRot;
+-    private float xRot;
+     public float yRotO;
+     public float xRotO;
+-    private AABB bb;
+-    private boolean boundingBoxChanged = false; // Gale - VMP - skip entity move if movement is zero
+     public boolean onGround;
+     public boolean horizontalCollision;
+     public boolean verticalCollision;
+     public boolean verticalCollisionBelow;
+     public boolean minorHorizontalCollision;
+     public boolean hurtMarked;
+-    protected Vec3 stuckSpeedMultiplier;
+-    @Nullable
+-    private Entity.RemovalReason removalReason;
+-    public static final float DEFAULT_BB_WIDTH = 0.6F;
+-    public static final float DEFAULT_BB_HEIGHT = 1.8F;
+     public float walkDistO;
+     public float walkDist;
+     public float moveDist;
+     public float flyDist;
+     public float fallDistance;
+-    private float nextStep;
+     public double xOld;
+     public double yOld;
+     public double zOld;
+-    private float maxUpStep;
+     public boolean noPhysics;
+-    public final RandomSource random;
+     public int tickCount;
+-    private int remainingFireTicks;
+     public boolean wasTouchingWater;
+-    protected Object2DoubleMap<TagKey<Fluid>> fluidHeight;
+-    protected boolean wasEyeInWater;
+-    private final Set<TagKey<Fluid>> fluidOnEyes;
+     public int invulnerableTime;
+-    protected boolean firstTick;
+-    protected final SynchedEntityData entityData;
+-    protected static final EntityDataAccessor<Byte> DATA_SHARED_FLAGS_ID = SynchedEntityData.defineId(Entity.class, EntityDataSerializers.BYTE);
+-    protected static final int FLAG_ONFIRE = 0;
+-    private static final int FLAG_SHIFT_KEY_DOWN = 1;
+-    private static final int FLAG_SPRINTING = 3;
+-    private static final int FLAG_SWIMMING = 4;
+-    public static final int FLAG_INVISIBLE = 5;
+-    protected static final int FLAG_GLOWING = 6;
+-    protected static final int FLAG_FALL_FLYING = 7;
+-    private static final EntityDataAccessor<Integer> DATA_AIR_SUPPLY_ID = SynchedEntityData.defineId(Entity.class, EntityDataSerializers.INT);
+-    private static final EntityDataAccessor<Optional<Component>> DATA_CUSTOM_NAME = SynchedEntityData.defineId(Entity.class, EntityDataSerializers.OPTIONAL_COMPONENT);
+-    private static final EntityDataAccessor<Boolean> DATA_CUSTOM_NAME_VISIBLE = SynchedEntityData.defineId(Entity.class, EntityDataSerializers.BOOLEAN);
+-    private static final EntityDataAccessor<Boolean> DATA_SILENT = SynchedEntityData.defineId(Entity.class, EntityDataSerializers.BOOLEAN);
+-    private static final EntityDataAccessor<Boolean> DATA_NO_GRAVITY = SynchedEntityData.defineId(Entity.class, EntityDataSerializers.BOOLEAN);
+-    protected static final EntityDataAccessor<net.minecraft.world.entity.Pose> DATA_POSE = SynchedEntityData.defineId(Entity.class, EntityDataSerializers.POSE);
+-    private static final EntityDataAccessor<Integer> DATA_TICKS_FROZEN = SynchedEntityData.defineId(Entity.class, EntityDataSerializers.INT);
+-    private EntityInLevelCallback levelCallback;
+-    private final VecDeltaCodec packetPositionCodec;
+     public boolean noCulling;
+     public boolean hasImpulse;
+     public int portalCooldown;
+     public boolean isInsidePortal;
+-    protected int portalTime;
+-    protected BlockPos portalEntrancePos;
+-    private boolean invulnerable;
+-    protected UUID uuid;
+-    protected String stringUUID;
+-    private boolean hasGlowingTag;
+-    private final Set<String> tags;
+-    private final double[] pistonDeltas;
+-    private long pistonDeltasGameTime = Long.MIN_VALUE; // Folia - region threading
+-    private EntityDimensions dimensions;
+-    private float eyeHeight;
+     public boolean isInPowderSnow;
+     public boolean wasInPowderSnow;
+     public boolean wasOnFire;
+     public Optional<BlockPos> mainSupportingBlockPos;
+-    private boolean onGroundNoBlocks;
+-    private float crystalSoundIntensity;
+-    private int lastCrystalSoundPlayTick;
+     public boolean hasVisualFire;
+-    @Nullable
+-    private BlockState feetBlockState;
+     // CraftBukkit start
+     public boolean persist = true;
+     public boolean visibleByDefault = true;
+@@ -407,24 +302,315 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     // Marks an entity, that it was removed by a plugin via Entity#remove
+     // Main use case currently is for SPIGOT-7487, preventing dropping of leash when leash is removed
+     public boolean pluginRemoved = false;
+-    // Spigot start
+-    public final org.spigotmc.ActivationRange.ActivationType activationType = org.spigotmc.ActivationRange.initializeEntityActivationType(this);
+-    public final boolean defaultActivationState;
+     public long activatedTick = Integer.MIN_VALUE;
+-    public void inactiveTick() { }
+-    // Spigot end
+-    protected int numCollisions = 0; // Paper - Cap entity collisions
+     public boolean fromNetherPortal; // Paper - Add option to nerf pigmen from nether portals
+     public long activatedImmunityTick = Integer.MIN_VALUE; // Paper - EAR
+     public boolean isTemporarilyActive; // Paper - EAR
+     public boolean spawnedViaMobSpawner; // Paper - Yes this name is similar to above, upstream took the better one
++    public boolean freezeLocked = false; // Paper - Freeze Tick Lock API
++    public boolean fixedPose = false; // Paper - Expand Pose API
++    // Paper end - Entity origin API
++    // Paper start - make end portalling safe
++    public BlockPos portalBlock;
++    public ServerLevel portalWorld;
++    public boolean isLegacyTrackingEntity = false;
++    // Folia - region ticking
++    // Paper end - optimise entity tracking
++    //Pufferfish start
++    public boolean activatedPriorityReset = false; // DAB
++    public int activatedPriority = me.earthme.luminol.config.modules.optimizations.EntityDABConfig.maximumActivationPrio; // golf score
++    public net.minecraft.server.level.FullChunkStatus chunkStatus;
++    public int sectionX = Integer.MIN_VALUE;
++    public int sectionY = Integer.MIN_VALUE;
++    public int sectionZ = Integer.MIN_VALUE;
++    public boolean updatingSectionStatus = false;
++    protected int boardingCooldown;
++    protected Vec3 stuckSpeedMultiplier;
++    protected Object2DoubleMap<TagKey<Fluid>> fluidHeight;
++    protected boolean wasEyeInWater;
++    protected boolean firstTick;
++    protected int portalTime;
++    protected BlockPos portalEntrancePos;
++    protected UUID uuid;
++    protected String stringUUID;
++    // Spigot end
++    protected int numCollisions = 0; // Paper - Cap entity collisions
++    private volatile CraftEntity bukkitEntity; // Folia - region threading
++    private int id;
++    @Nullable
++    private Entity vehicle;
++    private Level level;
++    private ChunkPos chunkPosition;
++    private Vec3 deltaMovement;
++    private float yRot;
++    private float xRot;
++    private AABB bb;
++    private boolean boundingBoxChanged = false; // Gale - VMP - skip entity move if movement is zero
++    @Nullable
++    private Entity.RemovalReason removalReason;
++    private float nextStep;
++    private float maxUpStep;
++    private int remainingFireTicks;
++    private EntityInLevelCallback levelCallback;
++    private boolean invulnerable;
++    private boolean hasGlowingTag;
++    private long pistonDeltasGameTime = Long.MIN_VALUE; // Folia - region threading
++    private EntityDimensions dimensions;
++    private float eyeHeight;
++    private boolean onGroundNoBlocks;
++    private float crystalSoundIntensity;
++    private int lastCrystalSoundPlayTick;
++    @Nullable
++    private BlockState feetBlockState;
+     // Paper start - Entity origin API
+     @javax.annotation.Nullable
+     private org.bukkit.util.Vector origin;
++    // Pufferfish end
+     @javax.annotation.Nullable
+     private UUID originWorld;
+-    public boolean freezeLocked = false; // Paper - Freeze Tick Lock API
+-    public boolean fixedPose = false; // Paper - Expand Pose API
++    private Vec3 moveVector;
++    private double moveStartX;
++    // Paper end
++
++    // Paper start
++    private double moveStartY;
++    private double moveStartZ;
++    //Luminol start - Fix large pos moving
++    private volatile boolean preventMoving = false;
++
++    {
++        /* // Goodbye, broken on reobf...
++        Boolean hardCollides = cachedOverrides.get(this.getClass());
++        if (hardCollides == null) {
++            try {
++                java.lang.reflect.Method getHardCollisionBoxEntityMethod = Entity.class.getMethod("canCollideWith", Entity.class);
++                java.lang.reflect.Method hasHardCollisionBoxMethod = Entity.class.getMethod("canBeCollidedWith");
++                if (!this.getClass().getMethod(hasHardCollisionBoxMethod.getName(), hasHardCollisionBoxMethod.getParameterTypes()).equals(hasHardCollisionBoxMethod)
++                        || !this.getClass().getMethod(getHardCollisionBoxEntityMethod.getName(), getHardCollisionBoxEntityMethod.getParameterTypes()).equals(getHardCollisionBoxEntityMethod)) {
++                    hardCollides = Boolean.TRUE;
++                } else {
++                    hardCollides = Boolean.FALSE;
++                }
++                cachedOverrides.put(this.getClass(), hardCollides);
++            }
++            catch (ThreadDeath thr) { throw thr; }
++            catch (Throwable thr) {
++                // shouldn't happen, just explode
++                throw new RuntimeException(thr);
++            }
++        } */
++        this.hardCollides = this instanceof Boat
++                || this instanceof net.minecraft.world.entity.monster.Shulker
++                || this instanceof net.minecraft.world.entity.vehicle.AbstractMinecart
++                || this.shouldHardCollide();
++    }
++
++    public Entity(EntityType<?> type, Level world) {
++        this.id = Entity.ENTITY_COUNTER.incrementAndGet();
++        this.passengers = ImmutableList.of();
++        this.deltaMovement = Vec3.ZERO;
++        this.bb = Entity.INITIAL_AABB;
++        this.stuckSpeedMultiplier = Vec3.ZERO;
++        this.nextStep = 1.0F;
++        this.random = me.earthme.luminol.config.modules.fixes.VanillaRandomSourceConfig.useLegacyRandomSourceForPlayers ? RandomSource.create() : SHARED_RANDOM;//Luminol - Add config for vanilla random SHARED_RANDOM // Paper - Share random for entities to make them more random
++        this.remainingFireTicks = -this.getFireImmuneTicks();
++        this.fluidHeight = new Object2DoubleArrayMap(2);
++        this.fluidOnEyes = new HashSet();
++        this.firstTick = true;
++        this.levelCallback = EntityInLevelCallback.NULL;
++        this.packetPositionCodec = new VecDeltaCodec();
++        this.uuid = Mth.createInsecureUUID(this.random);
++        this.stringUUID = this.uuid.toString();
++        this.tags = Sets.newHashSet();
++        this.pistonDeltas = new double[]{0.0D, 0.0D, 0.0D};
++        this.mainSupportingBlockPos = Optional.empty();
++        this.onGroundNoBlocks = false;
++        this.feetBlockState = null;
++        this.type = type;
++        this.level = world;
++        this.dimensions = type.getDimensions();
++        this.position = Vec3.ZERO;
++        this.blockPosition = BlockPos.ZERO;
++        this.chunkPosition = ChunkPos.ZERO;
++        // Spigot start
++        if (world != null) {
++            this.defaultActivationState = org.spigotmc.ActivationRange.initializeEntityActivationState(this, world.spigotConfig);
++        } else {
++            this.defaultActivationState = false;
++        }
++        // Spigot end
++        this.entityData = new SynchedEntityData(this);
++        this.entityData.define(Entity.DATA_SHARED_FLAGS_ID, (byte) 0);
++        this.entityData.define(Entity.DATA_AIR_SUPPLY_ID, this.getMaxAirSupply());
++        this.entityData.define(Entity.DATA_CUSTOM_NAME_VISIBLE, false);
++        this.entityData.define(Entity.DATA_CUSTOM_NAME, Optional.empty());
++        this.entityData.define(Entity.DATA_SILENT, false);
++        this.entityData.define(Entity.DATA_NO_GRAVITY, false);
++        this.entityData.define(Entity.DATA_POSE, net.minecraft.world.entity.Pose.STANDING);
++        this.entityData.define(Entity.DATA_TICKS_FROZEN, 0);
++        this.defineSynchedData();
++        this.getEntityData().registrationLocked = true; // Spigot
++        this.setPos(0.0D, 0.0D, 0.0D);
++        this.eyeHeight = this.getEyeHeight(net.minecraft.world.entity.Pose.STANDING, this.dimensions);
++    }
++
++    static boolean isLevelAtLeast(CompoundTag tag, int level) {
++        return tag.contains("Bukkit.updateLevel") && tag.getInt("Bukkit.updateLevel") >= level;
++    }
++
++    public static Vec3 collideBoundingBox(@Nullable Entity entity, Vec3 movement, AABB entityBoundingBox, Level world, List<VoxelShape> collisions) {
++        Builder<VoxelShape> builder = ImmutableList.builderWithExpectedSize(collisions.size() + 1);
++
++        if (!collisions.isEmpty()) {
++            builder.addAll(collisions);
++        }
++
++        WorldBorder worldborder = world.getWorldBorder();
++        boolean flag = entity != null && worldborder.isInsideCloseToBorder(entity, entityBoundingBox.expandTowards(movement));
++
++        if (flag) {
++            builder.add(worldborder.getCollisionShape());
++        }
++
++        builder.addAll(world.getBlockCollisions(entity, entityBoundingBox.expandTowards(movement)));
++        return Entity.collideWithShapes(movement, entityBoundingBox, builder.build());
++    }
++
++    private static Vec3 collideWithShapes(Vec3 movement, AABB entityBoundingBox, List<VoxelShape> collisions) {
++        if (collisions.isEmpty()) {
++            return movement;
++        } else {
++            double d0 = movement.x;
++            double d1 = movement.y;
++            double d2 = movement.z;
++
++            if (d1 != 0.0D) {
++                d1 = Shapes.collide(Direction.Axis.Y, entityBoundingBox, collisions, d1);
++                if (d1 != 0.0D) {
++                    entityBoundingBox = entityBoundingBox.move(0.0D, d1, 0.0D);
++                }
++            }
++
++            boolean flag = Math.abs(d0) < Math.abs(d2);
++
++            if (flag && d2 != 0.0D) {
++                d2 = Shapes.collide(Direction.Axis.Z, entityBoundingBox, collisions, d2);
++                if (d2 != 0.0D) {
++                    entityBoundingBox = entityBoundingBox.move(0.0D, 0.0D, d2);
++                }
++            }
++
++            if (d0 != 0.0D) {
++                d0 = Shapes.collide(Direction.Axis.X, entityBoundingBox, collisions, d0);
++                if (!flag && d0 != 0.0D) {
++                    entityBoundingBox = entityBoundingBox.move(d0, 0.0D, 0.0D);
++                }
++            }
++
++            if (!flag && d2 != 0.0D) {
++                d2 = Shapes.collide(Direction.Axis.Z, entityBoundingBox, collisions, d2);
++            }
++
++            return new Vec3(d0, d1, d2);
++        }
++    }
++
++    private static Vec3 getInputVector(Vec3 movementInput, float speed, float yaw) {
++        double d0 = movementInput.lengthSqr();
++
++        if (d0 < 1.0E-7D) {
++            return Vec3.ZERO;
++        } else {
++            Vec3 vec3d1 = (d0 > 1.0D ? movementInput.normalize() : movementInput).scale((double) speed);
++            float f2 = Mth.sin(yaw * 0.017453292F);
++            float f3 = Mth.cos(yaw * 0.017453292F);
++
++            return new Vec3(vec3d1.x * (double) f3 - vec3d1.z * (double) f2, vec3d1.y, vec3d1.z * (double) f3 + vec3d1.x * (double) f2);
++        }
++    }
++
++    private static Component removeAction(Component textComponent) {
++        MutableComponent ichatmutablecomponent = textComponent.plainCopy().setStyle(textComponent.getStyle().withClickEvent((ClickEvent) null));
++        Iterator iterator = textComponent.getSiblings().iterator();
++
++        while (iterator.hasNext()) {
++            Component ichatbasecomponent1 = (Component) iterator.next();
++
++            ichatmutablecomponent.append(Entity.removeAction(ichatbasecomponent1));
++        }
++
++        return ichatmutablecomponent;
++    }
++
++    public static double getViewScale() {
++        return Entity.viewScale;
++    }
++    // Folia end - region ticking
++
++    public static void setViewScale(double value) {
++        Entity.viewScale = value;
++    }
++
++    protected static Vec3 getCollisionHorizontalEscapeVector(double vehicleWidth, double passengerWidth, float passengerYaw) {
++        double d2 = (vehicleWidth + passengerWidth + 9.999999747378752E-6D) / 2.0D;
++        float f1 = -Mth.sin(passengerYaw * 0.017453292F);
++        float f2 = Mth.cos(passengerYaw * 0.017453292F);
++        float f3 = Math.max(Math.abs(f1), Math.abs(f2));
++
++        return new Vec3((double) f1 * d2 / (double) f3, 0.0D, (double) f2 * d2 / (double) f3);
++    }
++
++    // Paper start - Block invalid positions and bounding box
++    public static boolean checkPosition(Entity entity, double newX, double newY, double newZ) {
++        if (Double.isFinite(newX) && Double.isFinite(newY) && Double.isFinite(newZ)) {
++            return true;
++        }
++
++        String entityInfo;
++        try {
++            entityInfo = entity.toString();
++        } catch (Exception ex) {
++            entityInfo = "[Entity info unavailable] ";
++        }
++        LOGGER.error("New entity position is invalid! Tried to set invalid position ({},{},{}) for entity {} located at {}, entity info: {}", newX, newY, newZ, entity.getClass().getName(), entity.position, entityInfo, new Throwable());
++        return false;
++    }
++
++    // Paper start - Expose entity id counter
++    public static int nextEntityId() {
++        return ENTITY_COUNTER.incrementAndGet();
++    }
++
++    public CraftEntity getBukkitEntity() {
++        if (this.bukkitEntity == null) {
++            // Paper start - Folia schedulers
++            synchronized (this) {
++                if (this.bukkitEntity == null) {
++                    return this.bukkitEntity = CraftEntity.getEntity(this.level.getCraftServer(), this);
++                }
++            }
++            // Paper end - Folia schedulers
++        }
++        return this.bukkitEntity;
++    }
++
++    // Paper start
++    public CraftEntity getBukkitEntityRaw() {
++        return this.bukkitEntity;
++    }
++
++    @Override
++    public CommandSender getBukkitSender(CommandSourceStack wrapper) {
++        return this.getBukkitEntity();
++    }
++
++    // CraftBukkit - SPIGOT-6907: re-implement LivingEntity#setMaximumAir()
++    public int getDefaultMaxAirSupply() {
++        return Entity.TOTAL_AIR_SUPPLY;
++    }
++
++    public void inactiveTick() {
++    }
+ 
+     public void setOrigin(@javax.annotation.Nonnull Location location) {
+         this.origin = location.toVector();
+@@ -440,10 +626,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     public UUID getOriginWorld() {
+         return this.originWorld;
+     }
+-    // Paper end - Entity origin API
+-    // Paper start - make end portalling safe
+-    public BlockPos portalBlock;
+-    public ServerLevel portalWorld;
++
+     public void tickEndPortal() {
+         BlockPos pos = this.portalBlock;
+         ServerLevel world = this.portalWorld;
+@@ -470,23 +653,11 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         }
+         this.teleportTo(worldserver, null);
+     }
+-    // Paper end - make end portalling safe
+-    // Paper start - optimise entity tracking
+-    final org.spigotmc.TrackingRange.TrackingRangeType trackingRangeType = org.spigotmc.TrackingRange.getTrackingRangeType(this);
+-
+-    public boolean isLegacyTrackingEntity = false;
+ 
+     public final void setLegacyTrackingEntity(final boolean isLegacyTrackingEntity) {
+         this.isLegacyTrackingEntity = isLegacyTrackingEntity;
+     }
+ 
+-    // Folia - region ticking
+-    // Paper end - optimise entity tracking
+-    //Pufferfish start
+-    public boolean activatedPriorityReset = false; // DAB
+-    public int activatedPriority = me.earthme.luminol.config.modules.optimizations.EntityDABConfig.maximumActivationPrio; // golf score
+-    // Pufferfish end
+-
+     public float getBukkitYaw() {
+         return this.yRot;
+     }
+@@ -494,45 +665,11 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     public boolean isChunkLoaded() {
+         return this.level.hasChunk((int) Math.floor(this.getX()) >> 4, (int) Math.floor(this.getZ()) >> 4);
+     }
+-    // CraftBukkit end
+-    // Paper start
+-    public final AABB getBoundingBoxAt(double x, double y, double z) {
+-        return this.dimensions.makeBoundingBox(x, y, z);
+-    }
+-    // Paper end
+-
+-    // Paper start
+-    /**
+-     * Overriding this field will cause memory leaks.
+-     */
+-    private final boolean hardCollides;
+ 
+-    private static final java.util.Map<Class<? extends Entity>, Boolean> cachedOverrides = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
+-    {
+-        /* // Goodbye, broken on reobf...
+-        Boolean hardCollides = cachedOverrides.get(this.getClass());
+-        if (hardCollides == null) {
+-            try {
+-                java.lang.reflect.Method getHardCollisionBoxEntityMethod = Entity.class.getMethod("canCollideWith", Entity.class);
+-                java.lang.reflect.Method hasHardCollisionBoxMethod = Entity.class.getMethod("canBeCollidedWith");
+-                if (!this.getClass().getMethod(hasHardCollisionBoxMethod.getName(), hasHardCollisionBoxMethod.getParameterTypes()).equals(hasHardCollisionBoxMethod)
+-                        || !this.getClass().getMethod(getHardCollisionBoxEntityMethod.getName(), getHardCollisionBoxEntityMethod.getParameterTypes()).equals(getHardCollisionBoxEntityMethod)) {
+-                    hardCollides = Boolean.TRUE;
+-                } else {
+-                    hardCollides = Boolean.FALSE;
+-                }
+-                cachedOverrides.put(this.getClass(), hardCollides);
+-            }
+-            catch (ThreadDeath thr) { throw thr; }
+-            catch (Throwable thr) {
+-                // shouldn't happen, just explode
+-                throw new RuntimeException(thr);
+-            }
+-        } */
+-        this.hardCollides = this instanceof Boat
+-            || this instanceof net.minecraft.world.entity.monster.Shulker
+-            || this instanceof net.minecraft.world.entity.vehicle.AbstractMinecart
+-            || this.shouldHardCollide();
++    // CraftBukkit end
++    // Paper start
++    public final AABB getBoundingBoxAt(double x, double y, double z) {
++        return this.dimensions.makeBoundingBox(x, y, z);
+     }
+ 
+     // plugins can override
+@@ -544,13 +681,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return this.hardCollides;
+     }
+ 
+-    public net.minecraft.server.level.FullChunkStatus chunkStatus;
+-
+-    public int sectionX = Integer.MIN_VALUE;
+-    public int sectionY = Integer.MIN_VALUE;
+-    public int sectionZ = Integer.MIN_VALUE;
+-
+-    public boolean updatingSectionStatus = false;
+     // Paper end
+     // Folia start - region ticking
+     public void updateTicks(long fromTickOffset, long fromRedstoneTimeOffset) {
+@@ -564,56 +694,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+             this.pistonDeltasGameTime += fromRedstoneTimeOffset;
+         }
+     }
+-    // Folia end - region ticking
+-
+-    public Entity(EntityType<?> type, Level world) {
+-        this.id = Entity.ENTITY_COUNTER.incrementAndGet();
+-        this.passengers = ImmutableList.of();
+-        this.deltaMovement = Vec3.ZERO;
+-        this.bb = Entity.INITIAL_AABB;
+-        this.stuckSpeedMultiplier = Vec3.ZERO;
+-        this.nextStep = 1.0F;
+-        this.random = me.earthme.luminol.config.modules.fixes.VanillaRandomSourceConfig.useLegacyRandomSourceForPlayers ? RandomSource.create() : SHARED_RANDOM;//Luminol - Add config for vanilla random SHARED_RANDOM // Paper - Share random for entities to make them more random
+-        this.remainingFireTicks = -this.getFireImmuneTicks();
+-        this.fluidHeight = new Object2DoubleArrayMap(2);
+-        this.fluidOnEyes = new HashSet();
+-        this.firstTick = true;
+-        this.levelCallback = EntityInLevelCallback.NULL;
+-        this.packetPositionCodec = new VecDeltaCodec();
+-        this.uuid = Mth.createInsecureUUID(this.random);
+-        this.stringUUID = this.uuid.toString();
+-        this.tags = Sets.newHashSet();
+-        this.pistonDeltas = new double[]{0.0D, 0.0D, 0.0D};
+-        this.mainSupportingBlockPos = Optional.empty();
+-        this.onGroundNoBlocks = false;
+-        this.feetBlockState = null;
+-        this.type = type;
+-        this.level = world;
+-        this.dimensions = type.getDimensions();
+-        this.position = Vec3.ZERO;
+-        this.blockPosition = BlockPos.ZERO;
+-        this.chunkPosition = ChunkPos.ZERO;
+-        // Spigot start
+-        if (world != null) {
+-            this.defaultActivationState = org.spigotmc.ActivationRange.initializeEntityActivationState(this, world.spigotConfig);
+-        } else {
+-            this.defaultActivationState = false;
+-        }
+-        // Spigot end
+-        this.entityData = new SynchedEntityData(this);
+-        this.entityData.define(Entity.DATA_SHARED_FLAGS_ID, (byte) 0);
+-        this.entityData.define(Entity.DATA_AIR_SUPPLY_ID, this.getMaxAirSupply());
+-        this.entityData.define(Entity.DATA_CUSTOM_NAME_VISIBLE, false);
+-        this.entityData.define(Entity.DATA_CUSTOM_NAME, Optional.empty());
+-        this.entityData.define(Entity.DATA_SILENT, false);
+-        this.entityData.define(Entity.DATA_NO_GRAVITY, false);
+-        this.entityData.define(Entity.DATA_POSE, net.minecraft.world.entity.Pose.STANDING);
+-        this.entityData.define(Entity.DATA_TICKS_FROZEN, 0);
+-        this.defineSynchedData();
+-        this.getEntityData().registrationLocked = true; // Spigot
+-        this.setPos(0.0D, 0.0D, 0.0D);
+-        this.eyeHeight = this.getEyeHeight(net.minecraft.world.entity.Pose.STANDING, this.dimensions);
+-    }
+ 
+     public boolean isColliding(BlockPos pos, BlockState state) {
+         VoxelShape voxelshape = state.getCollisionShape(this.level(), pos, CollisionContext.of(this));
+@@ -692,6 +772,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     }
+ 
+     protected abstract void defineSynchedData();
++    // CraftBukkit end
+ 
+     public SynchedEntityData getEntityData() {
+         return this.entityData;
+@@ -715,7 +796,12 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         // CraftBukkit end
+     }
+ 
+-    public void onClientRemoval() {}
++    public void onClientRemoval() {
++    }
++
++    public net.minecraft.world.entity.Pose getPose() {
++        return (net.minecraft.world.entity.Pose) this.entityData.get(Entity.DATA_POSE);
++    }
+ 
+     public void setPose(net.minecraft.world.entity.Pose pose) {
+         if (this.fixedPose) return; // Paper - Expand Pose API
+@@ -732,10 +818,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         this.entityData.set(Entity.DATA_POSE, pose);
+     }
+ 
+-    public net.minecraft.world.entity.Pose getPose() {
+-        return (net.minecraft.world.entity.Pose) this.entityData.get(Entity.DATA_POSE);
+-    }
+-
+     public boolean hasPose(net.minecraft.world.entity.Pose pose) {
+         return this.getPose() == pose;
+     }
+@@ -840,11 +922,11 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+             this.handleNetherPortal();
+         }
+     }
+-    // CraftBukkit end
+ 
+     public void baseTick() {
+         this.level().getProfiler().push("entityBaseTick");
+-        if (firstTick && this instanceof net.minecraft.world.entity.NeutralMob neutralMob) neutralMob.tickInitialPersistentAnger(level); // Paper - Prevent entity loading causing async lookups
++        if (firstTick && this instanceof net.minecraft.world.entity.NeutralMob neutralMob)
++            neutralMob.tickInitialPersistentAnger(level); // Paper - Prevent entity loading causing async lookups
+         this.feetBlockState = null;
+         if (this.isPassenger() && this.getVehicle().isRemoved()) {
+             this.stopRiding();
+@@ -914,8 +996,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     public void checkBelowWorld() {
+         // Paper start - Configurable nether ceiling damage
+         if (this.getY() < (double) (this.level.getMinBuildHeight() - 64) || (this.level.getWorld().getEnvironment() == org.bukkit.World.Environment.NETHER
+-            && this.level.paperConfig().environment.netherCeilingVoidDamageHeight.test(v -> this.getY() >= v)
+-            && (!(this instanceof Player player) || !player.getAbilities().invulnerable))) {
++                && this.level.paperConfig().environment.netherCeilingVoidDamageHeight.test(v -> this.getY() >= v)
++                && (!(this instanceof Player player) || !player.getAbilities().invulnerable))) {
+             // Paper end - Configurable nether ceiling damage
+             this.onBelowWorld();
+         }
+@@ -926,14 +1008,14 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         this.portalCooldown = this.getDimensionChangingDelay();
+     }
+ 
+-    public void setPortalCooldown(int portalCooldown) {
+-        this.portalCooldown = portalCooldown;
+-    }
+-
+     public int getPortalCooldown() {
+         return this.portalCooldown;
+     }
+ 
++    public void setPortalCooldown(int portalCooldown) {
++        this.portalCooldown = portalCooldown;
++    }
++
+     public boolean isOnPortalCooldown() {
+         return this.portalCooldown > 0;
+     }
+@@ -1004,13 +1086,15 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+ 
+     }
+ 
+-    public void setRemainingFireTicks(int fireTicks) {
+-        this.remainingFireTicks = fireTicks;
+-    }
+-
+     public int getRemainingFireTicks() {
+         return this.remainingFireTicks;
+     }
++    // Paper end - detailed watchdog information
++
++    public void setRemainingFireTicks(int fireTicks) {
++        this.remainingFireTicks = fireTicks;
++    }
++    //Luminol end
+ 
+     public void clearFire() {
+         this.setRemainingFireTicks(0);
+@@ -1073,14 +1157,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return this.onGround;
+     }
+ 
+-    // Paper start - detailed watchdog information
+-    public final Object posLock = new Object(); // Paper - log detailed entity tick information
+-
+-    private Vec3 moveVector;
+-    private double moveStartX;
+-    private double moveStartY;
+-    private double moveStartZ;
+-
+     public final Vec3 getMoveVector() {
+         return this.moveVector;
+     }
+@@ -1096,11 +1172,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     public final double getMoveStartZ() {
+         return this.moveStartZ;
+     }
+-    // Paper end - detailed watchdog information
+-
+-    //Luminol start - Fix large pos moving
+-    private volatile boolean preventMoving = false;
+-    //Luminol end
+ 
+     public void move(MoverType movementType, Vec3 movement) {
+         // Gale start - VMP - skip entity move if movement is zero
+@@ -1112,13 +1183,13 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         // Paper start - detailed watchdog information
+         io.papermc.paper.util.TickThread.ensureTickThread("Cannot move an entity off-main");
+         //Luminol start - Fix high position moving
+-        if (me.earthme.luminol.config.modules.fixes.FoliaEntityMovingFixConfig.enabled && io.papermc.paper.util.TickThread.isTickThread()){ //Except the threads because it may be called by the chunk system worker thread
+-            if (this.preventMoving){
++        if (me.earthme.luminol.config.modules.fixes.FoliaEntityMovingFixConfig.enabled && io.papermc.paper.util.TickThread.isTickThread()) { //Except the threads because it may be called by the chunk system worker thread
++            if (this.preventMoving) {
+                 return;
+             }
+ 
+             var finalPosition = movement.add(this.position);
+-            if (!io.papermc.paper.util.TickThread.isTickThreadFor(((ServerLevel) this.level),finalPosition)){
++            if (!io.papermc.paper.util.TickThread.isTickThreadFor(((ServerLevel) this.level), finalPosition)) {
+                 this.preventMoving = true;
+                 this.teleportAsync(
+                         (ServerLevel) this.level(),
+@@ -1130,8 +1201,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+                             this.preventMoving = false;
+                         }
+                 );
+-                if (me.earthme.luminol.config.modules.fixes.FoliaEntityMovingFixConfig.warnOnDetected){
+-                    MinecraftServer.LOGGER.warn("Entity {} with entityId {} has tried moving to another region!",this.type.getCategory().getName(),this.getId());
++                if (me.earthme.luminol.config.modules.fixes.FoliaEntityMovingFixConfig.warnOnDetected) {
++                    MinecraftServer.LOGGER.warn("Entity {} with entityId {} has tried moving to another region!", this.type.getCategory().getName(), this.getId());
+                 }
+                 return;
+             }
+@@ -1144,212 +1215,221 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+             this.moveVector = movement;
+         }
+         try {
+-        // Paper end - detailed watchdog information
+-        if (this.noPhysics) {
+-            this.setPos(this.getX() + movement.x, this.getY() + movement.y, this.getZ() + movement.z);
+-        } else {
+-            this.wasOnFire = this.isOnFire();
+-            if (movementType == MoverType.PISTON) {
+-                this.activatedTick = Math.max(this.activatedTick, io.papermc.paper.threadedregions.RegionizedServer.getCurrentTick() + 20); // Paper
+-                this.activatedImmunityTick = Math.max(this.activatedImmunityTick, io.papermc.paper.threadedregions.RegionizedServer.getCurrentTick() + 20);   // Paper
+-                movement = this.limitPistonMovement(movement);
+-                if (movement.equals(Vec3.ZERO)) {
++            // Paper end - detailed watchdog information
++            if (this.noPhysics) {
++                this.setPos(this.getX() + movement.x, this.getY() + movement.y, this.getZ() + movement.z);
++            } else {
++                this.wasOnFire = this.isOnFire();
++                if (movementType == MoverType.PISTON) {
++                    this.activatedTick = Math.max(this.activatedTick, io.papermc.paper.threadedregions.RegionizedServer.getCurrentTick() + 20); // Paper
++                    this.activatedImmunityTick = Math.max(this.activatedImmunityTick, io.papermc.paper.threadedregions.RegionizedServer.getCurrentTick() + 20);   // Paper
++                    movement = this.limitPistonMovement(movement);
++                    if (movement.equals(Vec3.ZERO)) {
++                        return;
++                    }
++                }
++
++                this.level().getProfiler().push("move");
++                if (this.stuckSpeedMultiplier.lengthSqr() > 1.0E-7D) {
++                    movement = movement.multiply(this.stuckSpeedMultiplier);
++                    this.stuckSpeedMultiplier = Vec3.ZERO;
++                    this.setDeltaMovement(Vec3.ZERO);
++                }
++                // Paper start - ignore movement changes while inactive.
++                if (isTemporarilyActive && !(this instanceof ItemEntity) && movement == getDeltaMovement() && movementType == MoverType.SELF) {
++                    setDeltaMovement(Vec3.ZERO);
++                    this.level.getProfiler().pop();
+                     return;
+                 }
+-            }
++                // Paper end
+ 
+-            this.level().getProfiler().push("move");
+-            if (this.stuckSpeedMultiplier.lengthSqr() > 1.0E-7D) {
+-                movement = movement.multiply(this.stuckSpeedMultiplier);
+-                this.stuckSpeedMultiplier = Vec3.ZERO;
+-                this.setDeltaMovement(Vec3.ZERO);
+-            }
+-            // Paper start - ignore movement changes while inactive.
+-            if (isTemporarilyActive && !(this instanceof ItemEntity) && movement == getDeltaMovement() && movementType == MoverType.SELF) {
+-                setDeltaMovement(Vec3.ZERO);
+-                this.level.getProfiler().pop();
+-                return;
+-            }
+-            // Paper end
++                movement = this.maybeBackOffFromEdge(movement, movementType);
++                Vec3 vec3d1 = this.collide(movement);
++                double d0 = vec3d1.lengthSqr();
+ 
+-            movement = this.maybeBackOffFromEdge(movement, movementType);
+-            Vec3 vec3d1 = this.collide(movement);
+-            double d0 = vec3d1.lengthSqr();
++                if (d0 > 1.0E-7D) {
++                    if (this.fallDistance != 0.0F && d0 >= 1.0D) {
++                        BlockHitResult movingobjectpositionblock = this.level().clip(new ClipContext(this.position(), this.position().add(vec3d1), ClipContext.Block.FALLDAMAGE_RESETTING, ClipContext.Fluid.WATER, this));
+ 
+-            if (d0 > 1.0E-7D) {
+-                if (this.fallDistance != 0.0F && d0 >= 1.0D) {
+-                    BlockHitResult movingobjectpositionblock = this.level().clip(new ClipContext(this.position(), this.position().add(vec3d1), ClipContext.Block.FALLDAMAGE_RESETTING, ClipContext.Fluid.WATER, this));
++                        if (movingobjectpositionblock.getType() != HitResult.Type.MISS) {
++                            this.resetFallDistance();
++                        }
++                    }
+ 
+-                    if (movingobjectpositionblock.getType() != HitResult.Type.MISS) {
+-                        this.resetFallDistance();
++                    try {
++                        this.setPos(this.getX() + vec3d1.x, this.getY() + vec3d1.y, this.getZ() + vec3d1.z);
++                    } catch (IllegalStateException e) {
++                        this.teleportAsync((ServerLevel) this.level(), this.position().add(vec3d1),
++                                this.getYRot(), this.getXRot(),
++                                Vec3.ZERO, PlayerTeleportEvent.TeleportCause.UNKNOWN,
++                                Entity.TELEPORT_FLAG_LOAD_CHUNK | Entity.TELEPORT_FLAG_TELEPORT_PASSENGERS,
++                                null
++                        );
+                     }
+                 }
+ 
+-                this.setPos(this.getX() + vec3d1.x, this.getY() + vec3d1.y, this.getZ() + vec3d1.z);
+-            }
+-
+-            this.level().getProfiler().pop();
+-            this.level().getProfiler().push("rest");
+-            boolean flag = !Mth.equal(movement.x, vec3d1.x);
+-            boolean flag1 = !Mth.equal(movement.z, vec3d1.z);
+-
+-            this.horizontalCollision = flag || flag1;
+-            this.verticalCollision = movement.y != vec3d1.y;
+-            this.verticalCollisionBelow = this.verticalCollision && movement.y < 0.0D;
+-            if (this.horizontalCollision) {
+-                this.minorHorizontalCollision = this.isHorizontalCollisionMinor(vec3d1);
+-            } else {
+-                this.minorHorizontalCollision = false;
+-            }
+-
+-            this.setOnGroundWithKnownMovement(this.verticalCollisionBelow, vec3d1);
+-            BlockPos blockposition = this.getOnPosLegacy();
+-            BlockState iblockdata = this.level().getBlockState(blockposition);
+-
+-            this.checkFallDamage(vec3d1.y, this.onGround(), iblockdata, blockposition);
+-            if (this.isRemoved()) {
+                 this.level().getProfiler().pop();
+-            } else {
+-                if (this.horizontalCollision) {
+-                    Vec3 vec3d2 = this.getDeltaMovement();
++                this.level().getProfiler().push("rest");
++                boolean flag = !Mth.equal(movement.x, vec3d1.x);
++                boolean flag1 = !Mth.equal(movement.z, vec3d1.z);
+ 
+-                    this.setDeltaMovement(flag ? 0.0D : vec3d2.x, vec3d2.y, flag1 ? 0.0D : vec3d2.z);
++                this.horizontalCollision = flag || flag1;
++                this.verticalCollision = movement.y != vec3d1.y;
++                this.verticalCollisionBelow = this.verticalCollision && movement.y < 0.0D;
++                if (this.horizontalCollision) {
++                    this.minorHorizontalCollision = this.isHorizontalCollisionMinor(vec3d1);
++                } else {
++                    this.minorHorizontalCollision = false;
+                 }
+ 
+-                Block block = iblockdata.getBlock();
++                this.setOnGroundWithKnownMovement(this.verticalCollisionBelow, vec3d1);
++                BlockPos blockposition = this.getOnPosLegacy();
++                BlockState iblockdata = this.level().getBlockState(blockposition);
+ 
+-                if (movement.y != vec3d1.y) {
+-                    block.updateEntityAfterFallOn(this.level(), this);
+-                }
++                this.checkFallDamage(vec3d1.y, this.onGround(), iblockdata, blockposition);
++                if (this.isRemoved()) {
++                    this.level().getProfiler().pop();
++                } else {
++                    if (this.horizontalCollision) {
++                        Vec3 vec3d2 = this.getDeltaMovement();
+ 
+-                // CraftBukkit start
+-                if (this.horizontalCollision && this.getBukkitEntity() instanceof Vehicle) {
+-                    Vehicle vehicle = (Vehicle) this.getBukkitEntity();
+-                    org.bukkit.block.Block bl = this.level.getWorld().getBlockAt(Mth.floor(this.getX()), Mth.floor(this.getY()), Mth.floor(this.getZ()));
+-
+-                    if (movement.x > vec3d1.x) {
+-                        bl = bl.getRelative(BlockFace.EAST);
+-                    } else if (movement.x < vec3d1.x) {
+-                        bl = bl.getRelative(BlockFace.WEST);
+-                    } else if (movement.z > vec3d1.z) {
+-                        bl = bl.getRelative(BlockFace.SOUTH);
+-                    } else if (movement.z < vec3d1.z) {
+-                        bl = bl.getRelative(BlockFace.NORTH);
++                        this.setDeltaMovement(flag ? 0.0D : vec3d2.x, vec3d2.y, flag1 ? 0.0D : vec3d2.z);
+                     }
+ 
+-                    if (!bl.getType().isAir()) {
+-                        VehicleBlockCollisionEvent event = new VehicleBlockCollisionEvent(vehicle, bl, org.bukkit.craftbukkit.util.CraftVector.toBukkit(originalMovement)); // Paper - Expose pre-collision velocity
+-                        this.level.getCraftServer().getPluginManager().callEvent(event);
++                    Block block = iblockdata.getBlock();
++
++                    if (movement.y != vec3d1.y) {
++                        block.updateEntityAfterFallOn(this.level(), this);
+                     }
+-                }
+-                // CraftBukkit end
+ 
+-                if (this.onGround()) {
+-                    block.stepOn(this.level(), blockposition, iblockdata, this);
+-                }
++                    // CraftBukkit start
++                    if (this.horizontalCollision && this.getBukkitEntity() instanceof Vehicle) {
++                        Vehicle vehicle = (Vehicle) this.getBukkitEntity();
++                        org.bukkit.block.Block bl = this.level.getWorld().getBlockAt(Mth.floor(this.getX()), Mth.floor(this.getY()), Mth.floor(this.getZ()));
++
++                        if (movement.x > vec3d1.x) {
++                            bl = bl.getRelative(BlockFace.EAST);
++                        } else if (movement.x < vec3d1.x) {
++                            bl = bl.getRelative(BlockFace.WEST);
++                        } else if (movement.z > vec3d1.z) {
++                            bl = bl.getRelative(BlockFace.SOUTH);
++                        } else if (movement.z < vec3d1.z) {
++                            bl = bl.getRelative(BlockFace.NORTH);
++                        }
+ 
+-                Entity.MovementEmission entity_movementemission = this.getMovementEmission();
++                        if (!bl.getType().isAir()) {
++                            VehicleBlockCollisionEvent event = new VehicleBlockCollisionEvent(vehicle, bl, org.bukkit.craftbukkit.util.CraftVector.toBukkit(originalMovement)); // Paper - Expose pre-collision velocity
++                            this.level.getCraftServer().getPluginManager().callEvent(event);
++                        }
++                    }
++                    // CraftBukkit end
+ 
+-                if (entity_movementemission.emitsAnything() && !this.isPassenger()) {
+-                    double d1 = vec3d1.x;
+-                    double d2 = vec3d1.y;
+-                    double d3 = vec3d1.z;
++                    if (this.onGround()) {
++                        block.stepOn(this.level(), blockposition, iblockdata, this);
++                    }
+ 
+-                    this.flyDist += (float) (vec3d1.length() * 0.6D);
+-                    BlockPos blockposition1 = this.getOnPos();
+-                    BlockState iblockdata1 = this.level().getBlockState(blockposition1);
+-                    boolean flag2 = this.isStateClimbable(iblockdata1);
++                    Entity.MovementEmission entity_movementemission = this.getMovementEmission();
+ 
+-                    if (!flag2) {
+-                        d2 = 0.0D;
+-                    }
++                    if (entity_movementemission.emitsAnything() && !this.isPassenger()) {
++                        double d1 = vec3d1.x;
++                        double d2 = vec3d1.y;
++                        double d3 = vec3d1.z;
+ 
+-                    this.walkDist += (float) vec3d1.horizontalDistance() * 0.6F;
+-                    this.moveDist += (float) Math.sqrt(d1 * d1 + d2 * d2 + d3 * d3) * 0.6F;
+-                    if (this.moveDist > this.nextStep && !iblockdata1.isAir()) {
+-                        boolean flag3 = blockposition1.equals(blockposition);
+-                        boolean flag4 = this.vibrationAndSoundEffectsFromBlock(blockposition, iblockdata, entity_movementemission.emitsSounds(), flag3, movement);
++                        this.flyDist += (float) (vec3d1.length() * 0.6D);
++                        BlockPos blockposition1 = this.getOnPos();
++                        BlockState iblockdata1 = this.level().getBlockState(blockposition1);
++                        boolean flag2 = this.isStateClimbable(iblockdata1);
+ 
+-                        if (!flag3) {
+-                            flag4 |= this.vibrationAndSoundEffectsFromBlock(blockposition1, iblockdata1, false, entity_movementemission.emitsEvents(), movement);
++                        if (!flag2) {
++                            d2 = 0.0D;
+                         }
+ 
+-                        if (flag4) {
+-                            this.nextStep = this.nextStep();
+-                        } else if (this.isInWater()) {
+-                            this.nextStep = this.nextStep();
+-                            if (entity_movementemission.emitsSounds()) {
+-                                this.waterSwimSound();
++                        this.walkDist += (float) vec3d1.horizontalDistance() * 0.6F;
++                        this.moveDist += (float) Math.sqrt(d1 * d1 + d2 * d2 + d3 * d3) * 0.6F;
++                        if (this.moveDist > this.nextStep && !iblockdata1.isAir()) {
++                            boolean flag3 = blockposition1.equals(blockposition);
++                            boolean flag4 = this.vibrationAndSoundEffectsFromBlock(blockposition, iblockdata, entity_movementemission.emitsSounds(), flag3, movement);
++
++                            if (!flag3) {
++                                flag4 |= this.vibrationAndSoundEffectsFromBlock(blockposition1, iblockdata1, false, entity_movementemission.emitsEvents(), movement);
+                             }
+ 
+-                            if (entity_movementemission.emitsEvents()) {
+-                                this.gameEvent(GameEvent.SWIM);
++                            if (flag4) {
++                                this.nextStep = this.nextStep();
++                            } else if (this.isInWater()) {
++                                this.nextStep = this.nextStep();
++                                if (entity_movementemission.emitsSounds()) {
++                                    this.waterSwimSound();
++                                }
++
++                                if (entity_movementemission.emitsEvents()) {
++                                    this.gameEvent(GameEvent.SWIM);
++                                }
+                             }
++                        } else if (iblockdata1.isAir()) {
++                            this.processFlappingMovement();
+                         }
+-                    } else if (iblockdata1.isAir()) {
+-                        this.processFlappingMovement();
+                     }
+-                }
+ 
+-                this.tryCheckInsideBlocks();
+-                float f = this.getBlockSpeedFactor();
+-
+-                this.setDeltaMovement(this.getDeltaMovement().multiply((double) f, 1.0D, (double) f));
+-                // Paper start - remove expensive streams from here
+-                boolean noneMatch = true;
+-                AABB fireSearchBox = this.getBoundingBox().deflate(1.0E-6D);
+-                {
+-                    int minX = Mth.floor(fireSearchBox.minX);
+-                    int minY = Mth.floor(fireSearchBox.minY);
+-                    int minZ = Mth.floor(fireSearchBox.minZ);
+-                    int maxX = Mth.floor(fireSearchBox.maxX);
+-                    int maxY = Mth.floor(fireSearchBox.maxY);
+-                    int maxZ = Mth.floor(fireSearchBox.maxZ);
+-                    fire_search_loop:
+-                    for (int fz = minZ; fz <= maxZ; ++fz) {
+-                        for (int fx = minX; fx <= maxX; ++fx) {
+-                            for (int fy = minY; fy <= maxY; ++fy) {
+-                                net.minecraft.world.level.chunk.LevelChunk chunk = (net.minecraft.world.level.chunk.LevelChunk)this.level.getChunkIfLoadedImmediately(fx >> 4, fz >> 4);
+-                                if (chunk == null) {
+-                                    // Vanilla rets an empty stream if all the chunks are not loaded, so noneMatch will be true
+-                                    // even if we're in lava/fire
+-                                    noneMatch = true;
+-                                    break fire_search_loop;
+-                                }
+-                                if (!noneMatch) {
+-                                    // don't do get type, we already know we're in fire - we just need to check the chunks
+-                                    // loaded state
+-                                    continue;
+-                                }
++                    this.tryCheckInsideBlocks();
++                    float f = this.getBlockSpeedFactor();
++
++                    this.setDeltaMovement(this.getDeltaMovement().multiply((double) f, 1.0D, (double) f));
++                    // Paper start - remove expensive streams from here
++                    boolean noneMatch = true;
++                    AABB fireSearchBox = this.getBoundingBox().deflate(1.0E-6D);
++                    {
++                        int minX = Mth.floor(fireSearchBox.minX);
++                        int minY = Mth.floor(fireSearchBox.minY);
++                        int minZ = Mth.floor(fireSearchBox.minZ);
++                        int maxX = Mth.floor(fireSearchBox.maxX);
++                        int maxY = Mth.floor(fireSearchBox.maxY);
++                        int maxZ = Mth.floor(fireSearchBox.maxZ);
++                        fire_search_loop:
++                        for (int fz = minZ; fz <= maxZ; ++fz) {
++                            for (int fx = minX; fx <= maxX; ++fx) {
++                                for (int fy = minY; fy <= maxY; ++fy) {
++                                    net.minecraft.world.level.chunk.LevelChunk chunk = (net.minecraft.world.level.chunk.LevelChunk) this.level.getChunkIfLoadedImmediately(fx >> 4, fz >> 4);
++                                    if (chunk == null) {
++                                        // Vanilla rets an empty stream if all the chunks are not loaded, so noneMatch will be true
++                                        // even if we're in lava/fire
++                                        noneMatch = true;
++                                        break fire_search_loop;
++                                    }
++                                    if (!noneMatch) {
++                                        // don't do get type, we already know we're in fire - we just need to check the chunks
++                                        // loaded state
++                                        continue;
++                                    }
+ 
+-                                BlockState type = chunk.getBlockStateFinal(fx, fy, fz);
+-                                if (type.is(BlockTags.FIRE) || type.is(Blocks.LAVA)) {
+-                                    noneMatch = false;
+-                                    // can't break, we need to retain vanilla behavior by ensuring ALL chunks are loaded
++                                    BlockState type = chunk.getBlockStateFinal(fx, fy, fz);
++                                    if (type.is(BlockTags.FIRE) || type.is(Blocks.LAVA)) {
++                                        noneMatch = false;
++                                        // can't break, we need to retain vanilla behavior by ensuring ALL chunks are loaded
++                                    }
+                                 }
+                             }
+                         }
+                     }
+-                }
+-                if (noneMatch) {
+-                    // Paper end - remove expensive streams from here
+-                    if (this.remainingFireTicks <= 0) {
+-                        this.setRemainingFireTicks(-this.getFireImmuneTicks());
++                    if (noneMatch) {
++                        // Paper end - remove expensive streams from here
++                        if (this.remainingFireTicks <= 0) {
++                            this.setRemainingFireTicks(-this.getFireImmuneTicks());
++                        }
++
++                        if (this.wasOnFire && (this.isInPowderSnow || this.isInWaterRainOrBubble())) {
++                            this.playEntityOnFireExtinguishedSound();
++                        }
+                     }
+ 
+-                    if (this.wasOnFire && (this.isInPowderSnow || this.isInWaterRainOrBubble())) {
+-                        this.playEntityOnFireExtinguishedSound();
++                    if (this.isOnFire() && (this.isInPowderSnow || this.isInWaterRainOrBubble())) {
++                        this.setRemainingFireTicks(-this.getFireImmuneTicks());
+                     }
+-                }
+ 
+-                if (this.isOnFire() && (this.isInPowderSnow || this.isInWaterRainOrBubble())) {
+-                    this.setRemainingFireTicks(-this.getFireImmuneTicks());
++                    this.level().getProfiler().pop();
+                 }
+-
+-                this.level().getProfiler().pop();
+             }
+-        }
+-        // Paper start - detailed watchdog information
++            // Paper start - detailed watchdog information
+         } finally {
+             synchronized (this.posLock) { // Paper
+                 this.moveVector = null;
+@@ -1422,7 +1502,9 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+ 
+     }
+ 
+-    /** @deprecated */
++    /**
++     * @deprecated
++     */
+     @Deprecated
+     public BlockPos getOnPosLegacy() {
+         return this.getOnPos(0.2F);
+@@ -1469,6 +1551,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+ 
+         return !iblockdata.is(Blocks.WATER) && !iblockdata.is(Blocks.BUBBLE_COLUMN) ? ((double) f == 1.0D ? this.level().getBlockState(this.getBlockPosBelowThatAffectsMyMovement()).getBlock().getSpeedFactor() : f) : f;
+     }
++    // CraftBukkit end
+ 
+     protected Vec3 maybeBackOffFromEdge(Vec3 movement, MoverType type) {
+         return movement;
+@@ -1529,7 +1612,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+ 
+         final List<AABB> potentialCollisionsBB = new java.util.ArrayList<>();
+         final List<VoxelShape> potentialCollisionsVoxel = new java.util.ArrayList<>();
+-        final double stepHeight = (double)this.maxUpStep();
++        final double stepHeight = (double) this.maxUpStep();
+         final AABB collisionBox;
+         final boolean onGround = this.onGround;
+ 
+@@ -1563,88 +1646,31 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+             return movement;
+         }
+ 
+-        final Vec3 limitedMoveVector = io.papermc.paper.util.CollisionUtil.performCollisions(movement, currBoundingBox, potentialCollisionsVoxel, potentialCollisionsBB);
+-
+-        if (stepHeight > 0.0
+-                && (onGround || (limitedMoveVector.y != movement.y && movement.y < 0.0))
+-                && (limitedMoveVector.x != movement.x || limitedMoveVector.z != movement.z)) {
+-            Vec3 vec3d2 = io.papermc.paper.util.CollisionUtil.performCollisions(new Vec3(movement.x, stepHeight, movement.z), currBoundingBox, potentialCollisionsVoxel, potentialCollisionsBB);
+-            final Vec3 vec3d3 = io.papermc.paper.util.CollisionUtil.performCollisions(new Vec3(0.0, stepHeight, 0.0), currBoundingBox.expandTowards(movement.x, 0.0, movement.z), potentialCollisionsVoxel, potentialCollisionsBB);
+-
+-            if (vec3d3.y < stepHeight) {
+-                final Vec3 vec3d4 = io.papermc.paper.util.CollisionUtil.performCollisions(new Vec3(movement.x, 0.0D, movement.z), currBoundingBox.move(vec3d3), potentialCollisionsVoxel, potentialCollisionsBB).add(vec3d3);
+-
+-                if (vec3d4.horizontalDistanceSqr() > vec3d2.horizontalDistanceSqr()) {
+-                    vec3d2 = vec3d4;
+-                }
+-            }
+-
+-            if (vec3d2.horizontalDistanceSqr() > limitedMoveVector.horizontalDistanceSqr()) {
+-                return vec3d2.add(io.papermc.paper.util.CollisionUtil.performCollisions(new Vec3(0.0D, -vec3d2.y + movement.y, 0.0D), currBoundingBox.move(vec3d2), potentialCollisionsVoxel, potentialCollisionsBB));
+-            }
+-
+-            return limitedMoveVector;
+-        } else {
+-            return limitedMoveVector;
+-        }
+-        // Paper end - optimise collisions
+-    }
+-
+-    public static Vec3 collideBoundingBox(@Nullable Entity entity, Vec3 movement, AABB entityBoundingBox, Level world, List<VoxelShape> collisions) {
+-        Builder<VoxelShape> builder = ImmutableList.builderWithExpectedSize(collisions.size() + 1);
+-
+-        if (!collisions.isEmpty()) {
+-            builder.addAll(collisions);
+-        }
+-
+-        WorldBorder worldborder = world.getWorldBorder();
+-        boolean flag = entity != null && worldborder.isInsideCloseToBorder(entity, entityBoundingBox.expandTowards(movement));
+-
+-        if (flag) {
+-            builder.add(worldborder.getCollisionShape());
+-        }
+-
+-        builder.addAll(world.getBlockCollisions(entity, entityBoundingBox.expandTowards(movement)));
+-        return Entity.collideWithShapes(movement, entityBoundingBox, builder.build());
+-    }
+-
+-    private static Vec3 collideWithShapes(Vec3 movement, AABB entityBoundingBox, List<VoxelShape> collisions) {
+-        if (collisions.isEmpty()) {
+-            return movement;
+-        } else {
+-            double d0 = movement.x;
+-            double d1 = movement.y;
+-            double d2 = movement.z;
+-
+-            if (d1 != 0.0D) {
+-                d1 = Shapes.collide(Direction.Axis.Y, entityBoundingBox, collisions, d1);
+-                if (d1 != 0.0D) {
+-                    entityBoundingBox = entityBoundingBox.move(0.0D, d1, 0.0D);
+-                }
+-            }
+-
+-            boolean flag = Math.abs(d0) < Math.abs(d2);
++        final Vec3 limitedMoveVector = io.papermc.paper.util.CollisionUtil.performCollisions(movement, currBoundingBox, potentialCollisionsVoxel, potentialCollisionsBB);
+ 
+-            if (flag && d2 != 0.0D) {
+-                d2 = Shapes.collide(Direction.Axis.Z, entityBoundingBox, collisions, d2);
+-                if (d2 != 0.0D) {
+-                    entityBoundingBox = entityBoundingBox.move(0.0D, 0.0D, d2);
+-                }
+-            }
++        if (stepHeight > 0.0
++                && (onGround || (limitedMoveVector.y != movement.y && movement.y < 0.0))
++                && (limitedMoveVector.x != movement.x || limitedMoveVector.z != movement.z)) {
++            Vec3 vec3d2 = io.papermc.paper.util.CollisionUtil.performCollisions(new Vec3(movement.x, stepHeight, movement.z), currBoundingBox, potentialCollisionsVoxel, potentialCollisionsBB);
++            final Vec3 vec3d3 = io.papermc.paper.util.CollisionUtil.performCollisions(new Vec3(0.0, stepHeight, 0.0), currBoundingBox.expandTowards(movement.x, 0.0, movement.z), potentialCollisionsVoxel, potentialCollisionsBB);
+ 
+-            if (d0 != 0.0D) {
+-                d0 = Shapes.collide(Direction.Axis.X, entityBoundingBox, collisions, d0);
+-                if (!flag && d0 != 0.0D) {
+-                    entityBoundingBox = entityBoundingBox.move(d0, 0.0D, 0.0D);
++            if (vec3d3.y < stepHeight) {
++                final Vec3 vec3d4 = io.papermc.paper.util.CollisionUtil.performCollisions(new Vec3(movement.x, 0.0D, movement.z), currBoundingBox.move(vec3d3), potentialCollisionsVoxel, potentialCollisionsBB).add(vec3d3);
++
++                if (vec3d4.horizontalDistanceSqr() > vec3d2.horizontalDistanceSqr()) {
++                    vec3d2 = vec3d4;
+                 }
+             }
+ 
+-            if (!flag && d2 != 0.0D) {
+-                d2 = Shapes.collide(Direction.Axis.Z, entityBoundingBox, collisions, d2);
++            if (vec3d2.horizontalDistanceSqr() > limitedMoveVector.horizontalDistanceSqr()) {
++                return vec3d2.add(io.papermc.paper.util.CollisionUtil.performCollisions(new Vec3(0.0D, -vec3d2.y + movement.y, 0.0D), currBoundingBox.move(vec3d2), potentialCollisionsVoxel, potentialCollisionsBB));
+             }
+ 
+-            return new Vec3(d0, d1, d2);
++            return limitedMoveVector;
++        } else {
++            return limitedMoveVector;
+         }
++        // Paper end - optimise collisions
+     }
+ 
+     protected float nextStep() {
+@@ -1675,7 +1701,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     public SoundEvent getSwimHighSpeedSplashSound0() {
+         return this.getSwimHighSpeedSplashSound();
+     }
+-    // CraftBukkit end
+ 
+     protected void checkInsideBlocks() {
+         AABB axisalignedbb = this.getBoundingBox();
+@@ -1712,7 +1737,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+ 
+     }
+ 
+-    protected void onInsideBlock(BlockState state) {}
++    protected void onInsideBlock(BlockState state) {
++    }
+ 
+     public void gameEvent(GameEvent event, @Nullable Entity entity) {
+         this.level().gameEvent(entity, event, this.position);
+@@ -1783,7 +1809,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         this.playSound(this.getSwimSound(), volume, 1.0F + (this.random.nextFloat() - this.random.nextFloat()) * 0.4F);
+     }
+ 
+-    protected void onFlap() {}
++    protected void onFlap() {
++    }
+ 
+     protected boolean isFlapping() {
+         return false;
+@@ -1943,6 +1970,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+ 
+     }
+ 
++    // Gale start - JettPack - optimize sun burn tick - allow passing BlockPos to getLightLevelDependentMagicValue
++
+     private void updateFluidOnEyes() {
+         this.wasEyeInWater = this.isEyeInFluid(FluidTags.WATER);
+         this.fluidOnEyes.clear();
+@@ -1970,6 +1999,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         }
+ 
+     }
++    // Gale end - JettPack - optimize sun burn tick - allow passing BlockPos to getLightLevelDependentMagicValue
+ 
+     protected void doWaterSplashEffect() {
+         Entity entity = (Entity) Objects.requireNonNullElse(this.getControllingPassenger(), this);
+@@ -2004,7 +2034,9 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         this.gameEvent(GameEvent.SPLASH);
+     }
+ 
+-    /** @deprecated */
++    /**
++     * @deprecated
++     */
+     @Deprecated
+     protected BlockState getBlockStateOnLegacy() {
+         return this.level().getBlockState(this.getOnPosLegacy());
+@@ -2055,33 +2087,21 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         this.setDeltaMovement(this.getDeltaMovement().add(vec3d1));
+     }
+ 
+-    private static Vec3 getInputVector(Vec3 movementInput, float speed, float yaw) {
+-        double d0 = movementInput.lengthSqr();
+-
+-        if (d0 < 1.0E-7D) {
+-            return Vec3.ZERO;
+-        } else {
+-            Vec3 vec3d1 = (d0 > 1.0D ? movementInput.normalize() : movementInput).scale((double) speed);
+-            float f2 = Mth.sin(yaw * 0.017453292F);
+-            float f3 = Mth.cos(yaw * 0.017453292F);
+-
+-            return new Vec3(vec3d1.x * (double) f3 - vec3d1.z * (double) f2, vec3d1.y, vec3d1.z * (double) f3 + vec3d1.x * (double) f2);
+-        }
+-    }
+-
+-    /** @deprecated */
++    /**
++     * @deprecated
++     */
+     @Deprecated
+     public float getLightLevelDependentMagicValue() {
+         return this.getLightLevelDependentMagicValue(BlockPos.containing(this.getX(), this.getEyeY(), this.getZ())); // Gale - JettPack - optimize sun burn tick - allow passing BlockPos to getLightLevelDependentMagicValue
+     }
+ 
+-    // Gale start - JettPack - optimize sun burn tick - allow passing BlockPos to getLightLevelDependentMagicValue
+-    /** @deprecated */
++    /**
++     * @deprecated
++     */
+     @Deprecated
+     public float getLightLevelDependentMagicValue(BlockPos pos) {
+         return this.level().hasChunkAt(this.getBlockX(), this.getBlockZ()) ? this.level.getLightLevelDependentMagicValue(pos) : 0.0F;
+     }
+-    // Gale end - JettPack - optimize sun burn tick - allow passing BlockPos to getLightLevelDependentMagicValue
+ 
+     public void absMoveTo(double x, double y, double z, float yaw, float pitch) {
+         this.absMoveTo(x, y, z);
+@@ -2100,7 +2120,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         this.yo = y;
+         this.zo = d4;
+         this.setPos(d3, y, d4);
+-        if (this.valid) this.level.getChunk((int) Math.floor(this.getX()) >> 4, (int) Math.floor(this.getZ()) >> 4); // CraftBukkit
++        if (this.valid)
++            this.level.getChunk((int) Math.floor(this.getX()) >> 4, (int) Math.floor(this.getZ()) >> 4); // CraftBukkit
+     }
+ 
+     public void moveTo(Vec3 pos) {
+@@ -2174,12 +2195,14 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return d0 * d0 + d1 * d1 + d2 * d2;
+     }
+ 
+-    public void playerTouch(Player player) {}
++    public void playerTouch(Player player) {
++    }
+ 
+     public void push(Entity entity) {
+         if (!this.isPassengerOfSameVehicle(entity)) {
+             if (!entity.noPhysics && !this.noPhysics) {
+-                if (this.level.paperConfig().collisions.onlyPlayersCollide && !(entity instanceof ServerPlayer || this instanceof ServerPlayer)) return; // Paper - Collision option for requiring a player participant
++                if (this.level.paperConfig().collisions.onlyPlayersCollide && !(entity instanceof ServerPlayer || this instanceof ServerPlayer))
++                    return; // Paper - Collision option for requiring a player participant
+                 double d0 = entity.getX() - this.getX();
+                 double d1 = entity.getZ() - this.getZ();
+                 double d2 = Mth.absMax(d0, d1);
+@@ -2273,6 +2296,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     protected final Vec3 calculateUpVector(float pitch, float yaw) {
+         return this.calculateViewVector(pitch - 90.0F, yaw);
+     }
++    // CraftBukkit end
+ 
+     public final Vec3 getEyePosition() {
+         return new Vec3(this.getX(), this.getEyeY(), this.getZ());
+@@ -2328,7 +2352,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     public boolean canCollideWithBukkit(Entity entity) {
+         return this.isPushable();
+     }
+-    // CraftBukkit end
+ 
+     public void awardKillScore(Entity entityKilled, int score, DamageSource damageSource) {
+         if (entityKilled instanceof ServerPlayer) {
+@@ -2356,6 +2379,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         d1 *= 64.0D * Entity.viewScale;
+         return distance < d1 * d1;
+     }
++    // CraftBukkit end
+ 
+     public boolean saveAsPassenger(CompoundTag nbt) {
+         // CraftBukkit start - allow excluding certain data when saving
+@@ -2387,6 +2411,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         this.passengers = ImmutableList.copyOf(pass);
+         return result;
+     }
++
+     // Paper end - Entity serialization api
+     public boolean save(CompoundTag nbt) {
+         return this.isPassenger() ? false : this.saveAsPassenger(nbt);
+@@ -2739,7 +2764,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     protected void addAdditionalSaveData(CompoundTag nbttagcompound, boolean includeAll) {
+         this.addAdditionalSaveData(nbttagcompound);
+     }
+-    // CraftBukkit end
+ 
+     protected abstract void readAdditionalSaveData(CompoundTag nbt);
+ 
+@@ -2793,19 +2817,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         // Paper start - Restore vanilla drops behavior
+         return this.spawnAtLocation(stack, yOffset, null);
+     }
+-    public record DefaultDrop(Item item, org.bukkit.inventory.ItemStack stack, @Nullable java.util.function.Consumer<ItemStack> dropConsumer) {
+-        public DefaultDrop(final ItemStack stack, final java.util.function.Consumer<ItemStack> dropConsumer) {
+-            this(stack.getItem(), org.bukkit.craftbukkit.inventory.CraftItemStack.asCraftMirror(stack), dropConsumer);
+-        }
+ 
+-        public void runConsumer(final org.bukkit.World fallbackWorld, final Location fallbackLoc) {
+-            if (this.dropConsumer == null || org.bukkit.craftbukkit.inventory.CraftItemType.bukkitToMinecraft(this.stack.getType()) != this.item) {
+-                fallbackWorld.dropItem(fallbackLoc, this.stack);
+-            } else {
+-                this.dropConsumer.accept(org.bukkit.craftbukkit.inventory.CraftItemStack.asNMSCopy(this.stack));
+-            }
+-        }
+-    }
+     @Nullable
+     public ItemEntity spawnAtLocation(ItemStack stack, float yOffset, @Nullable java.util.function.Consumer<? super ItemEntity> delayedAddConsumer) {
+         // Paper end - Restore vanilla drops behavior
+@@ -2835,6 +2847,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+             return this.spawnAtLocation(entityitem);
+         }
+     }
++
+     @Nullable
+     public ItemEntity spawnAtLocation(ItemEntity entityitem) {
+         {
+@@ -2876,7 +2889,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+             final int maxY = Mth.floor(axisalignedbb.maxY);
+             final int maxZ = Mth.floor(axisalignedbb.maxZ);
+ 
+-            final net.minecraft.server.level.ServerChunkCache chunkProvider = (net.minecraft.server.level.ServerChunkCache)this.level.getChunkSource();
++            final net.minecraft.server.level.ServerChunkCache chunkProvider = (net.minecraft.server.level.ServerChunkCache) this.level.getChunkSource();
+ 
+             long lastChunkKey = ChunkPos.INVALID_CHUNK_POS;
+             net.minecraft.world.level.chunk.LevelChunk lastChunk = null;
+@@ -2886,7 +2899,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+                     final int newChunkX = fx >> 4;
+                     final int newChunkZ = fz >> 4;
+                     final net.minecraft.world.level.chunk.LevelChunk chunk = lastChunkKey == (lastChunkKey = io.papermc.paper.util.CoordinateUtils.getChunkKey(newChunkX, newChunkZ)) ?
+-                        lastChunk : (lastChunk = chunkProvider.getChunkAtIfLoadedImmediately(newChunkX, newChunkZ));
++                            lastChunk : (lastChunk = chunkProvider.getChunkAtIfLoadedImmediately(newChunkX, newChunkZ));
+                     tempPos.setX(fx);
+                     if (chunk == null) {
+                         continue;
+@@ -2907,7 +2920,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+                             continue;
+                         }
+ 
+-                        final AABB toCollide = axisalignedbb.move(-(double)fx, -(double)fy, -(double)fz);
++                        final AABB toCollide = axisalignedbb.move(-(double) fx, -(double) fy, -(double) fz);
+ 
+                         final AABB singleAABB = collisionShape.getSingleAABBRepresentation();
+                         if (singleAABB != null) {
+@@ -2961,7 +2974,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         positionUpdater.accept(passenger, vec3d.x, vec3d.y + (double) passenger.getMyRidingOffset(this), vec3d.z);
+     }
+ 
+-    public void onPassengerTurned(Entity passenger) {}
++    public void onPassengerTurned(Entity passenger) {
++    }
+ 
+     public float getMyRidingOffset(Entity vehicle) {
+         return this.ridingOffset(vehicle);
+@@ -3003,9 +3017,19 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+                 return false;
+             } else {
+                 if (this.valid) { // Folia - region threading - suppress entire event logic during worldgen
+-                // CraftBukkit start
+-                if (entity.getBukkitEntity() instanceof Vehicle && this.getBukkitEntity() instanceof LivingEntity) {
+-                    VehicleEnterEvent event = new VehicleEnterEvent((Vehicle) entity.getBukkitEntity(), this.getBukkitEntity());
++                    // CraftBukkit start
++                    if (entity.getBukkitEntity() instanceof Vehicle && this.getBukkitEntity() instanceof LivingEntity) {
++                        VehicleEnterEvent event = new VehicleEnterEvent((Vehicle) entity.getBukkitEntity(), this.getBukkitEntity());
++                        // Suppress during worldgen
++                        if (this.valid) {
++                            Bukkit.getPluginManager().callEvent(event);
++                        }
++                        if (event.isCancelled()) {
++                            return false;
++                        }
++                    }
++
++                    EntityMountEvent event = new EntityMountEvent(this.getBukkitEntity(), entity.getBukkitEntity());
+                     // Suppress during worldgen
+                     if (this.valid) {
+                         Bukkit.getPluginManager().callEvent(event);
+@@ -3013,17 +3037,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+                     if (event.isCancelled()) {
+                         return false;
+                     }
+-                }
+-
+-                EntityMountEvent event = new EntityMountEvent(this.getBukkitEntity(), entity.getBukkitEntity());
+-                // Suppress during worldgen
+-                if (this.valid) {
+-                    Bukkit.getPluginManager().callEvent(event);
+-                }
+-                if (event.isCancelled()) {
+-                    return false;
+-                }
+-                // CraftBukkit end
++                    // CraftBukkit end
+                 } // Folia - region threading - suppress entire event logic during worldgen
+                 if (this.isPassenger()) {
+                     this.stopRiding();
+@@ -3057,13 +3071,15 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         // Paper start - Force entity dismount during teleportation
+         stopRiding(false);
+     }
++
+     public void stopRiding(boolean suppressCancellation) {
+         // Paper end - Force entity dismount during teleportation
+         if (this.vehicle != null) {
+             Entity entity = this.vehicle;
+ 
+             this.vehicle = null;
+-            if (!entity.removePassenger(this, suppressCancellation)) this.vehicle = entity; // CraftBukkit // Paper - Force entity dismount during teleportation
++            if (!entity.removePassenger(this, suppressCancellation))
++                this.vehicle = entity; // CraftBukkit // Paper - Force entity dismount during teleportation
+         }
+ 
+     }
+@@ -3090,12 +3106,16 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+                 this.passengers = ImmutableList.copyOf(list);
+             }
+ 
+-            if (!passenger.hasNullCallback()) this.gameEvent(GameEvent.ENTITY_MOUNT, passenger); // Folia - region threading - do not fire game events for entities not added
++            if (!passenger.hasNullCallback())
++                this.gameEvent(GameEvent.ENTITY_MOUNT, passenger); // Folia - region threading - do not fire game events for entities not added
+         }
+     }
+ 
+     // Paper start - Force entity dismount during teleportation
+-    protected boolean removePassenger(Entity entity) { return removePassenger(entity, false);}
++    protected boolean removePassenger(Entity entity) {
++        return removePassenger(entity, false);
++    }
++
+     protected boolean removePassenger(Entity entity, boolean suppressCancellation) { // CraftBukkit
+         // Paper end - Force entity dismount during teleportation
+         if (entity.getVehicle() == this) {
+@@ -3103,33 +3123,33 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         } else {
+             // CraftBukkit start
+             if (this.valid) { // Folia - region threading - suppress entire event logic during worldgen
+-            CraftEntity craft = (CraftEntity) entity.getBukkitEntity().getVehicle();
+-            Entity orig = craft == null ? null : craft.getHandle();
+-            if (this.getBukkitEntity() instanceof Vehicle && entity.getBukkitEntity() instanceof LivingEntity) {
+-                VehicleExitEvent event = new VehicleExitEvent(
+-                        (Vehicle) this.getBukkitEntity(),
+-                        (LivingEntity) entity.getBukkitEntity(), !suppressCancellation // Paper - Force entity dismount during teleportation
+-                );
++                CraftEntity craft = (CraftEntity) entity.getBukkitEntity().getVehicle();
++                Entity orig = craft == null ? null : craft.getHandle();
++                if (this.getBukkitEntity() instanceof Vehicle && entity.getBukkitEntity() instanceof LivingEntity) {
++                    VehicleExitEvent event = new VehicleExitEvent(
++                            (Vehicle) this.getBukkitEntity(),
++                            (LivingEntity) entity.getBukkitEntity(), !suppressCancellation // Paper - Force entity dismount during teleportation
++                    );
++                    // Suppress during worldgen
++                    if (this.valid) {
++                        Bukkit.getPluginManager().callEvent(event);
++                    }
++                    CraftEntity craftn = (CraftEntity) entity.getBukkitEntity().getVehicle();
++                    Entity n = craftn == null ? null : craftn.getHandle();
++                    if (event.isCancelled() || n != orig) {
++                        return false;
++                    }
++                }
++
++                EntityDismountEvent event = new EntityDismountEvent(entity.getBukkitEntity(), this.getBukkitEntity(), !suppressCancellation); // Paper - Force entity dismount during teleportation
+                 // Suppress during worldgen
+                 if (this.valid) {
+                     Bukkit.getPluginManager().callEvent(event);
+                 }
+-                CraftEntity craftn = (CraftEntity) entity.getBukkitEntity().getVehicle();
+-                Entity n = craftn == null ? null : craftn.getHandle();
+-                if (event.isCancelled() || n != orig) {
++                if (event.isCancelled()) {
+                     return false;
+                 }
+-            }
+-
+-            EntityDismountEvent event = new EntityDismountEvent(entity.getBukkitEntity(), this.getBukkitEntity(), !suppressCancellation); // Paper - Force entity dismount during teleportation
+-            // Suppress during worldgen
+-            if (this.valid) {
+-                Bukkit.getPluginManager().callEvent(event);
+-            }
+-            if (event.isCancelled()) {
+-                return false;
+-            }
+-            // CraftBukkit end
++                // CraftBukkit end
+             } // Folia - region threading - suppress entire event logic during worldgen
+             if (this.passengers.size() == 1 && this.passengers.get(0) == entity) {
+                 this.passengers = ImmutableList.of();
+@@ -3140,7 +3160,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+             }
+ 
+             entity.boardingCooldown = 60;
+-            if (!entity.hasNullCallback()) this.gameEvent(GameEvent.ENTITY_DISMOUNT, entity); // Folia - region threading - do not fire game events for entities not added
++            if (!entity.hasNullCallback())
++                this.gameEvent(GameEvent.ENTITY_DISMOUNT, entity); // Folia - region threading - do not fire game events for entities not added
+         }
+         return true; // CraftBukkit
+     }
+@@ -3241,14 +3262,14 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+                         this.portalTime = 0;
+                     } else {
+                         worldserver1 = event.getTargetWorld() == null ? null : ((CraftWorld) event.getTargetWorld()).getHandle();
+-                    // Paper end - Add EntityPortalReadyEvent
+-                    this.setPortalCooldown();
+-                    // CraftBukkit start
+-                    if (this instanceof ServerPlayer) {
+-                        ((ServerPlayer) this).changeDimension(worldserver1, PlayerTeleportEvent.TeleportCause.NETHER_PORTAL);
+-                    } else {
+-                        this.changeDimension(worldserver1);
+-                    }
++                        // Paper end - Add EntityPortalReadyEvent
++                        this.setPortalCooldown();
++                        // CraftBukkit start
++                        if (this instanceof ServerPlayer) {
++                            ((ServerPlayer) this).changeDimension(worldserver1, PlayerTeleportEvent.TeleportCause.NETHER_PORTAL);
++                        } else {
++                            this.changeDimension(worldserver1);
++                        }
+                     } // Paper - Add EntityPortalReadyEvent
+                     // CraftBukkit end
+                     this.level().getProfiler().pop();
+@@ -3266,7 +3287,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+             }
+ 
+             this.processPortalCooldown();
+-            if (!io.papermc.paper.configuration.GlobalConfiguration.get().unsupportedSettings.allowUnsafeEndPortalTeleportation) this.tickEndPortal(); // Paper - make end portalling safe
++            if (!io.papermc.paper.configuration.GlobalConfiguration.get().unsupportedSettings.allowUnsafeEndPortalTeleportation)
++                this.tickEndPortal(); // Paper - make end portalling safe
+         }
+     }
+ 
+@@ -3278,7 +3300,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         this.setDeltaMovement(x, y, z);
+     }
+ 
+-    public void handleDamageEvent(DamageSource damageSource) {}
++    public void handleDamageEvent(DamageSource damageSource) {
++    }
+ 
+     public void handleEntityEvent(byte status) {
+         switch (status) {
+@@ -3288,7 +3311,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         }
+     }
+ 
+-    public void animateHurt(float yaw) {}
++    public void animateHurt(float yaw) {
++    }
+ 
+     public Iterable<ItemStack> getHandSlots() {
+         return Entity.EMPTY_LIST;
+@@ -3302,7 +3326,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return Iterables.concat(this.getHandSlots(), this.getArmorSlots());
+     }
+ 
+-    public void setItemSlot(EquipmentSlot slot, ItemStack stack) {}
++    public void setItemSlot(EquipmentSlot slot, ItemStack stack) {
++    }
+ 
+     public boolean isOnFire() {
+         boolean flag = this.level() != null && this.level().isClientSide;
+@@ -3326,14 +3351,14 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return !this.getType().is(EntityTypeTags.NON_CONTROLLING_RIDER);
+     }
+ 
+-    public void setShiftKeyDown(boolean sneaking) {
+-        this.setSharedFlag(1, sneaking);
+-    }
+-
+     public boolean isShiftKeyDown() {
+         return this.getSharedFlag(1);
+     }
+ 
++    public void setShiftKeyDown(boolean sneaking) {
++        this.setSharedFlag(1, sneaking);
++    }
++
+     public boolean isSteppingCarefully() {
+         return this.isShiftKeyDown();
+     }
+@@ -3366,14 +3391,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return this.getSharedFlag(4);
+     }
+ 
+-    public boolean isVisuallySwimming() {
+-        return this.hasPose(net.minecraft.world.entity.Pose.SWIMMING);
+-    }
+-
+-    public boolean isVisuallyCrawling() {
+-        return this.isVisuallySwimming() && !this.isInWater();
+-    }
+-
+     public void setSwimming(boolean swimming) {
+         // CraftBukkit start
+         if (this.valid && this.isSwimming() != swimming && this instanceof net.minecraft.world.entity.LivingEntity) {
+@@ -3385,6 +3402,14 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         this.setSharedFlag(4, swimming);
+     }
+ 
++    public boolean isVisuallySwimming() {
++        return this.hasPose(net.minecraft.world.entity.Pose.SWIMMING);
++    }
++
++    public boolean isVisuallyCrawling() {
++        return this.isVisuallySwimming() && !this.isInWater();
++    }
++
+     public final boolean hasGlowingTag() {
+         return this.hasGlowingTag;
+     }
+@@ -3402,6 +3427,14 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return this.getSharedFlag(5);
+     }
+ 
++    // CraftBukkit - start
++    public void setInvisible(boolean invisible) {
++        if (!this.persistentInvisibility) { // Prevent Minecraft from removing our invisibility flag
++            this.setSharedFlag(5, invisible);
++        }
++        // CraftBukkit - end
++    }
++
+     public boolean isInvisibleTo(Player player) {
+         if (player.isSpectator()) {
+             return false;
+@@ -3416,7 +3449,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return false;
+     }
+ 
+-    public void updateDynamicGameEventListener(BiConsumer<DynamicGameEventListener<?>, ServerLevel> callback) {}
++    public void updateDynamicGameEventListener(BiConsumer<DynamicGameEventListener<?>, ServerLevel> callback) {
++    }
+ 
+     @Nullable
+     public PlayerTeam getTeam() {
+@@ -3425,7 +3459,9 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+             return null;
+         }
+         // Folia end - region threading
+-        if (!this.level().paperConfig().scoreboards.allowNonPlayerEntitiesOnScoreboards && !(this instanceof Player)) { return null; } // Paper - Perf: Disable Scoreboards for non players by default
++        if (!this.level().paperConfig().scoreboards.allowNonPlayerEntitiesOnScoreboards && !(this instanceof Player)) {
++            return null;
++        } // Paper - Perf: Disable Scoreboards for non players by default
+         return this.level().getScoreboard().getPlayersTeam(this.getScoreboardName());
+     }
+ 
+@@ -3437,14 +3473,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return this.getTeam() != null ? this.getTeam().isAlliedTo(team) : false;
+     }
+ 
+-    // CraftBukkit - start
+-    public void setInvisible(boolean invisible) {
+-        if (!this.persistentInvisibility) { // Prevent Minecraft from removing our invisibility flag
+-            this.setSharedFlag(5, invisible);
+-        }
+-        // CraftBukkit - end
+-    }
+-
+     public boolean getSharedFlag(int index) {
+         return ((Byte) this.entityData.get(Entity.DATA_SHARED_FLAGS_ID) & 1 << index) != 0;
+     }
+@@ -3519,10 +3547,10 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+             pluginManager.callEvent(entityCombustEvent);
+             if (!entityCombustEvent.isCancelled()) {
+                 this.setSecondsOnFire(entityCombustEvent.getDuration(), false);
+-            // Paper start - fix EntityCombustEvent cancellation
++                // Paper start - fix EntityCombustEvent cancellation
+             } else {
+                 this.setRemainingFireTicks(this.remainingFireTicks - 1);
+-            // Paper end - fix EntityCombustEvent cancellation
++                // Paper end - fix EntityCombustEvent cancellation
+             }
+             // CraftBukkit end
+         }
+@@ -3632,19 +3660,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         this.stuckSpeedMultiplier = multiplier;
+     }
+ 
+-    private static Component removeAction(Component textComponent) {
+-        MutableComponent ichatmutablecomponent = textComponent.plainCopy().setStyle(textComponent.getStyle().withClickEvent((ClickEvent) null));
+-        Iterator iterator = textComponent.getSiblings().iterator();
+-
+-        while (iterator.hasNext()) {
+-            Component ichatbasecomponent1 = (Component) iterator.next();
+-
+-            ichatmutablecomponent.append(Entity.removeAction(ichatbasecomponent1));
+-        }
+-
+-        return ichatmutablecomponent;
+-    }
+-
+     @Override
+     public Component getName() {
+         Component ichatbasecomponent = this.getCustomName();
+@@ -3661,156 +3676,59 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     }
+ 
+     public float getYHeadRot() {
+-        return 0.0F;
+-    }
+-
+-    public void setYHeadRot(float headYaw) {}
+-
+-    public void setYBodyRot(float bodyYaw) {}
+-
+-    public boolean isAttackable() {
+-        return true;
+-    }
+-
+-    public boolean skipAttackInteraction(Entity attacker) {
+-        return false;
+-    }
+-
+-    public String toString() {
+-        String s = this.level() == null ? "~NULL~" : this.level().toString();
+-
+-        return this.removalReason != null ? String.format(Locale.ROOT, "%s['%s'/%d, uuid='%s', l='%s', x=%.2f, y=%.2f, z=%.2f, cpos=%s, tl=%d, v=%b, removed=%s]", this.getClass().getSimpleName(), this.getName().getString(), this.id, this.uuid, s, this.getX(), this.getY(), this.getZ(), this.chunkPosition(), this.tickCount, this.valid, this.removalReason) : String.format(Locale.ROOT, "%s['%s'/%d, uuid='%s', l='%s', x=%.2f, y=%.2f, z=%.2f, cpos=%s, tl=%d, v=%b]", this.getClass().getSimpleName(), this.getName().getString(), this.id, this.uuid, s, this.getX(), this.getY(), this.getZ(), this.chunkPosition(), this.tickCount, this.valid); // Paper - add more info
+-    }
+-
+-    public boolean isInvulnerableTo(DamageSource damageSource) {
+-        return this.isRemoved() || this.invulnerable && !damageSource.is(DamageTypeTags.BYPASSES_INVULNERABILITY) && !damageSource.isCreativePlayer() || damageSource.is(DamageTypeTags.IS_FIRE) && this.fireImmune() || damageSource.is(DamageTypeTags.IS_FALL) && this.getType().is(EntityTypeTags.FALL_DAMAGE_IMMUNE);
+-    }
+-
+-    public boolean isInvulnerable() {
+-        return this.invulnerable;
+-    }
+-
+-    public void setInvulnerable(boolean invulnerable) {
+-        this.invulnerable = invulnerable;
+-    }
+-
+-    public void copyPosition(Entity entity) {
+-        this.moveTo(entity.getX(), entity.getY(), entity.getZ(), entity.getYRot(), entity.getXRot());
+-    }
+-
+-    public void restoreFrom(Entity original) {
+-        // Paper start - Forward CraftEntity in teleport command
+-        CraftEntity bukkitEntity = original.bukkitEntity;
+-        if (bukkitEntity != null) {
+-            bukkitEntity.setHandle(this);
+-            this.bukkitEntity = bukkitEntity;
+-        }
+-        // Paper end - Forward CraftEntity in teleport command
+-        CompoundTag nbttagcompound = original.saveWithoutId(new CompoundTag());
+-
+-        nbttagcompound.remove("Dimension");
+-        this.load(nbttagcompound);
+-        this.portalCooldown = original.portalCooldown;
+-        this.portalEntrancePos = original.portalEntrancePos;
+-    }
+-
+-    // Folia start - region threading
+-    public static class EntityTreeNode {
+-        @Nullable
+-        public EntityTreeNode parent;
+-        public Entity root;
+-        @Nullable
+-        public EntityTreeNode[] passengers;
+-
+-        public EntityTreeNode(EntityTreeNode parent, Entity root) {
+-            this.parent = parent;
+-            this.root = root;
+-        }
+-
+-        public EntityTreeNode(EntityTreeNode parent, Entity root, EntityTreeNode[] passengers) {
+-            this.parent = parent;
+-            this.root = root;
+-            this.passengers = passengers;
+-        }
+-
+-        public List<EntityTreeNode> getFullTree() {
+-            List<EntityTreeNode> ret = new java.util.ArrayList<>();
+-            ret.add(this);
+-
+-            // this is just a BFS except we don't remove from head, we just advance down the list
+-            for (int i = 0; i < ret.size(); ++i) {
+-                EntityTreeNode node = ret.get(i);
++        return 0.0F;
++    }
+ 
+-                EntityTreeNode[] passengers = node.passengers;
+-                if (passengers == null) {
+-                    continue;
+-                }
+-                for (EntityTreeNode passenger : passengers) {
+-                    ret.add(passenger);
+-                }
+-            }
++    public void setYHeadRot(float headYaw) {
++    }
+ 
+-            return ret;
+-        }
++    public void setYBodyRot(float bodyYaw) {
++    }
+ 
+-        public void restore() {
+-            java.util.ArrayDeque<EntityTreeNode> queue = new java.util.ArrayDeque<>();
+-            queue.add(this);
++    public boolean isAttackable() {
++        return true;
++    }
+ 
+-            EntityTreeNode curr;
+-            while ((curr = queue.pollFirst()) != null) {
+-                EntityTreeNode[] passengers = curr.passengers;
+-                if (passengers == null) {
+-                    continue;
+-                }
++    public boolean skipAttackInteraction(Entity attacker) {
++        return false;
++    }
+ 
+-                List<Entity> newPassengers = new java.util.ArrayList<>();
+-                for (EntityTreeNode passenger : passengers) {
+-                    newPassengers.add(passenger.root);
+-                    passenger.root.vehicle = curr.root;
+-                }
++    public String toString() {
++        String s = this.level() == null ? "~NULL~" : this.level().toString();
+ 
+-                curr.root.passengers = ImmutableList.copyOf(newPassengers);
+-            }
+-        }
++        return this.removalReason != null ? String.format(Locale.ROOT, "%s['%s'/%d, uuid='%s', l='%s', x=%.2f, y=%.2f, z=%.2f, cpos=%s, tl=%d, v=%b, removed=%s]", this.getClass().getSimpleName(), this.getName().getString(), this.id, this.uuid, s, this.getX(), this.getY(), this.getZ(), this.chunkPosition(), this.tickCount, this.valid, this.removalReason) : String.format(Locale.ROOT, "%s['%s'/%d, uuid='%s', l='%s', x=%.2f, y=%.2f, z=%.2f, cpos=%s, tl=%d, v=%b]", this.getClass().getSimpleName(), this.getName().getString(), this.id, this.uuid, s, this.getX(), this.getY(), this.getZ(), this.chunkPosition(), this.tickCount, this.valid); // Paper - add more info
++    }
+ 
+-        public void addTracker() {
+-            for (final EntityTreeNode node : this.getFullTree()) {
+-                if (node.root.tracker != null) {
+-                    for (final ServerPlayer player : node.root.level.getLocalPlayers()) {
+-                        node.root.tracker.updatePlayer(player);
+-                    }
+-                }
+-            }
+-        }
++    public boolean isInvulnerableTo(DamageSource damageSource) {
++        return this.isRemoved() || this.invulnerable && !damageSource.is(DamageTypeTags.BYPASSES_INVULNERABILITY) && !damageSource.isCreativePlayer() || damageSource.is(DamageTypeTags.IS_FIRE) && this.fireImmune() || damageSource.is(DamageTypeTags.IS_FALL) && this.getType().is(EntityTypeTags.FALL_DAMAGE_IMMUNE);
++    }
+ 
+-        public void clearTracker() {
+-            for (final EntityTreeNode node : this.getFullTree()) {
+-                if (node.root.tracker != null) {
+-                    node.root.tracker.removeNonTickThreadPlayers();
+-                    for (final ServerPlayer player : node.root.level.getLocalPlayers()) {
+-                        node.root.tracker.removePlayer(player);
+-                    }
+-                }
+-            }
+-        }
++    public boolean isInvulnerable() {
++        return this.invulnerable;
++    }
+ 
+-        public void adjustRiders(boolean teleport) {
+-            java.util.ArrayDeque<EntityTreeNode> queue = new java.util.ArrayDeque<>();
+-            queue.add(this);
++    public void setInvulnerable(boolean invulnerable) {
++        this.invulnerable = invulnerable;
++    }
+ 
+-            EntityTreeNode curr;
+-            while ((curr = queue.pollFirst()) != null) {
+-                EntityTreeNode[] passengers = curr.passengers;
+-                if (passengers == null) {
+-                    continue;
+-                }
++    public void copyPosition(Entity entity) {
++        this.moveTo(entity.getX(), entity.getY(), entity.getZ(), entity.getYRot(), entity.getXRot());
++    }
+ 
+-                for (EntityTreeNode passenger : passengers) {
+-                    curr.root.positionRider(passenger.root, teleport ? Entity::moveTo : Entity::setPos);
+-                }
+-            }
++    public void restoreFrom(Entity original) {
++        // Paper start - Forward CraftEntity in teleport command
++        CraftEntity bukkitEntity = original.bukkitEntity;
++        if (bukkitEntity != null) {
++            bukkitEntity.setHandle(this);
++            this.bukkitEntity = bukkitEntity;
+         }
++        // Paper end - Forward CraftEntity in teleport command
++        CompoundTag nbttagcompound = original.saveWithoutId(new CompoundTag());
++
++        nbttagcompound.remove("Dimension");
++        this.load(nbttagcompound);
++        this.portalCooldown = original.portalCooldown;
++        this.portalEntrancePos = original.portalEntrancePos;
+     }
+ 
+     public void repositionAllPassengers(boolean teleport) {
+@@ -3872,24 +3790,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return root;
+     }
+ 
+-    /**
+-     * This flag will perform an async load on the chunks determined by
+-     * the entity's bounding box before teleporting the entity.
+-     */
+-    public static final long TELEPORT_FLAG_LOAD_CHUNK = 1L << 0;
+-    /**
+-     * This flag requires the entity being teleported to be a root vehicle.
+-     * Thus, if you want to teleport a non-root vehicle, you must dismount
+-     * the target entity before calling teleport, otherwise the
+-     * teleport will be refused.
+-     */
+-    public static final long TELEPORT_FLAG_TELEPORT_PASSENGERS = 1L << 1;
+-    /**
+-     * The flag will dismount any passengers and dismout from the current vehicle
+-     * to teleport if and only if dismounting would result in the teleport being allowed.
+-     */
+-    public static final long TELEPORT_FLAG_UNMOUNT = 1L << 2;
+-
+     protected void placeSingleSync(ServerLevel originWorld, ServerLevel destination, EntityTreeNode treeNode, long teleportFlags) {
+         destination.addDuringTeleport(this);
+     }
+@@ -3898,70 +3798,70 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+                                       EntityTreeNode passengerTree, java.util.function.Consumer<Entity> teleportComplete) {
+         Vec3 pos = this.position();
+         ChunkPos posChunk = new ChunkPos(
+-            io.papermc.paper.util.CoordinateUtils.getChunkX(pos),
+-            io.papermc.paper.util.CoordinateUtils.getChunkZ(pos)
++                io.papermc.paper.util.CoordinateUtils.getChunkX(pos),
++                io.papermc.paper.util.CoordinateUtils.getChunkZ(pos)
+         );
+ 
+         // ensure the region is always ticking in case of a shutdown
+         // otherwise, the shutdown will not be able to complete the shutdown as it requires a ticking region
+         Long teleportHoldId = Long.valueOf(TELEPORT_HOLD_TICKET_GEN.getAndIncrement());
+         originWorld.chunkSource.addTicketAtLevel(
+-            TicketType.TELEPORT_HOLD_TICKET, posChunk,
+-            io.papermc.paper.chunk.system.scheduling.ChunkHolderManager.MAX_TICKET_LEVEL,
+-            teleportHoldId
++                TicketType.TELEPORT_HOLD_TICKET, posChunk,
++                io.papermc.paper.chunk.system.scheduling.ChunkHolderManager.MAX_TICKET_LEVEL,
++                teleportHoldId
+         );
+         final ServerLevel.PendingTeleport pendingTeleport = new ServerLevel.PendingTeleport(passengerTree, pos);
+         destination.pushPendingTeleport(pendingTeleport);
+ 
+         Runnable scheduleEntityJoin = () -> {
+             io.papermc.paper.threadedregions.RegionizedServer.getInstance().taskQueue.queueTickTaskQueue(
+-                destination,
+-                io.papermc.paper.util.CoordinateUtils.getChunkX(pos), io.papermc.paper.util.CoordinateUtils.getChunkZ(pos),
+-                () -> {
+-                    if (!destination.removePendingTeleport(pendingTeleport)) {
+-                        // shutdown logic placed the entity already, and we are shutting down - do nothing to ensure
+-                        // we do not produce any errors here
+-                        return;
+-                    }
+-                    originWorld.chunkSource.removeTicketAtLevel(
+-                        TicketType.TELEPORT_HOLD_TICKET, posChunk,
+-                        io.papermc.paper.chunk.system.scheduling.ChunkHolderManager.MAX_TICKET_LEVEL,
+-                        teleportHoldId
+-                    );
+-                    List<EntityTreeNode> fullTree = passengerTree.getFullTree();
+-                    for (EntityTreeNode node : fullTree) {
+-                        node.root.placeSingleSync(originWorld, destination, node, teleportFlags);
+-                    }
++                    destination,
++                    io.papermc.paper.util.CoordinateUtils.getChunkX(pos), io.papermc.paper.util.CoordinateUtils.getChunkZ(pos),
++                    () -> {
++                        if (!destination.removePendingTeleport(pendingTeleport)) {
++                            // shutdown logic placed the entity already, and we are shutting down - do nothing to ensure
++                            // we do not produce any errors here
++                            return;
++                        }
++                        originWorld.chunkSource.removeTicketAtLevel(
++                                TicketType.TELEPORT_HOLD_TICKET, posChunk,
++                                io.papermc.paper.chunk.system.scheduling.ChunkHolderManager.MAX_TICKET_LEVEL,
++                                teleportHoldId
++                        );
++                        List<EntityTreeNode> fullTree = passengerTree.getFullTree();
++                        for (EntityTreeNode node : fullTree) {
++                            node.root.placeSingleSync(originWorld, destination, node, teleportFlags);
++                        }
+ 
+-                    // restore passenger tree
+-                    passengerTree.restore();
+-                    passengerTree.adjustRiders(true);
++                        // restore passenger tree
++                        passengerTree.restore();
++                        passengerTree.adjustRiders(true);
+ 
+-                    // invoke post dimension change now
+-                    for (EntityTreeNode node : fullTree) {
+-                        node.root.postChangeDimension();
+-                    }
++                        // invoke post dimension change now
++                        for (EntityTreeNode node : fullTree) {
++                            node.root.postChangeDimension();
++                        }
+ 
+-                    if (teleportComplete != null) {
+-                        teleportComplete.accept(Entity.this);
++                        if (teleportComplete != null) {
++                            teleportComplete.accept(Entity.this);
++                        }
+                     }
+-                }
+             );
+         };
+ 
+         if ((teleportFlags & TELEPORT_FLAG_LOAD_CHUNK) != 0L) {
+             destination.loadChunksForMoveAsync(
+-                Entity.this.getBoundingBox(), ca.spottedleaf.concurrentutil.executor.standard.PrioritisedExecutor.Priority.HIGHER,
+-                (chunkList) -> {
+-                    for (net.minecraft.world.level.chunk.ChunkAccess chunk : chunkList) {
+-                        destination.chunkSource.addTicketAtLevel(
+-                            TicketType.POST_TELEPORT, chunk.getPos(),
+-                            io.papermc.paper.chunk.system.scheduling.ChunkHolderManager.FULL_LOADED_TICKET_LEVEL,
+-                            Integer.valueOf(Entity.this.getId())
+-                        );
++                    Entity.this.getBoundingBox(), ca.spottedleaf.concurrentutil.executor.standard.PrioritisedExecutor.Priority.HIGHER,
++                    (chunkList) -> {
++                        for (net.minecraft.world.level.chunk.ChunkAccess chunk : chunkList) {
++                            destination.chunkSource.addTicketAtLevel(
++                                    TicketType.POST_TELEPORT, chunk.getPos(),
++                                    io.papermc.paper.chunk.system.scheduling.ChunkHolderManager.FULL_LOADED_TICKET_LEVEL,
++                                    Integer.valueOf(Entity.this.getId())
++                            );
++                        }
++                        scheduleEntityJoin.run();
+                     }
+-                    scheduleEntityJoin.run();
+-                }
+             );
+         } else {
+             scheduleEntityJoin.run();
+@@ -4029,12 +3929,12 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         io.papermc.paper.util.TickThread.ensureTickThread(this, "Cannot teleport entity async");
+ 
+         //Luminol start - Prevent teleportAsync calling during moving event being handled
+-        if (this instanceof ServerPlayer player && me.earthme.luminol.config.modules.fixes.FoliaTeleportAsyncFixConfig.enabled){
+-            if (player.handlingMoveEvent){
+-                if (me.earthme.luminol.config.modules.fixes.FoliaTeleportAsyncFixConfig.throwOnDetected){
++        if (this instanceof ServerPlayer player && me.earthme.luminol.config.modules.fixes.FoliaTeleportAsyncFixConfig.enabled) {
++            if (player.handlingMoveEvent) {
++                if (me.earthme.luminol.config.modules.fixes.FoliaTeleportAsyncFixConfig.throwOnDetected) {
+                     throw new IllegalStateException("Player " + player.getScoreboardName() + " is trying to teleport to " + pos + " during move event handling!");
+                 }
+-                MinecraftServer.LOGGER.warn("Player {} is trying to teleport to {} during move event handling!",player.getScoreboardName(),pos);
++                MinecraftServer.LOGGER.warn("Player {} is trying to teleport to {} during move event handling!", player.getScoreboardName(), pos);
+                 return false;
+             }
+         }
+@@ -4074,13 +3974,15 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         // check for same region
+         if (destination == this.level()) {
+             Vec3 currPos = this.position();
+-            if (
+-                destination.regioniser.getRegionAtUnsynchronised(
+-                    io.papermc.paper.util.CoordinateUtils.getChunkX(currPos), io.papermc.paper.util.CoordinateUtils.getChunkZ(currPos)
+-                ) == destination.regioniser.getRegionAtUnsynchronised(
+-                    io.papermc.paper.util.CoordinateUtils.getChunkX(pos), io.papermc.paper.util.CoordinateUtils.getChunkZ(pos)
+-                )
+-            ) {
++            io.papermc.paper.threadedregions.ThreadedRegionizer.ThreadedRegion<
++                    io.papermc.paper.threadedregions.TickRegions.TickRegionData,
++                    io.papermc.paper.threadedregions.TickRegions.TickRegionSectionData>
++                    currRegion = destination.regioniser.getRegionAtUnsynchronised(io.papermc.paper.util.CoordinateUtils.getChunkX(currPos), io.papermc.paper.util.CoordinateUtils.getChunkZ(currPos));
++            io.papermc.paper.threadedregions.ThreadedRegionizer.ThreadedRegion<
++                    io.papermc.paper.threadedregions.TickRegions.TickRegionData,
++                    io.papermc.paper.threadedregions.TickRegions.TickRegionSectionData>
++                    destRegion = destination.regioniser.getRegionAtUnsynchronised(io.papermc.paper.util.CoordinateUtils.getChunkX(pos), io.papermc.paper.util.CoordinateUtils.getChunkZ(pos));
++            if (currRegion == destRegion && currRegion != null) {
+                 EntityTreeNode passengerTree = this.detachPassengers();
+                 // Note: The client does not accept position updates for controlled entities. So, we must
+                 // perform a lot of tracker updates here to make it all work out.
+@@ -4110,7 +4012,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+ 
+         EntityTreeNode passengerTree = this.detachPassengers();
+         List<EntityTreeNode> fullPassengerTree = passengerTree.getFullTree();
+-        ServerLevel originWorld = (ServerLevel)this.level;
++        ServerLevel originWorld = (ServerLevel) this.level;
+ 
+         for (EntityTreeNode node : fullPassengerTree) {
+             node.root.preChangeDimension();
+@@ -4133,10 +4035,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         this.resetStoredPositions();
+     }
+ 
+-    protected static enum PortalType {
+-        NETHER, END;
+-    }
+-
+     public boolean doPortalLogic() {
+         if (this.tryNetherPortal()) {
+             return true;
+@@ -4149,7 +4047,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+ 
+     protected boolean tryEndPortal() {
+         io.papermc.paper.util.TickThread.ensureTickThread(this, "Cannot portal entity async");
+-        if (me.earthme.luminol.config.modules.fixes.UnsafeTeleportationConfig.enabled && !(this instanceof Player)) return false; //Luminol - Unsafe teleportation
++        if (me.earthme.luminol.config.modules.fixes.UnsafeTeleportationConfig.enabled && !(this instanceof Player))
++            return false; //Luminol - Unsafe teleportation
+         BlockPos pos = this.portalBlock;
+         ServerLevel world = this.portalWorld;
+         this.portalBlock = null;
+@@ -4213,9 +4112,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return this.portalToAsync(destination, false, PortalType.NETHER, null);
+     }
+ 
+-    private static final java.util.concurrent.atomic.AtomicLong CREATE_PORTAL_DOUBLE_CHECK = new java.util.concurrent.atomic.AtomicLong();
+-    private static final java.util.concurrent.atomic.AtomicLong TELEPORT_HOLD_TICKET_GEN = new java.util.concurrent.atomic.AtomicLong();
+-
+     // To simplify portal logic, in region threading both players
+     // and non-player entities will create portals. By guaranteeing
+     // that the teleportation can take place, we can simply
+@@ -4232,37 +4128,37 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+                     BlockPos targetPos = ServerLevel.END_SPAWN_POINT;
+                     // need to load chunks so we can create the platform
+                     destination.loadChunksAsync(
+-                        targetPos, 16, // load 16 blocks to be safe from block physics
+-                        ca.spottedleaf.concurrentutil.executor.standard.PrioritisedExecutor.Priority.HIGH,
+-                        (chunks) -> {
+-                            //ServerLevel.makeObsidianPlatform(destination, null, targetPos); // Kaiiju - Vanilla end teleportation - moved down
+-
+-                            // Kaiiju start - Vanilla end teleportation
+-                            Vec3 finalPos;
+-                            if (this instanceof Player) finalPos = Vec3.atBottomCenterOf(targetPos.below());
+-                            else finalPos = Vec3.atBottomCenterOf(targetPos);
+-                            // Kaiiju end
+-                            // the portal obsidian is placed at targetPos.y - 2, so if we want to place the entity
+-                            // on the obsidian, we need to spawn at targetPos.y - 1
+-                            portalInfoCompletable.complete(
+-                                new PortalInfo(finalPos, this.getDeltaMovement(), 90.0f, 0.0f, destination, null) // Kaiiju - Vanilla end teleportation
+-                            );
+-                        }
++                            targetPos, 16, // load 16 blocks to be safe from block physics
++                            ca.spottedleaf.concurrentutil.executor.standard.PrioritisedExecutor.Priority.HIGH,
++                            (chunks) -> {
++                                //ServerLevel.makeObsidianPlatform(destination, null, targetPos); // Kaiiju - Vanilla end teleportation - moved down
++
++                                // Kaiiju start - Vanilla end teleportation
++                                Vec3 finalPos;
++                                if (this instanceof Player) finalPos = Vec3.atBottomCenterOf(targetPos.below());
++                                else finalPos = Vec3.atBottomCenterOf(targetPos);
++                                // Kaiiju end
++                                // the portal obsidian is placed at targetPos.y - 2, so if we want to place the entity
++                                // on the obsidian, we need to spawn at targetPos.y - 1
++                                portalInfoCompletable.complete(
++                                        new PortalInfo(finalPos, this.getDeltaMovement(), 90.0f, 0.0f, destination, null) // Kaiiju - Vanilla end teleportation
++                                );
++                            }
+                     );
+                 } else {
+                     BlockPos spawnPos = destination.getSharedSpawnPos();
+                     // need to load chunk for heightmap
+                     destination.loadChunksAsync(
+-                        spawnPos, 0,
+-                        ca.spottedleaf.concurrentutil.executor.standard.PrioritisedExecutor.Priority.HIGH,
+-                        (chunks) -> {
+-                            BlockPos adjustedSpawn = destination.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, spawnPos);
++                            spawnPos, 0,
++                            ca.spottedleaf.concurrentutil.executor.standard.PrioritisedExecutor.Priority.HIGH,
++                            (chunks) -> {
++                                BlockPos adjustedSpawn = destination.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, spawnPos);
+ 
+-                            // done
+-                            portalInfoCompletable.complete(
+-                                new PortalInfo(Vec3.atBottomCenterOf(adjustedSpawn), Vec3.ZERO, 90.0f, 0.0f, destination, null)
+-                            );
+-                        }
++                                // done
++                                portalInfoCompletable.complete(
++                                        new PortalInfo(Vec3.atBottomCenterOf(adjustedSpawn), Vec3.ZERO, 90.0f, 0.0f, destination, null)
++                                );
++                            }
+                     );
+                 }
+ 
+@@ -4276,22 +4172,22 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+                 // hoisted from the create fallback, so that we can avoid the sync load later if we need it
+                 BlockState originalPortalBlock = this.portalEntrancePos == null ? null : origin.getBlockStateIfLoaded(this.portalEntrancePos);
+                 Direction.Axis originalPortalDirection = originalPortalBlock == null ? Direction.Axis.X :
+-                    originalPortalBlock.getOptionalValue(net.minecraft.world.level.block.NetherPortalBlock.AXIS).orElse(Direction.Axis.X);
++                        originalPortalBlock.getOptionalValue(net.minecraft.world.level.block.NetherPortalBlock.AXIS).orElse(Direction.Axis.X);
+                 BlockUtil.FoundRectangle originalPortalRectangle =
+-                    originalPortalBlock == null || !originalPortalBlock.hasProperty(BlockStateProperties.HORIZONTAL_AXIS)
+-                        ? null
+-                        : BlockUtil.getLargestRectangleAround(
+-                            this.portalEntrancePos, originalPortalDirection, 21, Direction.Axis.Y, 21,
+-                            (blockpos) -> {
+-                                return origin.getBlockStateFromEmptyChunkIfLoaded(blockpos) == originalPortalBlock;
+-                            }
++                        originalPortalBlock == null || !originalPortalBlock.hasProperty(BlockStateProperties.HORIZONTAL_AXIS)
++                                ? null
++                                : BlockUtil.getLargestRectangleAround(
++                                this.portalEntrancePos, originalPortalDirection, 21, Direction.Axis.Y, 21,
++                                (blockpos) -> {
++                                    return origin.getBlockStateFromEmptyChunkIfLoaded(blockpos) == originalPortalBlock;
++                                }
+                         );
+ 
+                 boolean destinationIsNether = destination.getTypeKey() == LevelStem.NETHER;
+ 
+                 int portalSearchRadius = origin.paperConfig().environment.portalSearchVanillaDimensionScaling && destinationIsNether ?
+-                    (int)(destination.paperConfig().environment.portalSearchRadius / destination.dimensionType().coordinateScale()) :
+-                    destination.paperConfig().environment.portalSearchRadius;
++                        (int) (destination.paperConfig().environment.portalSearchRadius / destination.dimensionType().coordinateScale()) :
++                        destination.paperConfig().environment.portalSearchRadius;
+                 int portalCreateRadius = destination.paperConfig().environment.portalCreateRadius;
+ 
+                 WorldBorder destinationBorder = destination.getWorldBorder();
+@@ -4299,91 +4195,91 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+                 BlockPos targetPos = destination.getWorldBorder().clampToBounds(this.getX() * dimensionScale, this.getY(), this.getZ() * dimensionScale);
+ 
+                 ca.spottedleaf.concurrentutil.completable.Completable<BlockUtil.FoundRectangle> portalFound
+-                    = new ca.spottedleaf.concurrentutil.completable.Completable<>();
++                        = new ca.spottedleaf.concurrentutil.completable.Completable<>();
+ 
+                 // post portal find/create logic
+                 portalFound.addWaiter(
+-                    (BlockUtil.FoundRectangle portal, Throwable thr) -> {
+-                        // no portal could be created
+-                        if (portal == null) {
++                        (BlockUtil.FoundRectangle portal, Throwable thr) -> {
++                            // no portal could be created
++                            if (portal == null) {
++                                portalInfoCompletable.complete(
++                                        new PortalInfo(Vec3.atCenterOf(targetPos), Vec3.ZERO, 90.0f, 0.0f, destination, null)
++                                );
++                                return;
++                            }
++
++                            Vec3 relativePos = originalPortalRectangle == null ?
++                                    new Vec3(0.5, 0.0, 0.0) :
++                                    Entity.this.getRelativePortalPosition(originalPortalDirection, originalPortalRectangle);
++
+                             portalInfoCompletable.complete(
+-                                new PortalInfo(Vec3.atCenterOf(targetPos), Vec3.ZERO, 90.0f, 0.0f, destination, null)
++                                    PortalShape.createPortalInfo(
++                                            destination, portal, originalPortalDirection, relativePos,
++                                            Entity.this, Entity.this.getDeltaMovement(), Entity.this.getYRot(), Entity.this.getXRot(), null
++                                    )
+                             );
+-                            return;
+                         }
+-
+-                        Vec3 relativePos = originalPortalRectangle == null ?
+-                            new Vec3(0.5, 0.0, 0.0) :
+-                            Entity.this.getRelativePortalPosition(originalPortalDirection, originalPortalRectangle);
+-
+-                        portalInfoCompletable.complete(
+-                            PortalShape.createPortalInfo(
+-                                destination, portal, originalPortalDirection, relativePos,
+-                                Entity.this, Entity.this.getDeltaMovement(), Entity.this.getYRot(), Entity.this.getXRot(), null
+-                            )
+-                        );
+-                    }
+                 );
+ 
+                 // kick off search for existing portal or creation
+                 destination.loadChunksAsync(
+-                    // add 32 so that the final search for a portal frame doesn't load any chunks
+-                    targetPos, portalSearchRadius + 32,
+-                    net.minecraft.world.level.chunk.ChunkStatus.EMPTY,
+-                    ca.spottedleaf.concurrentutil.executor.standard.PrioritisedExecutor.Priority.HIGH,
+-                    (chunks) -> {
+-                        BlockUtil.FoundRectangle portal =
+-                            destination.getPortalForcer().findPortalAround(targetPos, destinationBorder, portalSearchRadius).orElse(null);
+-                        if (portal != null) {
+-                            portalFound.complete(portal);
+-                            return;
+-                        }
+-
+-                        // add tickets so that we can re-search for a portal once the chunks are loaded
+-                        Long ticketId = Long.valueOf(CREATE_PORTAL_DOUBLE_CHECK.getAndIncrement());
+-                        for (net.minecraft.world.level.chunk.ChunkAccess chunk : chunks) {
+-                            destination.chunkSource.addTicketAtLevel(
+-                                TicketType.NETHER_PORTAL_DOUBLE_CHECK, chunk.getPos(),
+-                                io.papermc.paper.chunk.system.scheduling.ChunkHolderManager.MAX_TICKET_LEVEL,
+-                                ticketId
+-                            );
+-                        }
++                        // add 32 so that the final search for a portal frame doesn't load any chunks
++                        targetPos, portalSearchRadius + 32,
++                        net.minecraft.world.level.chunk.ChunkStatus.EMPTY,
++                        ca.spottedleaf.concurrentutil.executor.standard.PrioritisedExecutor.Priority.HIGH,
++                        (chunks) -> {
++                            BlockUtil.FoundRectangle portal =
++                                    destination.getPortalForcer().findPortalAround(targetPos, destinationBorder, portalSearchRadius).orElse(null);
++                            if (portal != null) {
++                                portalFound.complete(portal);
++                                return;
++                            }
+ 
+-                        // no portal found - create one
+-                        destination.loadChunksAsync(
+-                            targetPos, portalCreateRadius + 32,
+-                            ca.spottedleaf.concurrentutil.executor.standard.PrioritisedExecutor.Priority.HIGH,
+-                            (chunks2) -> {
+-                                // don't need the tickets anymore
+-                                // note: we expect removeTicketsAtLevel to add an unknown ticket for us automatically
+-                                // if the ticket level were to decrease
+-                                for (net.minecraft.world.level.chunk.ChunkAccess chunk : chunks) {
+-                                    destination.chunkSource.removeTicketAtLevel(
++                            // add tickets so that we can re-search for a portal once the chunks are loaded
++                            Long ticketId = Long.valueOf(CREATE_PORTAL_DOUBLE_CHECK.getAndIncrement());
++                            for (net.minecraft.world.level.chunk.ChunkAccess chunk : chunks) {
++                                destination.chunkSource.addTicketAtLevel(
+                                         TicketType.NETHER_PORTAL_DOUBLE_CHECK, chunk.getPos(),
+                                         io.papermc.paper.chunk.system.scheduling.ChunkHolderManager.MAX_TICKET_LEVEL,
+                                         ticketId
+-                                    );
+-                                }
+-
+-                                // when two entities portal at the same time, it is possible that both entities reach this
+-                                // part of the code - and create a double portal
+-                                // to fix this, we just issue another search to try and see if another entity created
+-                                // a portal nearby
+-                                BlockUtil.FoundRectangle existingTryAgain =
+-                                    destination.getPortalForcer().findPortalAround(targetPos, destinationBorder, portalSearchRadius).orElse(null);
+-                                if (existingTryAgain != null) {
+-                                    portalFound.complete(existingTryAgain);
+-                                    return;
+-                                }
+-
+-                                // we do not have the correct entity reference here
+-                                BlockUtil.FoundRectangle createdPortal =
+-                                    destination.getPortalForcer().createPortal(targetPos, originalPortalDirection, null, portalCreateRadius).orElse(null);
+-                                // if it wasn't created, passing null is expected here
+-                                portalFound.complete(createdPortal);
++                                );
+                             }
+-                        );
+-                    }
++
++                            // no portal found - create one
++                            destination.loadChunksAsync(
++                                    targetPos, portalCreateRadius + 32,
++                                    ca.spottedleaf.concurrentutil.executor.standard.PrioritisedExecutor.Priority.HIGH,
++                                    (chunks2) -> {
++                                        // don't need the tickets anymore
++                                        // note: we expect removeTicketsAtLevel to add an unknown ticket for us automatically
++                                        // if the ticket level were to decrease
++                                        for (net.minecraft.world.level.chunk.ChunkAccess chunk : chunks) {
++                                            destination.chunkSource.removeTicketAtLevel(
++                                                    TicketType.NETHER_PORTAL_DOUBLE_CHECK, chunk.getPos(),
++                                                    io.papermc.paper.chunk.system.scheduling.ChunkHolderManager.MAX_TICKET_LEVEL,
++                                                    ticketId
++                                            );
++                                        }
++
++                                        // when two entities portal at the same time, it is possible that both entities reach this
++                                        // part of the code - and create a double portal
++                                        // to fix this, we just issue another search to try and see if another entity created
++                                        // a portal nearby
++                                        BlockUtil.FoundRectangle existingTryAgain =
++                                                destination.getPortalForcer().findPortalAround(targetPos, destinationBorder, portalSearchRadius).orElse(null);
++                                        if (existingTryAgain != null) {
++                                            portalFound.complete(existingTryAgain);
++                                            return;
++                                        }
++
++                                        // we do not have the correct entity reference here
++                                        BlockUtil.FoundRectangle createdPortal =
++                                                destination.getPortalForcer().createPortal(targetPos, originalPortalDirection, null, portalCreateRadius).orElse(null);
++                                        // if it wasn't created, passing null is expected here
++                                        portalFound.complete(createdPortal);
++                                    }
++                            );
++                        }
+                 );
+                 break;
+             }
+@@ -4425,6 +4321,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     protected void prePortalLogic(ServerLevel origin, ServerLevel destination, PortalType type) {
+ 
+     }
++    // Folia end - region threading
+ 
+     protected boolean portalToAsync(ServerLevel destination, boolean takePassengers,
+                                     PortalType type, java.util.function.Consumer<Entity> teleportComplete) {
+@@ -4434,19 +4331,19 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         }
+         // Kaiiju start - sync end platform spawning & entity teleportation
+         final java.util.function.Consumer<Entity> tpComplete = type == PortalType.END && destination.getTypeKey() == LevelStem.END ?
+-              e -> ServerLevel.makeObsidianPlatform(destination, null, ServerLevel.END_SPAWN_POINT) : teleportComplete;
++                e -> ServerLevel.makeObsidianPlatform(destination, null, ServerLevel.END_SPAWN_POINT) : teleportComplete;
+         // Kaiiju end
+ 
+         Vec3 initialPosition = this.position();
+         ChunkPos initialPositionChunk = new ChunkPos(
+-            io.papermc.paper.util.CoordinateUtils.getChunkX(initialPosition),
+-            io.papermc.paper.util.CoordinateUtils.getChunkZ(initialPosition)
++                io.papermc.paper.util.CoordinateUtils.getChunkX(initialPosition),
++                io.papermc.paper.util.CoordinateUtils.getChunkZ(initialPosition)
+         );
+ 
+         // first, remove entity/passengers from world
+         EntityTreeNode passengerTree = this.detachPassengers();
+         List<EntityTreeNode> fullPassengerTree = passengerTree.getFullTree();
+-        ServerLevel originWorld = (ServerLevel)this.level;
++        ServerLevel originWorld = (ServerLevel) this.level;
+ 
+         for (EntityTreeNode node : fullPassengerTree) {
+             node.root.preChangeDimension();
+@@ -4464,16 +4361,16 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         // otherwise, the shutdown will not be able to complete the shutdown as it requires a ticking region
+         Long teleportHoldId = Long.valueOf(TELEPORT_HOLD_TICKET_GEN.getAndIncrement());
+         originWorld.chunkSource.addTicketAtLevel(
+-            TicketType.TELEPORT_HOLD_TICKET, initialPositionChunk,
+-            io.papermc.paper.chunk.system.scheduling.ChunkHolderManager.MAX_TICKET_LEVEL,
+-            teleportHoldId
++                TicketType.TELEPORT_HOLD_TICKET, initialPositionChunk,
++                io.papermc.paper.chunk.system.scheduling.ChunkHolderManager.MAX_TICKET_LEVEL,
++                teleportHoldId
+         );
+ 
+         ServerLevel.PendingTeleport beforeFindDestination = new ServerLevel.PendingTeleport(passengerTree, initialPosition);
+         originWorld.pushPendingTeleport(beforeFindDestination);
+ 
+         ca.spottedleaf.concurrentutil.completable.Completable<PortalInfo> portalInfoCompletable
+-            = new ca.spottedleaf.concurrentutil.completable.Completable<>();
++                = new ca.spottedleaf.concurrentutil.completable.Completable<>();
+ 
+         portalInfoCompletable.addWaiter((PortalInfo info, Throwable throwable) -> {
+             if (!originWorld.removePendingTeleport(beforeFindDestination)) {
+@@ -4482,9 +4379,9 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+                 return;
+             }
+             originWorld.chunkSource.removeTicketAtLevel(
+-                TicketType.TELEPORT_HOLD_TICKET, initialPositionChunk,
+-                io.papermc.paper.chunk.system.scheduling.ChunkHolderManager.MAX_TICKET_LEVEL,
+-                teleportHoldId
++                    TicketType.TELEPORT_HOLD_TICKET, initialPositionChunk,
++                    io.papermc.paper.chunk.system.scheduling.ChunkHolderManager.MAX_TICKET_LEVEL,
++                    teleportHoldId
+             );
+             // adjust passenger tree to final pos
+             for (EntityTreeNode node : fullPassengerTree) {
+@@ -4493,8 +4390,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+ 
+             // place
+             passengerTree.root.placeInAsync(
+-                originWorld, destination, Entity.TELEPORT_FLAG_LOAD_CHUNK | (takePassengers ? Entity.TELEPORT_FLAG_TELEPORT_PASSENGERS : 0L),
+-                passengerTree, tpComplete // Kaiiju - vanilla end teleportation
++                    originWorld, destination, Entity.TELEPORT_FLAG_LOAD_CHUNK | (takePassengers ? Entity.TELEPORT_FLAG_TELEPORT_PASSENGERS : 0L),
++                    passengerTree, tpComplete // Kaiiju - vanilla end teleportation
+             );
+         });
+ 
+@@ -4503,7 +4400,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+ 
+         return true;
+     }
+-    // Folia end - region threading
+ 
+     @Nullable
+     public Entity changeDimension(ServerLevel destination) {
+@@ -4548,8 +4444,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+                 Vec3 velocity = shapedetectorshape.speed;
+                 CraftEntity bukkitEntity = this.getBukkitEntity();
+                 org.bukkit.event.entity.EntityPortalExitEvent event = new org.bukkit.event.entity.EntityPortalExitEvent(bukkitEntity,
+-                    bukkitEntity.getLocation(), new Location(worldserver.getWorld(), position.x, position.y, position.z, yaw, pitch),
+-                    bukkitEntity.getVelocity(), org.bukkit.craftbukkit.util.CraftVector.toBukkit(shapedetectorshape.speed));
++                        bukkitEntity.getLocation(), new Location(worldserver.getWorld(), position.x, position.y, position.z, yaw, pitch),
++                        bukkitEntity.getVelocity(), org.bukkit.craftbukkit.util.CraftVector.toBukkit(shapedetectorshape.speed));
+                 event.callEvent();
+                 if (this.isRemoved()) {
+                     return null;
+@@ -4609,12 +4505,12 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+             return null;
+         }
+     }
++    // Folia end - region threading - move inventory clearing until after the dimension change
+ 
+     // Folia start - region threading - move inventory clearing until after the dimension change
+     protected void postRemoveAfterChangingDimensions() {
+ 
+     }
+-    // Folia end - region threading - move inventory clearing until after the dimension change
+ 
+     protected void removeAfterChangingDimensions() {
+         this.setRemoved(Entity.RemovalReason.CHANGED_DIMENSION, null); // CraftBukkit - add Bukkit remove cause
+@@ -4772,16 +4668,16 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return this.isOnFire() && !this.isSpectator();
+     }
+ 
+-    public void setUUID(UUID uuid) {
+-        this.uuid = uuid;
+-        this.stringUUID = this.uuid.toString();
+-    }
+-
+     @Override
+     public UUID getUUID() {
+         return this.uuid;
+     }
+ 
++    public void setUUID(UUID uuid) {
++        this.uuid = uuid;
++        this.stringUUID = this.uuid.toString();
++    }
++
+     public String getStringUUID() {
+         return this.stringUUID;
+     }
+@@ -4795,14 +4691,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return true;
+     }
+ 
+-    public static double getViewScale() {
+-        return Entity.viewScale;
+-    }
+-
+-    public static void setViewScale(double value) {
+-        Entity.viewScale = value;
+-    }
+-
+     @Override
+     public Component getDisplayName() {
+         return PlayerTeam.formatNameForTeam(this.getTeam(), this.getName()).withStyle((chatmodifier) -> {
+@@ -4810,29 +4698,29 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         });
+     }
+ 
+-    public void setCustomName(@Nullable Component name) {
+-        this.entityData.set(Entity.DATA_CUSTOM_NAME, Optional.ofNullable(name));
+-    }
+-
+     @Nullable
+     @Override
+     public Component getCustomName() {
+         return (Component) ((Optional) this.entityData.get(Entity.DATA_CUSTOM_NAME)).orElse((Object) null);
+     }
+ 
++    public void setCustomName(@Nullable Component name) {
++        this.entityData.set(Entity.DATA_CUSTOM_NAME, Optional.ofNullable(name));
++    }
++
+     @Override
+     public boolean hasCustomName() {
+         return ((Optional) this.entityData.get(Entity.DATA_CUSTOM_NAME)).isPresent();
+     }
+ 
+-    public void setCustomNameVisible(boolean visible) {
+-        this.entityData.set(Entity.DATA_CUSTOM_NAME_VISIBLE, visible);
+-    }
+-
+     public boolean isCustomNameVisible() {
+         return (Boolean) this.entityData.get(Entity.DATA_CUSTOM_NAME_VISIBLE);
+     }
+ 
++    public void setCustomNameVisible(boolean visible) {
++        this.entityData.set(Entity.DATA_CUSTOM_NAME_VISIBLE, visible);
++    }
++
+     public final void teleportToWithTicket(double destX, double destY, double destZ) {
+         if (this.level() instanceof ServerLevel) {
+             ChunkPos chunkcoordintpair = new ChunkPos(BlockPos.containing(destX, destY, destZ));
+@@ -4847,7 +4735,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     public boolean teleportTo(ServerLevel worldserver, double d0, double d1, double d2, Set<RelativeMovement> set, float f, float f1, org.bukkit.event.player.PlayerTeleportEvent.TeleportCause cause) {
+         return this.teleportTo(worldserver, d0, d1, d2, set, f, f1);
+     }
+-    // CraftBukkit end
+ 
+     public boolean teleportTo(ServerLevel world, double destX, double destY, double destZ, Set<RelativeMovement> flags, float yaw, float pitch) {
+         float f2 = Mth.clamp(pitch, -90.0F, 90.0F);
+@@ -4877,6 +4764,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+ 
+         return true;
+     }
++    // CraftBukkit end
+ 
+     public void dismountTo(double destX, double destY, double destZ) {
+         this.teleportTo(destX, destY, destZ);
+@@ -4910,7 +4798,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return this.isCustomNameVisible();
+     }
+ 
+-    public void onSyncedDataUpdated(List<SynchedEntityData.DataValue<?>> dataEntries) {}
++    public void onSyncedDataUpdated(List<SynchedEntityData.DataValue<?>> dataEntries) {
++    }
+ 
+     public void onSyncedDataUpdated(EntityDataAccessor<?> data) {
+         if (Entity.DATA_POSE.equals(data)) {
+@@ -4919,7 +4808,9 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+ 
+     }
+ 
+-    /** @deprecated */
++    /**
++     * @deprecated
++     */
+     @Deprecated
+     protected void fixupDimensions() {
+         net.minecraft.world.entity.Pose entitypose = this.getPose();
+@@ -4973,10 +4864,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return this.bb;
+     }
+ 
+-    public AABB getBoundingBoxForCulling() {
+-        return this.getBoundingBox();
+-    }
+-
+     public final void setBoundingBox(AABB boundingBox) {
+         // Gale start - VMP - skip entity move if movement is zero
+         if (!this.bb.equals(boundingBox)) {
+@@ -5005,6 +4892,10 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         // CraftBukkit end
+     }
+ 
++    public AABB getBoundingBoxForCulling() {
++        return this.getBoundingBox();
++    }
++
+     protected float getEyeHeight(net.minecraft.world.entity.Pose pose, EntityDimensions dimensions) {
+         return dimensions.height * 0.85F;
+     }
+@@ -5030,7 +4921,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     }
+ 
+     @Override
+-    public void sendSystemMessage(Component message) {}
++    public void sendSystemMessage(Component message) {
++    }
+ 
+     public Level getCommandSenderWorld() {
+         return this.level();
+@@ -5057,7 +4949,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         EnchantmentHelper.doPostDamageEffects(attacker, target);
+     }
+ 
+-    public void startSeenByPlayer(ServerPlayer player) {}
++    public void startSeenByPlayer(ServerPlayer player) {
++    }
+ 
+     // Paper start - entity tracking events
+     public void stopSeenByPlayer(ServerPlayer player) {
+@@ -5066,7 +4959,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+             new io.papermc.paper.event.player.PlayerUntrackEntityEvent(player.getBukkitEntity(), this.getBukkitEntity()).callEvent();
+         }
+     }
+-    // Paper end - entity tracking events
+ 
+     public float rotate(Rotation rotation) {
+         float f = Mth.wrapDegrees(this.getYRot());
+@@ -5082,6 +4974,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+                 return f;
+         }
+     }
++    // Paper end - entity tracking events
+ 
+     public float mirror(Mirror mirror) {
+         float f = Mth.wrapDegrees(this.getYRot());
+@@ -5139,25 +5032,33 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     }
+ 
+     private Stream<Entity> getIndirectPassengersStream() {
+-        if (this.passengers.isEmpty()) { return Stream.of(); } // Paper - Optimize indirect passenger iteration
++        if (this.passengers.isEmpty()) {
++            return Stream.of();
++        } // Paper - Optimize indirect passenger iteration
+         return this.passengers.stream().flatMap(Entity::getSelfAndPassengers);
+     }
+ 
+     @Override
+     public Stream<Entity> getSelfAndPassengers() {
+-        if (this.passengers.isEmpty()) { return Stream.of(this); } // Paper - Optimize indirect passenger iteration
++        if (this.passengers.isEmpty()) {
++            return Stream.of(this);
++        } // Paper - Optimize indirect passenger iteration
+         return Stream.concat(Stream.of(this), this.getIndirectPassengersStream());
+     }
+ 
+     @Override
+     public Stream<Entity> getPassengersAndSelf() {
+-        if (this.passengers.isEmpty()) { return Stream.of(this); } // Paper - Optimize indirect passenger iteration
++        if (this.passengers.isEmpty()) {
++            return Stream.of(this);
++        } // Paper - Optimize indirect passenger iteration
+         return Stream.concat(this.passengers.stream().flatMap(Entity::getPassengersAndSelf), Stream.of(this));
+     }
+ 
+     public Iterable<Entity> getIndirectPassengers() {
+         // Paper start - Optimize indirect passenger iteration
+-        if (this.passengers.isEmpty()) { return ImmutableList.of(); }
++        if (this.passengers.isEmpty()) {
++            return ImmutableList.of();
++        }
+         ImmutableList.Builder<Entity> indirectPassengers = ImmutableList.builder();
+         for (Entity passenger : this.passengers) {
+             indirectPassengers.add(passenger);
+@@ -5165,6 +5066,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         }
+         return indirectPassengers.build();
+     }
++
+     private Iterable<Entity> getIndirectPassengers_old() {
+         // Paper end - Optimize indirect passenger iteration
+         return () -> {
+@@ -5181,12 +5083,17 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     // Paper start - rewrite chunk system
+     public boolean hasAnyPlayerPassengers() {
+         // copied from below
+-        if (this.passengers.isEmpty()) { return false; }
++        if (this.passengers.isEmpty()) {
++            return false;
++        }
+         return this.getIndirectPassengersStream().anyMatch((entity) -> entity instanceof Player);
+     }
++
+     // Paper end - rewrite chunk system
+     public boolean hasExactlyOnePlayerPassenger() {
+-        if (this.passengers.isEmpty()) { return false; } // Paper - Optimize indirect passenger iteration
++        if (this.passengers.isEmpty()) {
++            return false;
++        } // Paper - Optimize indirect passenger iteration
+         return this.countPlayerPassengers() == 1;
+     }
+ 
+@@ -5230,15 +5137,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return !this.level().isClientSide;
+     }
+ 
+-    protected static Vec3 getCollisionHorizontalEscapeVector(double vehicleWidth, double passengerWidth, float passengerYaw) {
+-        double d2 = (vehicleWidth + passengerWidth + 9.999999747378752E-6D) / 2.0D;
+-        float f1 = -Mth.sin(passengerYaw * 0.017453292F);
+-        float f2 = Mth.cos(passengerYaw * 0.017453292F);
+-        float f3 = Math.max(Math.abs(f1), Math.abs(f2));
+-
+-        return new Vec3((double) f1 * d2 / (double) f3, 0.0D, (double) f2 * d2 / (double) f3);
+-    }
+-
+     public Vec3 getDismountLocationForPassenger(net.minecraft.world.entity.LivingEntity passenger) {
+         return new Vec3(this.getX(), this.getBoundingBox().maxY, this.getZ());
+     }
+@@ -5378,30 +5276,30 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+                             for (int currX = minX; currX < maxX; ++currX) {
+                                 FluidState fluid = blocks.get(currX & 15, currY & 15, currZ & 15).getFluidState();
+ 
+-                        if (fluid.is(tag)) {
+-                            blockposition_mutableblockposition.set((currChunkX << 4) + currX, currY, (currChunkZ << 4) + currZ);
+-                            double d2 = (double) ((float) currY + fluid.getHeight(this.level(), blockposition_mutableblockposition));
+-
+-                            if (d2 >= axisalignedbb.minY) {
+-                                flag1 = true;
+-                                d1 = Math.max(d2 - axisalignedbb.minY, d1);
+-                                if (flag) {
+-                                    Vec3 vec3d1 = fluid.getFlow(this.level(), blockposition_mutableblockposition);
+-
+-                                    if (d1 < 0.4D) {
+-                                        vec3d1 = vec3d1.scale(d1);
++                                if (fluid.is(tag)) {
++                                    blockposition_mutableblockposition.set((currChunkX << 4) + currX, currY, (currChunkZ << 4) + currZ);
++                                    double d2 = (double) ((float) currY + fluid.getHeight(this.level(), blockposition_mutableblockposition));
++
++                                    if (d2 >= axisalignedbb.minY) {
++                                        flag1 = true;
++                                        d1 = Math.max(d2 - axisalignedbb.minY, d1);
++                                        if (flag) {
++                                            Vec3 vec3d1 = fluid.getFlow(this.level(), blockposition_mutableblockposition);
++
++                                            if (d1 < 0.4D) {
++                                                vec3d1 = vec3d1.scale(d1);
++                                            }
++
++                                            vec3d = vec3d.add(vec3d1);
++                                            ++k1;
++                                        }
++                                        // CraftBukkit start - store last lava contact location
++                                        if (tag == FluidTags.LAVA) {
++                                            this.lastLavaContact = blockposition_mutableblockposition.immutable();
++                                        }
++                                        // CraftBukkit end
+                                     }
+-
+-                                    vec3d = vec3d.add(vec3d1);
+-                                    ++k1;
+-                                }
+-                                // CraftBukkit start - store last lava contact location
+-                                if (tag == FluidTags.LAVA) {
+-                                    this.lastLavaContact = blockposition_mutableblockposition.immutable();
+                                 }
+-                                // CraftBukkit end
+-                            }
+-                        }
+                             }
+                         }
+                     }
+@@ -5502,7 +5400,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+ 
+         return this.feetBlockState;
+     }
+-    // Gale end - don't load chunks to activate climbing entities
+ 
+     public ChunkPos chunkPosition() {
+         return this.chunkPosition;
+@@ -5511,10 +5408,11 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     public Vec3 getDeltaMovement() {
+         return this.deltaMovement;
+     }
++    // Gale end - don't load chunks to activate climbing entities
+ 
+     public void setDeltaMovement(Vec3 velocity) {
+         synchronized (this.posLock) { // Paper
+-        this.deltaMovement = velocity;
++            this.deltaMovement = velocity;
+         } // Paper
+     }
+ 
+@@ -5578,24 +5476,10 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return this.getZ((2.0D * this.random.nextDouble() - 1.0D) * widthScale);
+     }
+ 
+-    // Paper start - Block invalid positions and bounding box
+-    public static boolean checkPosition(Entity entity, double newX, double newY, double newZ) {
+-        if (Double.isFinite(newX) && Double.isFinite(newY) && Double.isFinite(newZ)) {
+-            return true;
+-        }
+-
+-        String entityInfo;
+-        try {
+-            entityInfo = entity.toString();
+-        } catch (Exception ex) {
+-            entityInfo = "[Entity info unavailable] ";
+-        }
+-        LOGGER.error("New entity position is invalid! Tried to set invalid position ({},{},{}) for entity {} located at {}, entity info: {}", newX, newY, newZ, entity.getClass().getName(), entity.position, entityInfo, new Throwable());
+-        return false;
+-    }
+     public final void setPosRaw(double x, double y, double z) {
+         this.setPosRaw(x, y, z, false);
+     }
++
+     public final void setPosRaw(double x, double y, double z, boolean forceBoundingBoxUpdate) {
+         if (!checkPosition(this, x, y, z)) {
+             return;
+@@ -5620,7 +5504,7 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         boolean posChanged = this.position.x != x || this.position.y != y || this.position.z != z; // Folia - region threading
+         if (posChanged) { // Folia - region threading
+             synchronized (this.posLock) { // Paper
+-            this.position = new Vec3(x, y, z);
++                this.position = new Vec3(x, y, z);
+             } // Paper
+             int i = Mth.floor(x);
+             int j = Mth.floor(y);
+@@ -5645,7 +5529,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         // Paper end - Block invalid positions and bounding box
+     }
+ 
+-    public void checkDespawn() {}
++    public void checkDespawn() {
++    }
+ 
+     public Vec3 getRopeHoldPosition(float delta) {
+         return this.getPosition(delta).add(0.0D, (double) this.eyeHeight * 0.7D, 0.0D);
+@@ -5686,10 +5571,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return this.yRot;
+     }
+ 
+-    public float getVisualRotationYInDegrees() {
+-        return this.getYRot();
+-    }
+-
+     public void setYRot(float yaw) {
+         if (!Float.isFinite(yaw)) {
+             Util.logAndPauseIfInIde("Invalid entity rotation: " + yaw + ", discarding.");
+@@ -5698,6 +5579,10 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         }
+     }
+ 
++    public float getVisualRotationYInDegrees() {
++        return this.getYRot();
++    }
++
+     public float getXRot() {
+         return this.xRot;
+     }
+@@ -5726,28 +5611,27 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         return this.removalReason != null;
+     }
+ 
++    @Override
++    public final void setRemoved(Entity.RemovalReason reason) {
++        // CraftBukkit start - add Bukkit remove cause
++        this.setRemoved(reason, null);
++    }
++
+     // Folia start - region threading
+     public final boolean hasNullCallback() {
+         return this.levelCallback == EntityInLevelCallback.NULL;
+     }
+-    // Folia end - region threading
+ 
+     @Nullable
+     public Entity.RemovalReason getRemovalReason() {
+         return this.removalReason;
+     }
+ 
+-    @Override
+-    public final void setRemoved(Entity.RemovalReason reason) {
+-        // CraftBukkit start - add Bukkit remove cause
+-        this.setRemoved(reason, null);
+-    }
+-
+     @Override
+     public final void setRemoved(Entity.RemovalReason entity_removalreason, EntityRemoveEvent.Cause cause) {
+         // Paper start - rewrite chunk system
+         io.papermc.paper.util.TickThread.ensureTickThread(this, "Cannot remove entity off-main");
+-        if (!((ServerLevel)this.level).getEntityLookup().canRemoveEntity(this)) {
++        if (!((ServerLevel) this.level).getEntityLookup().canRemoveEntity(this)) {
+             LOGGER.warn("Entity " + this + " is currently prevented from being removed from the world since it is processing section status updates", new Throwable());
+             return;
+         }
+@@ -5766,7 +5650,8 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+             this.stopRiding();
+         }
+ 
+-        if (entity_removalreason != RemovalReason.UNLOADED_TO_CHUNK) this.getPassengers().forEach(Entity::stopRiding); // Paper - chunk system - don't adjust passenger state when unloading, it's just not safe (and messes with our logic in entity chunk unload)
++        if (entity_removalreason != RemovalReason.UNLOADED_TO_CHUNK)
++            this.getPassengers().forEach(Entity::stopRiding); // Paper - chunk system - don't adjust passenger state when unloading, it's just not safe (and messes with our logic in entity chunk unload)
+         this.levelCallback.onRemove(entity_removalreason);
+         // Paper start - Folia schedulers
+         if (!(this instanceof ServerPlayer) && entity_removalreason != RemovalReason.CHANGED_DIMENSION && !alreadyRemoved) {
+@@ -5775,16 +5660,16 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         }
+         // Paper end - Folia schedulers
+     }
++    // Folia end - region threading
+ 
+     public void unsetRemoved() {
+         this.removalReason = null;
+     }
+ 
+     // Folia start - region threading
+-    protected void preRemove(Entity.RemovalReason reason) {}
+-    // Folia end - region threading
++    protected void preRemove(Entity.RemovalReason reason) {
++    }
+ 
+-    // Paper start - Folia schedulers
+     /**
+      * Invoked only when the entity is truly removed from the server, never to be added to any world.
+      */
+@@ -5792,7 +5677,6 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         // we need to force create the bukkit entity so that the scheduler can be retired...
+         this.getBukkitEntity().taskScheduler.retire();
+     }
+-    // Paper end - Folia schedulers
+ 
+     @Override
+     public void setLevelCallback(EntityInLevelCallback changeListener) {
+@@ -5803,11 +5687,15 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+     public boolean shouldBeSaved() {
+         return this.removalReason != null && !this.removalReason.shouldSave() ? false : (this.isPassenger() ? false : !this.isVehicle() || !this.hasAnyPlayerPassengers()); // Paper - rewrite chunk system - it should check if the entity has ANY player passengers
+     }
++    // Folia end - region threading
++
++    // Paper start - Folia schedulers
+ 
+     @Override
+     public boolean isAlwaysTicking() {
+         return false;
+     }
++    // Paper end - Folia schedulers
+ 
+     public boolean mayInteract(Level world, BlockPos pos) {
+         return true;
+@@ -5837,6 +5725,18 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         this.setRot(f, f1);
+     }
+ 
++    public boolean isTicking() {
++        return ((net.minecraft.server.level.ServerChunkCache) level.getChunkSource()).isPositionTicking(this);
++    }
++
++    public boolean shouldTickHot() {
++        return this.tickCount > 20 * 10 && this.isAlive();
++    } // KioCG
++
++    protected static enum PortalType {
++        NETHER, END;
++    }
++
+     public static enum RemovalReason {
+ 
+         KILLED(true, false), DISCARDED(true, false), UNLOADED_TO_CHUNK(false, true), UNLOADED_WITH_PLAYER(false, false), CHANGED_DIMENSION(false, false);
+@@ -5889,15 +5789,188 @@ public abstract class Entity implements Nameable, EntityAccess, CommandSource, S
+         void accept(Entity entity, double x, double y, double z);
+     }
+ 
+-    // Paper start - Expose entity id counter
+-    public static int nextEntityId() {
+-        return ENTITY_COUNTER.incrementAndGet();
++    public static final class RandomRandomSource extends java.util.Random implements net.minecraft.world.level.levelgen.BitRandomSource { // Folia - region threading
++        private boolean locked = false;
++
++        @Override
++        public synchronized void setSeed(long seed) {
++            if (locked) {
++                LOGGER.error("Ignoring setSeed on Entity.SHARED_RANDOM", new Throwable());
++            } else {
++                super.setSeed(seed);
++                locked = true;
++            }
++        }
++
++        @Override
++        public RandomSource fork() {
++            return new net.minecraft.world.level.levelgen.LegacyRandomSource(this.nextLong());
++        }
++
++        @Override
++        public net.minecraft.world.level.levelgen.PositionalRandomFactory forkPositional() {
++            return new net.minecraft.world.level.levelgen.LegacyRandomSource.LegacyPositionalRandomFactory(this.nextLong());
++        }
++
++        // these below are added to fix reobf issues that I don't wanna deal with right now
++        @Override
++        public int next(int bits) {
++            return super.next(bits);
++        }
++
++        @Override
++        public int nextInt(int origin, int bound) {
++            return net.minecraft.world.level.levelgen.BitRandomSource.super.nextInt(origin, bound);
++        }
++
++        @Override
++        public long nextLong() {
++            return net.minecraft.world.level.levelgen.BitRandomSource.super.nextLong();
++        }
++
++        @Override
++        public int nextInt() {
++            return net.minecraft.world.level.levelgen.BitRandomSource.super.nextInt();
++        }
++
++        @Override
++        public int nextInt(int bound) {
++            return net.minecraft.world.level.levelgen.BitRandomSource.super.nextInt(bound);
++        }
++
++        @Override
++        public boolean nextBoolean() {
++            return net.minecraft.world.level.levelgen.BitRandomSource.super.nextBoolean();
++        }
++
++        @Override
++        public float nextFloat() {
++            return net.minecraft.world.level.levelgen.BitRandomSource.super.nextFloat();
++        }
++
++        @Override
++        public double nextDouble() {
++            return net.minecraft.world.level.levelgen.BitRandomSource.super.nextDouble();
++        }
++
++        @Override
++        public double nextGaussian() {
++            return super.nextGaussian();
++        }
+     }
+ 
+-    public boolean isTicking() {
+-        return ((net.minecraft.server.level.ServerChunkCache) level.getChunkSource()).isPositionTicking(this);
++    public record DefaultDrop(Item item, org.bukkit.inventory.ItemStack stack,
++                              @Nullable java.util.function.Consumer<ItemStack> dropConsumer) {
++        public DefaultDrop(final ItemStack stack, final java.util.function.Consumer<ItemStack> dropConsumer) {
++            this(stack.getItem(), org.bukkit.craftbukkit.inventory.CraftItemStack.asCraftMirror(stack), dropConsumer);
++        }
++
++        public void runConsumer(final org.bukkit.World fallbackWorld, final Location fallbackLoc) {
++            if (this.dropConsumer == null || org.bukkit.craftbukkit.inventory.CraftItemType.bukkitToMinecraft(this.stack.getType()) != this.item) {
++                fallbackWorld.dropItem(fallbackLoc, this.stack);
++            } else {
++                this.dropConsumer.accept(org.bukkit.craftbukkit.inventory.CraftItemStack.asNMSCopy(this.stack));
++            }
++        }
+     }
+     // Paper end - Expose entity id counter
+ 
+-    public boolean shouldTickHot() { return this.tickCount > 20 * 10 && this.isAlive(); } // KioCG
++    // Folia start - region threading
++    public static class EntityTreeNode {
++        @Nullable
++        public EntityTreeNode parent;
++        public Entity root;
++        @Nullable
++        public EntityTreeNode[] passengers;
++
++        public EntityTreeNode(EntityTreeNode parent, Entity root) {
++            this.parent = parent;
++            this.root = root;
++        }
++
++        public EntityTreeNode(EntityTreeNode parent, Entity root, EntityTreeNode[] passengers) {
++            this.parent = parent;
++            this.root = root;
++            this.passengers = passengers;
++        }
++
++        public List<EntityTreeNode> getFullTree() {
++            List<EntityTreeNode> ret = new java.util.ArrayList<>();
++            ret.add(this);
++
++            // this is just a BFS except we don't remove from head, we just advance down the list
++            for (int i = 0; i < ret.size(); ++i) {
++                EntityTreeNode node = ret.get(i);
++
++                EntityTreeNode[] passengers = node.passengers;
++                if (passengers == null) {
++                    continue;
++                }
++                for (EntityTreeNode passenger : passengers) {
++                    ret.add(passenger);
++                }
++            }
++
++            return ret;
++        }
++
++        public void restore() {
++            java.util.ArrayDeque<EntityTreeNode> queue = new java.util.ArrayDeque<>();
++            queue.add(this);
++
++            EntityTreeNode curr;
++            while ((curr = queue.pollFirst()) != null) {
++                EntityTreeNode[] passengers = curr.passengers;
++                if (passengers == null) {
++                    continue;
++                }
++
++                List<Entity> newPassengers = new java.util.ArrayList<>();
++                for (EntityTreeNode passenger : passengers) {
++                    newPassengers.add(passenger.root);
++                    passenger.root.vehicle = curr.root;
++                }
++
++                curr.root.passengers = ImmutableList.copyOf(newPassengers);
++            }
++        }
++
++        public void addTracker() {
++            for (final EntityTreeNode node : this.getFullTree()) {
++                if (node.root.tracker != null) {
++                    for (final ServerPlayer player : node.root.level.getLocalPlayers()) {
++                        node.root.tracker.updatePlayer(player);
++                    }
++                }
++            }
++        }
++
++        public void clearTracker() {
++            for (final EntityTreeNode node : this.getFullTree()) {
++                if (node.root.tracker != null) {
++                    node.root.tracker.removeNonTickThreadPlayers();
++                    for (final ServerPlayer player : node.root.level.getLocalPlayers()) {
++                        node.root.tracker.removePlayer(player);
++                    }
++                }
++            }
++        }
++
++        public void adjustRiders(boolean teleport) {
++            java.util.ArrayDeque<EntityTreeNode> queue = new java.util.ArrayDeque<>();
++            queue.add(this);
++
++            EntityTreeNode curr;
++            while ((curr = queue.pollFirst()) != null) {
++                EntityTreeNode[] passengers = curr.passengers;
++                if (passengers == null) {
++                    continue;
++                }
++
++                for (EntityTreeNode passenger : passengers) {
++                    curr.root.positionRider(passenger.root, teleport ? Entity::moveTo : Entity::setPos);
++                }
++            }
++        }
++    }
+ }
