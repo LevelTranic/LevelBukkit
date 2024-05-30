@@ -2,7 +2,7 @@ From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: 404Setup <153366651+404Setup@users.noreply.github.com>
 Date: Thu, 30 May 2024 12:57:53 +0800
 Subject: [PATCH] SparklyPower: Cache coordinate key used for nearby players
- when ticking  chunks
+ when ticking chunks
 
 The "getChunkKey(...)" call is a bit expensive, using 0.24% of CPU time with 19k chunks loaded
 
