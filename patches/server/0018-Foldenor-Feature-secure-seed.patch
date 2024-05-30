@@ -780,10 +780,19 @@ index ea13a3b409b8a4a6a77071c700b4dd0a33b02716..a56103e905d817bdf0590564ac2fdd6f
      }
  }
 diff --git a/src/main/java/net/minecraft/server/dedicated/DedicatedServerProperties.java b/src/main/java/net/minecraft/server/dedicated/DedicatedServerProperties.java
-index bab2471616404821671264ccefd729cab8d0bf58..8a209f942b695775c7d89d9fcdb349781a994079 100644
+index bab2471616404821671264ccefd729cab8d0bf58..8484f8b44306fe170c2d49939759a16d3b28803a 100644
 --- a/src/main/java/net/minecraft/server/dedicated/DedicatedServerProperties.java
 +++ b/src/main/java/net/minecraft/server/dedicated/DedicatedServerProperties.java
-@@ -160,7 +160,17 @@ public class DedicatedServerProperties extends Settings<DedicatedServerPropertie
+@@ -20,6 +20,8 @@ import java.util.UUID;
+ import java.util.concurrent.TimeUnit;
+ import java.util.regex.Pattern;
+ import javax.annotation.Nullable;
++
++import net.edenor.foldenor.secureseed.Globals;
+ import net.minecraft.core.Holder;
+ import net.minecraft.core.HolderLookup;
+ import net.minecraft.core.Registry;
+@@ -160,7 +162,17 @@ public class DedicatedServerProperties extends Settings<DedicatedServerPropertie
          boolean flag = this.get("generate-structures", true);
          long i = WorldOptions.parseSeed(s).orElse(WorldOptions.randomSeed());
  
