@@ -675,7 +675,7 @@ index 40438221fa1c00a80130bbaf458410154ed0a42c..11d4379dfb0a891c6ba70d67096b8865
  
      public static OptionalLong parseSeed(String seed) {
 diff --git a/src/main/java/net/minecraft/world/level/levelgen/feature/GeodeFeature.java b/src/main/java/net/minecraft/world/level/levelgen/feature/GeodeFeature.java
-index d06b4e05f375691fbc6f4a56d4d91a4d5b3b0f00..0d408c415425299f40459ce00bc53f53e4088263 100644
+index d06b4e05f375691fbc6f4a56d4d91a4d5b3b0f00..c54df53f9628f3fda64f3ecec2605d5a41e3110c 100644
 --- a/src/main/java/net/minecraft/world/level/levelgen/feature/GeodeFeature.java
 +++ b/src/main/java/net/minecraft/world/level/levelgen/feature/GeodeFeature.java
 @@ -3,9 +3,11 @@ package net.minecraft.world.level.levelgen.feature;
@@ -686,7 +686,7 @@ index d06b4e05f375691fbc6f4a56d4d91a4d5b3b0f00..0d408c415425299f40459ce00bc53f53
  import java.util.List;
  import java.util.function.Predicate;
  
-+import io.papermc.paper.configuration.GlobalConfiguration;
++import dev.paged.lb.Config.LevelBukkitConfig;
  import net.edenor.foldenor.secureseed.Globals;
  import net.edenor.foldenor.secureseed.WorldgenCryptoRandom;
  import net.minecraft.Util;
@@ -695,7 +695,7 @@ index d06b4e05f375691fbc6f4a56d4d91a4d5b3b0f00..0d408c415425299f40459ce00bc53f53
          List<Pair<BlockPos, Integer>> list = Lists.newLinkedList();
          int k = geodeConfiguration.distributionPoints.sample(randomSource);
 -        WorldgenRandom worldgenRandom = new WorldgenCryptoRandom(0, 0, Globals.Salt.GEODE_FEATURE, 0);
-+        WorldgenRandom worldgenRandom = GlobalConfiguration.get().foldenor.enableSecureSeed
++        WorldgenRandom worldgenRandom = LevelBukkitConfig.foldenor.enableSecureSeed
 +                ? new WorldgenCryptoRandom(0, 0, Globals.Salt.GEODE_FEATURE, 0)
 +                : new WorldgenRandom(new LegacyRandomSource(worldGenLevel.getSeed()));
 +
@@ -754,7 +754,7 @@ index d06b4e05f375691fbc6f4a56d4d91a4d5b3b0f00..0d408c415425299f40459ce00bc53f53
                      }
                  } else if (u >= g) {
 diff --git a/src/main/java/net/minecraft/world/level/levelgen/structure/Structure.java b/src/main/java/net/minecraft/world/level/levelgen/structure/Structure.java
-index c82b4e44fea4539dac0651d97ecd98b539b919ee..87e010646bf6d3a57076f0de9eaa9bbd456e1f1e 100644
+index c82b4e44fea4539dac0651d97ecd98b539b919ee..b4b2814ece5255269d05bdacce87356ef3635b47 100644
 --- a/src/main/java/net/minecraft/world/level/levelgen/structure/Structure.java
 +++ b/src/main/java/net/minecraft/world/level/levelgen/structure/Structure.java
 @@ -10,6 +10,8 @@ import java.util.Optional;
@@ -762,7 +762,7 @@ index c82b4e44fea4539dac0651d97ecd98b539b919ee..87e010646bf6d3a57076f0de9eaa9bbd
  import java.util.function.Function;
  import java.util.function.Predicate;
 +
-+import io.papermc.paper.configuration.GlobalConfiguration;
++import dev.paged.lb.Config.LevelBukkitConfig;
  import net.minecraft.core.BlockPos;
  import net.minecraft.core.Holder;
  import net.minecraft.core.HolderSet;
@@ -785,7 +785,7 @@ index c82b4e44fea4539dac0651d97ecd98b539b919ee..87e010646bf6d3a57076f0de9eaa9bbd
 -            return new WorldgenCryptoRandom(
 -                    chunkPos.x, chunkPos.z, Globals.Salt.GENERATE_FEATURE, seed
 -            );
-+            if (GlobalConfiguration.get().foldenor.enableSecureSeed) {
++            if (LevelBukkitConfig.foldenor.enableSecureSeed) {
 +                return new WorldgenCryptoRandom(
 +                        chunkPos.x, chunkPos.z, Globals.Salt.GENERATE_FEATURE, seed
 +                );
@@ -798,7 +798,7 @@ index c82b4e44fea4539dac0651d97ecd98b539b919ee..87e010646bf6d3a57076f0de9eaa9bbd
      }
  
 diff --git a/src/main/java/net/minecraft/world/level/levelgen/structure/placement/RandomSpreadStructurePlacement.java b/src/main/java/net/minecraft/world/level/levelgen/structure/placement/RandomSpreadStructurePlacement.java
-index 6538fcee874640b4ec62bddf8b00f8fea8e92e1b..1beece6449e09bfcea53e30046af138b9abf7720 100644
+index 6538fcee874640b4ec62bddf8b00f8fea8e92e1b..5877b92ea31c2f00a96d12998358ace656460de5 100644
 --- a/src/main/java/net/minecraft/world/level/levelgen/structure/placement/RandomSpreadStructurePlacement.java
 +++ b/src/main/java/net/minecraft/world/level/levelgen/structure/placement/RandomSpreadStructurePlacement.java
 @@ -3,8 +3,10 @@ package net.minecraft.world.level.levelgen.structure.placement;
@@ -808,7 +808,7 @@ index 6538fcee874640b4ec62bddf8b00f8fea8e92e1b..1beece6449e09bfcea53e30046af138b
 +
  import java.util.Optional;
  
-+import io.papermc.paper.configuration.GlobalConfiguration;
++import dev.paged.lb.Config.LevelBukkitConfig;
  import net.edenor.foldenor.secureseed.Globals;
  import net.edenor.foldenor.secureseed.WorldgenCryptoRandom;
  import net.minecraft.core.Vec3i;
@@ -901,7 +901,7 @@ index 6538fcee874640b4ec62bddf8b00f8fea8e92e1b..1beece6449e09bfcea53e30046af138b
 +
 +        // LevelBukkit start
 +        WorldgenRandom worldgenRandom;
-+        if (GlobalConfiguration.get().foldenor.enableSecureSeed) {
++        if (LevelBukkitConfig.foldenor.enableSecureSeed) {
 +            worldgenRandom = new WorldgenCryptoRandom(
 +                    i, j, Globals.Salt.POTENTIONAL_FEATURE, this.salt
 +            );
