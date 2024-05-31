@@ -3,3 +3,4 @@
 - https://github.com/DivineMC/DivineMC
 - https://github.com/Edenor-Minecraft/Foldenor
 - https://github.com/pufferfish-gg/Pufferfish
+- https://github.com/Cryptite/Slice
