@@ -1,0 +1,264 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Fri, 31 May 2024 20:37:00 +0800
+Subject: [PATCH] Purpur: Lobotomize stuck villagers
+
+
+diff --git a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
+index af074a37104942af41e26e7ccb51274b823a4602..e25a8b3e2ab5b76de964c22357406cbacd1903ae 100644
+--- a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
++++ b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
+@@ -17,26 +17,39 @@ public class LevelBukkitConfig {
+                 configFile.createNewFile();
+             }
+             YamlConfiguration configuration = YamlConfiguration.loadConfiguration(configFile);
++
+             configuration.addDefault("foldenor.enableSecureSeed", false);
+             configuration.addDefault("divine.recipeManagerOptimization", true);
++
+             configuration.addDefault("purpur.world.farmlandGetsMoistFromBelow", true);
+             configuration.addDefault("purpur.world.sensorOptimization", true);
++
+             configuration.addDefault("purpur.world.skeletonHeadVisibilityPercent", 0.5D);
+             configuration.addDefault("purpur.world.zombieHeadVisibilityPercent", 0.5D);
+             configuration.addDefault("purpur.world.creeperHeadVisibilityPercent", 0.5D);
+             configuration.addDefault("purpur.world.piglinHeadVisibilityPercent", 0.5D);
++
++            configuration.addDefault("purpur.world.villagerLobotomizeCheckInterval", 100);
++            configuration.addDefault("purpur.world.villagerLobotomizeEnabled", false);
++            configuration.addDefault("purpur.world.villagerLobotomizeWaitUntilTradeLocked", false);
+             configuration.options().copyDefaults(true);
+             configuration.save(configFile);
+ 
+             foldenor.enableSecureSeed = configuration.getBoolean("foldenor.enableSecureSeed");
+             divine.recipeManagerOptimization = configuration.getBoolean("divine.recipeManagerOptimization");
++
+             purpur.world.farmlandGetsMoistFromBelow = configuration.getBoolean("purpur.world.farmlandGetsMoistFromBelow");
+             purpur.world.sensorOptimization = configuration.getBoolean("purpur.world.sensorOptimization");
++
+             purpur.world.skeletonHeadVisibilityPercent = configuration.getDouble("purpur.world.skeletonHeadVisibilityPercent");
+             purpur.world.zombieHeadVisibilityPercent = configuration.getDouble("purpur.world.zombieHeadVisibilityPercent");
+             purpur.world.creeperHeadVisibilityPercent = configuration.getDouble("purpur.world.creeperHeadVisibilityPercent");
+             purpur.world.piglinHeadVisibilityPercent = configuration.getDouble("purpur.world.piglinHeadVisibilityPercent");
+ 
++            purpur.world.villagerLobotomizeCheckInterval = configuration.getInt("purpur.world.villagerLobotomizeCheckInterval");
++            purpur.world.villagerLobotomizeEnabled = configuration.getBoolean("purpur.world.villagerLobotomizeEnabled");
++            purpur.world.villagerLobotomizeWaitUntilTradeLocked = configuration.getBoolean("purpur.world.villagerLobotomizeWaitUntilTradeLocked");
++
+             // Pufferfish start
+             // Attempt to detect vectorization
+             try {
+@@ -74,10 +87,15 @@ public class LevelBukkitConfig {
+         public static class world {
+             public static boolean farmlandGetsMoistFromBelow = true;
+             public static boolean sensorOptimization = true;
++
+             public static double skeletonHeadVisibilityPercent = 0;
+             public static double zombieHeadVisibilityPercent = 0.5D;
+             public static double creeperHeadVisibilityPercent = 0.5D;
+             public static double piglinHeadVisibilityPercent = 0.5D;
++
++            public static int villagerLobotomizeCheckInterval = 100;
++            public static boolean villagerLobotomizeEnabled = false;
++            public static boolean villagerLobotomizeWaitUntilTradeLocked = false;
+         }
+     }
+ }
+diff --git a/src/main/java/net/minecraft/world/entity/npc/Villager.java b/src/main/java/net/minecraft/world/entity/npc/Villager.java
+index 90d8cd94d987416a3e9f6e6d47a5b366d4687fe0..bcdff7b3b000118f90c85d95e509fe0af0861bff 100644
+--- a/src/main/java/net/minecraft/world/entity/npc/Villager.java
++++ b/src/main/java/net/minecraft/world/entity/npc/Villager.java
+@@ -8,6 +8,7 @@ import com.mojang.datafixers.util.Pair;
+ import com.mojang.logging.LogUtils;
+ import com.mojang.serialization.DataResult;
+ import com.mojang.serialization.Dynamic;
++import dev.paged.lb.Config.LevelBukkitConfig;
+ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+ import java.util.Iterator;
+ import java.util.List;
+@@ -143,6 +144,10 @@ public class Villager extends AbstractVillager implements ReputationEventHandler
+         return holder.is(PoiTypes.MEETING);
+     });
+ 
++    private boolean isLobotomized = false;
++    public boolean isLobotomized() { return this.isLobotomized; } // Purpur
++    private int notLobotomizedCount = 0; // Purpur
++
+     public long nextGolemPanic = -1; // Pufferfish
+ 
+     public Villager(EntityType<? extends Villager> entityType, Level world) {
+@@ -158,6 +163,48 @@ public class Villager extends AbstractVillager implements ReputationEventHandler
+         this.setVillagerData(this.getVillagerData().setType(type).setProfession(VillagerProfession.NONE));
+     }
+ 
++    private boolean checkLobotomized() {
++        int interval = LevelBukkitConfig.purpur.world.villagerLobotomizeCheckInterval;
++        boolean shouldCheckForTradeLocked = LevelBukkitConfig.purpur.world.villagerLobotomizeWaitUntilTradeLocked;
++        if (this.notLobotomizedCount > 3) {
++            // check half as often if not lobotomized for the last 3+ consecutive checks
++            interval *= 2;
++        }
++        if (this.level().getGameTime() % interval == 0) {
++            // offset Y for short blocks like dirt_path/farmland
++            this.isLobotomized = !(shouldCheckForTradeLocked && this.getVillagerXp() == 0) && !canTravelFrom(BlockPos.containing(this.position().x, this.getBoundingBox().minY + 0.0625D, this.position().z));
++
++            if (this.isLobotomized) {
++                this.notLobotomizedCount = 0;
++            } else {
++                this.notLobotomizedCount++;
++            }
++        }
++        return this.isLobotomized;
++    }
++
++    private boolean canTravelFrom(BlockPos pos) {
++        return canTravelTo(pos.east()) || canTravelTo(pos.west()) || canTravelTo(pos.north()) || canTravelTo(pos.south());
++    }
++
++    private boolean canTravelTo(BlockPos pos) {
++        net.minecraft.world.level.block.state.BlockState state = this.level().getBlockStateIfLoaded(pos);
++        if (state == null) {
++            // chunk not loaded
++            return false;
++        }
++        net.minecraft.world.level.block.Block bottom = state.getBlock();
++        if (bottom instanceof net.minecraft.world.level.block.FenceBlock ||
++                bottom instanceof net.minecraft.world.level.block.FenceGateBlock ||
++                bottom instanceof net.minecraft.world.level.block.WallBlock) {
++            // bottom block is too tall to get over
++            return false;
++        }
++        net.minecraft.world.level.block.Block top = level().getBlockState(pos.above()).getBlock();
++        // only if both blocks have no collision
++        return !bottom.hasCollision && !top.hasCollision;
++    }
++
+     @Override
+     public Brain<Villager> getBrain() {
+         return (Brain<Villager>) super.getBrain(); // CraftBukkit - decompile error
+@@ -255,13 +302,19 @@ public class Villager extends AbstractVillager implements ReputationEventHandler
+         // Paper start
+         this.customServerAiStep(false);
+     }
+-    protected void customServerAiStep(final boolean inactive) {
++    protected void customServerAiStep(boolean inactive) {
+         // Paper end
+         this.level().getProfiler().push("villagerBrain");
+         // Pufferfish start
++        if (LevelBukkitConfig.purpur.world.villagerLobotomizeEnabled) {
++            // treat as inactive if lobotomized
++            inactive = inactive || checkLobotomized();
++        } else {
++            this.isLobotomized = false;
++        }
+         if (!inactive && this.behaviorTick++ % this.activatedPriority == 0) {
+             this.getBrain().tick((ServerLevel) this.level(), this); // Paper
+-        }
++        } else if (this.isLobotomized && shouldRestock()) restock();
+         // Pufferfish end
+         this.level().getProfiler().pop();
+         if (this.assignProfessionWhenSpawned) {
+@@ -378,14 +431,9 @@ public class Villager extends AbstractVillager implements ReputationEventHandler
+     }
+ 
+     private void resetSpecialPrices() {
+-        Iterator iterator = this.getOffers().iterator();
+-
+-        while (iterator.hasNext()) {
+-            MerchantOffer merchantrecipe = (MerchantOffer) iterator.next();
+-
++        for (MerchantOffer merchantrecipe : this.getOffers()) {
+             merchantrecipe.resetSpecialPriceDiff();
+         }
+-
+     }
+ 
+     @Override
+@@ -400,11 +448,7 @@ public class Villager extends AbstractVillager implements ReputationEventHandler
+ 
+     public void restock() {
+         this.updateDemand();
+-        Iterator iterator = this.getOffers().iterator();
+-
+-        while (iterator.hasNext()) {
+-            MerchantOffer merchantrecipe = (MerchantOffer) iterator.next();
+-
++        for (MerchantOffer merchantrecipe : this.getOffers()) {
+             // CraftBukkit start
+             VillagerReplenishTradeEvent event = new VillagerReplenishTradeEvent((org.bukkit.entity.Villager) this.getBukkitEntity(), merchantrecipe.asBukkit());
+             Bukkit.getPluginManager().callEvent(event);
+@@ -475,11 +519,7 @@ public class Villager extends AbstractVillager implements ReputationEventHandler
+         int i = 2 - this.numberOfRestocksToday;
+ 
+         if (i > 0) {
+-            Iterator iterator = this.getOffers().iterator();
+-
+-            while (iterator.hasNext()) {
+-                MerchantOffer merchantrecipe = (MerchantOffer) iterator.next();
+-
++            for (MerchantOffer merchantrecipe : this.getOffers()) {
+                 // CraftBukkit start
+                 VillagerReplenishTradeEvent event = new VillagerReplenishTradeEvent((org.bukkit.entity.Villager) this.getBukkitEntity(), merchantrecipe.asBukkit());
+                 Bukkit.getPluginManager().callEvent(event);
+@@ -498,11 +538,7 @@ public class Villager extends AbstractVillager implements ReputationEventHandler
+     }
+ 
+     private void updateDemand() {
+-        Iterator iterator = this.getOffers().iterator();
+-
+-        while (iterator.hasNext()) {
+-            MerchantOffer merchantrecipe = (MerchantOffer) iterator.next();
+-
++        for (MerchantOffer merchantrecipe : this.getOffers()) {
+             merchantrecipe.updateDemand();
+         }
+ 
+@@ -512,10 +548,7 @@ public class Villager extends AbstractVillager implements ReputationEventHandler
+         int i = this.getPlayerReputation(player);
+ 
+         if (i != 0) {
+-            Iterator iterator = this.getOffers().iterator();
+-
+-            while (iterator.hasNext()) {
+-                MerchantOffer merchantrecipe = (MerchantOffer) iterator.next();
++            for (MerchantOffer merchantrecipe : this.getOffers()) {
+                 if (merchantrecipe.ignoreDiscounts) continue; // Paper - Add ignore discounts API
+ 
+                 merchantrecipe.addToSpecialPriceDiff(-Mth.floor((float) i * merchantrecipe.getPriceMultiplier()));
+@@ -525,10 +558,7 @@ public class Villager extends AbstractVillager implements ReputationEventHandler
+         if (player.hasEffect(MobEffects.HERO_OF_THE_VILLAGE)) {
+             MobEffectInstance mobeffect = player.getEffect(MobEffects.HERO_OF_THE_VILLAGE);
+             int j = mobeffect.getAmplifier();
+-            Iterator iterator1 = this.getOffers().iterator();
+-
+-            while (iterator1.hasNext()) {
+-                MerchantOffer merchantrecipe1 = (MerchantOffer) iterator1.next();
++            for (MerchantOffer merchantrecipe1 : this.getOffers()) {
+                 if (merchantrecipe1.ignoreDiscounts) continue; // Paper - Add ignore discounts API
+                 double d0 = 0.3D + 0.0625D * (double) j;
+                 int k = (int) Math.floor(d0 * (double) merchantrecipe1.getBaseCostA().getCount());
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftVillager.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftVillager.java
+index 771eb799b032fcf4fc33c5e445b7fa252baee72b..6d554d387b2622007f98e75a2e6491665dc1c75a 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftVillager.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftVillager.java
+@@ -20,7 +20,7 @@ import org.bukkit.event.entity.CreatureSpawnEvent;
+ 
+ // Paper start
+ import com.destroystokyo.paper.entity.villager.Reputation;
+-import com.google.common.collect.Maps;
++
+ import java.util.Map;
+ import java.util.UUID;
+ // Paper end
+@@ -260,4 +260,11 @@ public class CraftVillager extends CraftAbstractVillager implements Villager {
+         getHandle().getGossips().gossips.clear();
+     }
+     // Paper end
++
++    // Purpur start
++    @Override
++    public boolean isLobotomized() {
++        return getHandle().isLobotomized();
++    }
++    // Purpur end
+ }
