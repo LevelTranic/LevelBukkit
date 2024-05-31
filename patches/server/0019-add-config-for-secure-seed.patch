@@ -212,6 +212,28 @@ index 4d199839b6a2551783a8ed98ce181cc92e56d0a7..7c9d7e6130684adbf5e7af14f7819372
          return this.chunkMap.generator();
      }
  
+diff --git a/src/main/java/net/minecraft/server/level/ServerLevel.java b/src/main/java/net/minecraft/server/level/ServerLevel.java
+index c4c5287f446904dd5d6818bd1ec12a4f30886ac6..bdfeecd1084e18d21274e5c92da02f1406d7803e 100644
+--- a/src/main/java/net/minecraft/server/level/ServerLevel.java
++++ b/src/main/java/net/minecraft/server/level/ServerLevel.java
+@@ -6,6 +6,7 @@ import com.google.common.collect.Lists;
+ import com.mojang.datafixers.DataFixer;
+ import com.mojang.datafixers.util.Pair;
+ import com.mojang.logging.LogUtils;
++import dev.paged.lb.Config.LevelBukkitConfig;
+ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+ import it.unimi.dsi.fastutil.longs.LongSet;
+@@ -806,7 +807,8 @@ public class ServerLevel extends Level implements WorldGenLevel {
+             chunkgenerator = new org.bukkit.craftbukkit.generator.CustomChunkGenerator(this, chunkgenerator, gen);
+         }
+         // CraftBukkit end
+-        net.edenor.foldenor.secureseed.Globals.setupGlobals(this);
++        if (LevelBukkitConfig.foldenor.enableSecureSeed)
++            net.edenor.foldenor.secureseed.Globals.setupGlobals(this);
+         boolean flag2 = minecraftserver.forceSynchronousWrites();
+         DataFixer datafixer = minecraftserver.getFixerUpper();
+         this.entityStorage = new EntityRegionFileStorage(convertable_conversionsession.getDimensionPath(resourcekey).resolve("entities"), flag2); // Paper - rewrite chunk system  //EntityPersistentStorage<Entity> entitypersistentstorage = new EntityStorage(this, convertable_conversionsession.getDimensionPath(resourcekey).resolve("entities"), datafixer, flag2, minecraftserver);
 diff --git a/src/main/java/net/minecraft/world/entity/monster/Slime.java b/src/main/java/net/minecraft/world/entity/monster/Slime.java
 index 14f6cb1a70a6446c907f418ee3289b2190219314..493e0fad335d4f56ac9fd60c0a19a3c90c2960fa 100644
 --- a/src/main/java/net/minecraft/world/entity/monster/Slime.java
