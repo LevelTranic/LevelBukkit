@@ -1,0 +1,1246 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Thu, 30 May 2024 21:53:42 +0800
+Subject: [PATCH] add config for secure seed
+
+
+diff --git a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
+new file mode 100644
+index 0000000000000000000000000000000000000000..9870278a4e34c876219e784702e7d1b5e1b5519d
+--- /dev/null
++++ b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
+@@ -0,0 +1,29 @@
++package dev.paged.lb.Config;
++
++import org.bukkit.configuration.file.YamlConfiguration;
++
++import java.io.File;
++import java.io.IOException;
++
++public class LevelBukkitConfig {
++    public static class foldenor {
++        public static boolean enableSecureSeed = false;
++    }
++
++    public static void load() {
++        try {
++            File configFile = new File("levelbukkit.yml");
++            if (!configFile.exists()) {
++                configFile.createNewFile();
++            }
++            YamlConfiguration configuration = YamlConfiguration.loadConfiguration(configFile);
++            configuration.addDefault("foldenor.enableSecureSeed", false);
++            configuration.options().copyDefaults(true);
++            configuration.save(configFile);
++
++            foldenor.enableSecureSeed = configuration.getBoolean("foldenor.enableSecureSeed");
++        } catch (IOException e) {
++            throw new RuntimeException(e);
++        }
++    }
++}
+diff --git a/src/main/java/io/papermc/paper/configuration/GlobalConfiguration.java b/src/main/java/io/papermc/paper/configuration/GlobalConfiguration.java
+index c5f99a5fe623982f41f3de888c902296abfebab7..e45e2303ac69ce3a158bebb52bc8cbd96ceb3f71 100644
+--- a/src/main/java/io/papermc/paper/configuration/GlobalConfiguration.java
++++ b/src/main/java/io/papermc/paper/configuration/GlobalConfiguration.java
+@@ -23,7 +23,7 @@ import java.util.Objects;
+ @SuppressWarnings({"CanBeFinal", "FieldCanBeLocal", "FieldMayBeFinal", "NotNullFieldNotInitialized", "InnerClassMayBeStatic"})
+ public class GlobalConfiguration extends ConfigurationPart {
+     private static final Logger LOGGER = LogUtils.getLogger();
+-    static final int CURRENT_VERSION = 30; // (when you change the version, change the comment, so it conflicts on rebases): <insert changes here>
++    static final int CURRENT_VERSION = 29; // (when you change the version, change the comment, so it conflicts on rebases): <insert changes here>
+     private static GlobalConfiguration instance;
+     public static boolean isFirstStart = false;
+     public static GlobalConfiguration get() {
+@@ -114,13 +114,6 @@ public class GlobalConfiguration extends ConfigurationPart {
+         }
+     }
+ 
+-    public Foldenor foldenor;
+-
+-    public class Foldenor extends ConfigurationPart {
+-        public boolean sendNullEntityPackets = false;
+-        public boolean vanilaEndPortalTeleportation = true;
+-    }
+-
+     public Proxies proxies;
+ 
+     public class Proxies extends ConfigurationPart {
+diff --git a/src/main/java/net/minecraft/server/Main.java b/src/main/java/net/minecraft/server/Main.java
+index bc391d27399d8c22e78735ca39aa8ab45efb6413..1b46811f801535eebc70e26be20b7078ec9ae4a6 100644
+--- a/src/main/java/net/minecraft/server/Main.java
++++ b/src/main/java/net/minecraft/server/Main.java
+@@ -16,6 +16,8 @@ import java.nio.file.Paths;
+ import java.util.Optional;
+ import java.util.function.BooleanSupplier;
+ import javax.annotation.Nullable;
++
++import dev.paged.lb.Config.LevelBukkitConfig;
+ import joptsimple.NonOptionArgumentSpec;
+ import joptsimple.OptionParser;
+ import joptsimple.OptionSet;
+@@ -117,6 +119,8 @@ public class Main {
+                 JvmProfiler.INSTANCE.start(Environment.SERVER);
+             }
+ 
++            LevelBukkitConfig.load();
++
+             io.papermc.paper.plugin.PluginInitializerManager.load(optionset); // Paper
+             Bootstrap.bootStrap();
+             Bootstrap.validate();
+diff --git a/src/main/java/net/minecraft/server/commands/SeedCommand.java b/src/main/java/net/minecraft/server/commands/SeedCommand.java
+index 0dfd9e113225f021175bdf5ee7b01b387ba29652..dcbf272d034135230eb193543509f3751a2871fb 100644
+--- a/src/main/java/net/minecraft/server/commands/SeedCommand.java
++++ b/src/main/java/net/minecraft/server/commands/SeedCommand.java
+@@ -1,6 +1,7 @@
+ package net.minecraft.server.commands;
+ 
+ import com.mojang.brigadier.CommandDispatcher;
++import dev.paged.lb.Config.LevelBukkitConfig;
+ import net.edenor.foldenor.secureseed.Globals;
+ import net.minecraft.ChatFormatting;
+ import net.minecraft.commands.CommandSourceStack;
+@@ -14,15 +15,20 @@ public class SeedCommand {
+     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, boolean dedicated) {
+         dispatcher.register(Commands.literal("seed").requires(source -> !dedicated || source.hasPermission(2)).executes(context -> {
+             long l = context.getSource().getLevel().getSeed();
+-            Globals.setupGlobals(context.getSource().getLevel());
+-            String seedStr = Globals.seedToString(Globals.worldSeed);
++            if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++                Globals.setupGlobals(context.getSource().getLevel());
++                String seedStr = Globals.seedToString(Globals.worldSeed);
+ 
+-            Component seedComponent = ComponentUtils.wrapInSquareBrackets(Component.literal(String.valueOf(l)).withStyle((style) -> style.withColor(ChatFormatting.GREEN).withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, String.valueOf(l))).withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.translatable("chat.copy.click"))).withInsertion(String.valueOf(l))));
++                Component seedComponent = ComponentUtils.wrapInSquareBrackets(Component.literal(String.valueOf(l)).withStyle((style) -> style.withColor(ChatFormatting.GREEN).withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, String.valueOf(l))).withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.translatable("chat.copy.click"))).withInsertion(String.valueOf(l))));
+ 
+-            Component featureSeedComponent = ComponentUtils.wrapInSquareBrackets(Component.translatable("chat.copy.click").withStyle((style) -> style.withColor(ChatFormatting.GREEN).withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, seedStr)).withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.translatable("chat.copy.click"))).withInsertion(seedStr)));
++                Component featureSeedComponent = ComponentUtils.wrapInSquareBrackets(Component.translatable("chat.copy.click").withStyle((style) -> style.withColor(ChatFormatting.GREEN).withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, seedStr)).withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.translatable("chat.copy.click"))).withInsertion(seedStr)));
+ 
+-            context.getSource().sendSuccess(() -> Component.translatable("commands.seed.success", seedComponent), false);
+-            context.getSource().sendSuccess(() -> Component.translatable("Feature seed: %s", featureSeedComponent), false);
++                context.getSource().sendSuccess(() -> Component.translatable("commands.seed.success", seedComponent), false);
++                context.getSource().sendSuccess(() -> Component.translatable("Feature seed: %s", featureSeedComponent), false);
++            } else {
++                Component component = ComponentUtils.copyOnClickText(String.valueOf(l));
++                context.getSource().sendSuccess(() -> Component.translatable("commands.seed.success", component), false);
++            }
+             return (int)l;
+         }));
+     }
+diff --git a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
+index 49555381641e9cf9a5c3f00db1e193c9d992637b..5631fe6d322173fb8fb6732bb30618f18277af1c 100644
+--- a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
++++ b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
+@@ -204,11 +204,13 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+         org.spigotmc.SpigotConfig.init((java.io.File) this.options.valueOf("spigot-settings"));
+         org.spigotmc.SpigotConfig.registerCommands();
+         // Spigot end
+-        io.papermc.paper.util.ObfHelper.INSTANCE.getClass(); // Paper - load mappings for stacktrace deobf and etc.
++
+         // Paper start - initialize global and world-defaults configuration
+         this.paperConfigurations.initializeGlobalConfiguration(this.registryAccess());
+         this.paperConfigurations.initializeWorldDefaultsConfiguration(this.registryAccess());
+         // Paper end - initialize global and world-defaults configuration
++
++        io.papermc.paper.util.ObfHelper.INSTANCE.getClass(); // Paper - load mappings for stacktrace deobf and etc.
+         me.earthme.luminol.config.LuminolConfig.loadConfig(); //Luminol - load config file
+         me.earthme.luminol.config.LuminolConfig.setupLatch(); //Luminol - load config file
+         // Paper start - fix converting txt to json file; convert old users earlier after PlayerList creation but before file load/save
+diff --git a/src/main/java/net/minecraft/server/dedicated/DedicatedServerProperties.java b/src/main/java/net/minecraft/server/dedicated/DedicatedServerProperties.java
+index 8484f8b44306fe170c2d49939759a16d3b28803a..4cf03ddf5ce90663f8a139bc0e7511f909f866d3 100644
+--- a/src/main/java/net/minecraft/server/dedicated/DedicatedServerProperties.java
++++ b/src/main/java/net/minecraft/server/dedicated/DedicatedServerProperties.java
+@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
+ import java.util.regex.Pattern;
+ import javax.annotation.Nullable;
+ 
++import dev.paged.lb.Config.LevelBukkitConfig;
+ import net.edenor.foldenor.secureseed.Globals;
+ import net.minecraft.core.Holder;
+ import net.minecraft.core.HolderLookup;
+@@ -162,16 +163,21 @@ public class DedicatedServerProperties extends Settings<DedicatedServerPropertie
+         boolean flag = this.get("generate-structures", true);
+         long i = WorldOptions.parseSeed(s).orElse(WorldOptions.randomSeed());
+ 
+-        // Foldenor start - Feature secure seed
+-        String featureSeedString = this.get("feature-level-seed", "");
+-        long[] featureSeed;
+-        if (featureSeedString.isEmpty()) {
+-            featureSeed = Globals.createRandomWorldSeed();
++        // LevelBukkit start
++        if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++            // Foldenor start - Feature secure seed
++            String featureSeedString = this.get("feature-level-seed", "");
++            long[] featureSeed;
++            if (featureSeedString.isEmpty()) {
++                featureSeed = Globals.createRandomWorldSeed();
++            } else {
++                featureSeed = Globals.parseSeed(featureSeedString).orElseGet(Globals::createRandomWorldSeed);
++            }
++            this.worldOptions = new WorldOptions(i, featureSeed, flag, false);
++            // Foldenor end - Feature secure seed
+         } else {
+-            featureSeed = Globals.parseSeed(featureSeedString).orElseGet(Globals::createRandomWorldSeed);
++            this.worldOptions = new WorldOptions(i, flag, false);
+         }
+-        this.worldOptions = new WorldOptions(i, featureSeed, flag, false);
+-        // Foldenor end - Feature secure seed
+ 
+         this.worldDimensionData = new DedicatedServerProperties.WorldDimensionData((JsonObject) this.get("generator-settings", (s1) -> {
+             return GsonHelper.parse(!s1.isEmpty() ? s1 : "{}");
+diff --git a/src/main/java/net/minecraft/server/level/ServerChunkCache.java b/src/main/java/net/minecraft/server/level/ServerChunkCache.java
+index 4d199839b6a2551783a8ed98ce181cc92e56d0a7..7c9d7e6130684adbf5e7af14f7819372ed9ad47c 100644
+--- a/src/main/java/net/minecraft/server/level/ServerChunkCache.java
++++ b/src/main/java/net/minecraft/server/level/ServerChunkCache.java
+@@ -16,6 +16,9 @@ import java.util.function.BooleanSupplier;
+ import java.util.function.Consumer;
+ import java.util.function.Supplier;
+ import javax.annotation.Nullable;
++
++import dev.paged.lb.Config.LevelBukkitConfig;
++import net.edenor.foldenor.secureseed.Globals;
+ import net.minecraft.Util;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.SectionPos;
+@@ -675,6 +678,9 @@ public class ServerChunkCache extends ChunkSource {
+     }
+ 
+     public ChunkGenerator getGenerator() {
++        if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++            Globals.setupGlobals(level);
++        }
+         return this.chunkMap.generator();
+     }
+ 
+diff --git a/src/main/java/net/minecraft/world/entity/monster/Slime.java b/src/main/java/net/minecraft/world/entity/monster/Slime.java
+index 14f6cb1a70a6446c907f418ee3289b2190219314..493e0fad335d4f56ac9fd60c0a19a3c90c2960fa 100644
+--- a/src/main/java/net/minecraft/world/entity/monster/Slime.java
++++ b/src/main/java/net/minecraft/world/entity/monster/Slime.java
+@@ -3,6 +3,8 @@ package net.minecraft.world.entity.monster;
+ import com.google.common.annotations.VisibleForTesting;
+ import java.util.EnumSet;
+ import javax.annotation.Nullable;
++
++import dev.paged.lb.Config.LevelBukkitConfig;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.particles.ParticleOptions;
+ import net.minecraft.core.particles.ParticleTypes;
+@@ -357,7 +359,12 @@ public class Slime extends Mob implements Enemy {
+                 }
+ 
+                 ChunkPos chunkcoordintpair = new ChunkPos(pos);
+-                boolean flag = world.getMinecraftWorld().paperConfig().entities.spawning.allChunksAreSlimeChunks || world.getChunk(chunkcoordintpair.x, chunkcoordintpair.z).isSlimeChunk(); // Spigot // Paper
++                boolean flag;
++                if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++                    flag = world.getMinecraftWorld().paperConfig().entities.spawning.allChunksAreSlimeChunks || world.getChunk(chunkcoordintpair.x, chunkcoordintpair.z).isSlimeChunk(); // Spigot // Paper
++                } else {
++                    flag = world.getMinecraftWorld().paperConfig().entities.spawning.allChunksAreSlimeChunks || WorldgenRandom.seedSlimeChunk(chunkcoordintpair.x, chunkcoordintpair.z, ((WorldGenLevel) world).getSeed(), world.getMinecraftWorld().spigotConfig.slimeSeed).nextInt(10) == 0; // Spigot // Paper
++                }
+ 
+                 // Paper start - Replace rules for Height in Slime Chunks
+                 final double maxHeightSlimeChunk = world.getMinecraftWorld().paperConfig().entities.spawning.slimeSpawnHeight.slimeChunk.maximum;
+diff --git a/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java b/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java
+index 65a2b5cb6493163ca235a5b159f26fdd29d650db..d41698ad66f8a326e390606a5371aad98d7f6629 100644
+--- a/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java
++++ b/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java
+@@ -3,6 +3,7 @@ package net.minecraft.world.level.chunk;
+ import com.google.common.base.Suppliers;
+ import com.mojang.datafixers.util.Pair;
+ import com.mojang.serialization.Codec;
++import dev.paged.lb.Config.LevelBukkitConfig;
+ import it.unimi.dsi.fastutil.ints.IntArraySet;
+ import it.unimi.dsi.fastutil.longs.LongSet;
+ import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
+@@ -59,10 +60,7 @@ import net.minecraft.world.level.biome.BiomeManager;
+ import net.minecraft.world.level.biome.BiomeSource;
+ import net.minecraft.world.level.biome.FeatureSorter;
+ import net.minecraft.world.level.biome.MobSpawnSettings;
+-import net.minecraft.world.level.levelgen.GenerationStep;
+-import net.minecraft.world.level.levelgen.Heightmap;
+-import net.minecraft.world.level.levelgen.RandomState;
+-import net.minecraft.world.level.levelgen.WorldgenRandom;
++import net.minecraft.world.level.levelgen.*;
+ import net.minecraft.world.level.levelgen.blending.Blender;
+ import net.minecraft.world.level.levelgen.placement.PlacedFeature;
+ import net.minecraft.world.level.levelgen.structure.BoundingBox;
+@@ -85,9 +83,7 @@ public abstract class ChunkGenerator {
+     public final Function<Holder<Biome>, BiomeGenerationSettings> generationSettingsGetter;
+ 
+     public ChunkGenerator(BiomeSource biomeSource) {
+-        this(biomeSource, (holder) -> {
+-            return ((Biome) holder.value()).getGenerationSettings();
+-        });
++        this(biomeSource, (holder) -> ((Biome) holder.value()).getGenerationSettings());
+     }
+ 
+     public ChunkGenerator(BiomeSource biomeSource, Function<Holder<Biome>, BiomeGenerationSettings> generationSettingsGetter) {
+@@ -140,19 +136,12 @@ public abstract class ChunkGenerator {
+         }
+         // Paper end
+         ChunkGeneratorStructureState chunkgeneratorstructurestate = world.getChunkSource().getGeneratorState();
+-        Map<StructurePlacement, Set<Holder<Structure>>> map = new Object2ObjectArrayMap();
+-        Iterator iterator = structures.iterator();
++        Map<StructurePlacement, Set<Holder<Structure>>> map = new Object2ObjectArrayMap<>();
+ 
+-        while (iterator.hasNext()) {
+-            Holder<Structure> holder = (Holder) iterator.next();
+-            Iterator iterator1 = chunkgeneratorstructurestate.getPlacementsForStructure(holder).iterator();
++        for (Holder<Structure> structure : structures) {
+ 
+-            while (iterator1.hasNext()) {
+-                StructurePlacement structureplacement = (StructurePlacement) iterator1.next();
+-
+-                ((Set) map.computeIfAbsent(structureplacement, (structureplacement1) -> {
+-                    return new ObjectArraySet();
+-                })).add(holder);
++            for (StructurePlacement structureplacement : chunkgeneratorstructurestate.getPlacementsForStructure(structure)) {
++                (map.computeIfAbsent(structureplacement, (structureplacement1) -> new ObjectArraySet<>())).add(structure);
+             }
+         }
+ 
+@@ -162,19 +151,16 @@ public abstract class ChunkGenerator {
+             Pair<BlockPos, Holder<Structure>> pair = null;
+             double d0 = Double.MAX_VALUE;
+             StructureManager structuremanager = world.structureManager();
+-            List<Entry<StructurePlacement, Set<Holder<Structure>>>> list = new ArrayList(map.size());
+-            Iterator iterator2 = map.entrySet().iterator();
++            List<Entry<StructurePlacement, Set<Holder<Structure>>>> list = new ArrayList<>(map.size());
+ 
+-            while (iterator2.hasNext()) {
+-                Entry<StructurePlacement, Set<Holder<Structure>>> entry = (Entry) iterator2.next();
+-                StructurePlacement structureplacement1 = (StructurePlacement) entry.getKey();
++            for (Entry<StructurePlacement, Set<Holder<Structure>>> placementSetEntry : map.entrySet()) {
++                StructurePlacement structureplacement1 = placementSetEntry.getKey();
+ 
+-                if (structureplacement1 instanceof ConcentricRingsStructurePlacement) {
+-                    ConcentricRingsStructurePlacement concentricringsstructureplacement = (ConcentricRingsStructurePlacement) structureplacement1;
+-                    Pair<BlockPos, Holder<Structure>> pair1 = this.getNearestGeneratedStructure((Set) entry.getValue(), world, structuremanager, center, skipReferencedStructures, concentricringsstructureplacement);
++                if (structureplacement1 instanceof ConcentricRingsStructurePlacement concentricringsstructureplacement) {
++                    Pair<BlockPos, Holder<Structure>> pair1 = this.getNearestGeneratedStructure(placementSetEntry.getValue(), world, structuremanager, center, skipReferencedStructures, concentricringsstructureplacement);
+ 
+                     if (pair1 != null) {
+-                        BlockPos blockposition1 = (BlockPos) pair1.getFirst();
++                        BlockPos blockposition1 = pair1.getFirst();
+                         double d1 = center.distSqr(blockposition1);
+ 
+                         if (d1 < d0) {
+@@ -183,7 +169,7 @@ public abstract class ChunkGenerator {
+                         }
+                     }
+                 } else if (structureplacement1 instanceof RandomSpreadStructurePlacement) {
+-                    list.add(entry);
++                    list.add(placementSetEntry);
+                 }
+             }
+ 
+@@ -193,12 +179,10 @@ public abstract class ChunkGenerator {
+ 
+                 for (int l = 0; l <= radius; ++l) {
+                     boolean flag1 = false;
+-                    Iterator iterator3 = list.iterator();
+ 
+-                    while (iterator3.hasNext()) {
+-                        Entry<StructurePlacement, Set<Holder<Structure>>> entry1 = (Entry) iterator3.next();
+-                        RandomSpreadStructurePlacement randomspreadstructureplacement = (RandomSpreadStructurePlacement) entry1.getKey();
+-                        Pair<BlockPos, Holder<Structure>> pair2 = ChunkGenerator.getNearestGeneratedStructure((Set) entry1.getValue(), world, structuremanager, j, k, l, skipReferencedStructures, chunkgeneratorstructurestate.getLevelSeed(), randomspreadstructureplacement);
++                    for (Entry<StructurePlacement, Set<Holder<Structure>>> structurePlacementSetEntry : list) {
++                        RandomSpreadStructurePlacement randomspreadstructureplacement = (RandomSpreadStructurePlacement) structurePlacementSetEntry.getKey();
++                        Pair<BlockPos, Holder<Structure>> pair2 = ChunkGenerator.getNearestGeneratedStructure(structurePlacementSetEntry.getValue(), world, structuremanager, j, k, l, skipReferencedStructures, chunkgeneratorstructurestate.getLevelSeed(), randomspreadstructureplacement);
+ 
+                         if (pair2 != null) {
+                             flag1 = true;
+@@ -231,11 +215,11 @@ public abstract class ChunkGenerator {
+             Pair<BlockPos, Holder<Structure>> pair = null;
+             double d0 = Double.MAX_VALUE;
+             BlockPos.MutableBlockPos blockposition_mutableblockposition = new BlockPos.MutableBlockPos();
+-            Iterator iterator = list.iterator();
+ 
+-            while (iterator.hasNext()) {
+-                ChunkPos chunkcoordintpair = (ChunkPos) iterator.next();
+-                if (!world.paperConfig().environment.locateStructuresOutsideWorldBorder && !world.getWorldBorder().isChunkInBounds(chunkcoordintpair.x, chunkcoordintpair.z)) { continue; } // Paper - Bound treasure maps to world border
++            for (ChunkPos chunkcoordintpair : list) {
++                if (!world.paperConfig().environment.locateStructuresOutsideWorldBorder && !world.getWorldBorder().isChunkInBounds(chunkcoordintpair.x, chunkcoordintpair.z)) {
++                    continue;
++                } // Paper - Bound treasure maps to world border
+ 
+                 blockposition_mutableblockposition.set(SectionPos.sectionToBlockCoord(chunkcoordintpair.x, 8), 32, SectionPos.sectionToBlockCoord(chunkcoordintpair.z, 8));
+                 double d1 = blockposition_mutableblockposition.distSqr(center);
+@@ -337,7 +321,13 @@ public abstract class ChunkGenerator {
+             Registry<Structure> iregistry = generatoraccessseed.registryAccess().registryOrThrow(Registries.STRUCTURE);
+             Map<Integer, List<Structure>> map = iregistry.stream().collect(Collectors.groupingBy((structure) -> structure.step().ordinal()));
+             List<FeatureSorter.StepFeatureData> list = this.featuresPerStep.get();
+-            WorldgenRandom seededrandom = new WorldgenCryptoRandom(blockposition.getX(), blockposition.getZ(), Globals.Salt.UNDEFINED, 0);
++
++            // LevelBukkit start
++            WorldgenRandom seededrandom = LevelBukkitConfig.foldenor.enableSecureSeed
++                    ? new WorldgenCryptoRandom(blockposition.getX(), blockposition.getZ(), Globals.Salt.UNDEFINED, 0)
++                    : new WorldgenRandom(new XoroshiroRandomSource(RandomSupport.generateUniqueSeed()));
++            // LevelBukkit end
++
+             long i = seededrandom.setDecorationSeed(generatoraccessseed.getSeed(), blockposition.getX(), blockposition.getZ());
+             Set<Holder<Biome>> set = new ObjectArraySet<>();
+ 
+@@ -402,11 +392,11 @@ public abstract class ChunkGenerator {
+ 
+                         while (iterator.hasNext()) {
+                             Holder<Biome> holder = (Holder) iterator.next();
+-                            List<HolderSet<PlacedFeature>> list2 = ((BiomeGenerationSettings) this.generationSettingsGetter.apply(holder)).features();
++                            List<HolderSet<PlacedFeature>> list2 = this.generationSettingsGetter.apply(holder).features();
+ 
+                             if (l < list2.size()) {
+-                                HolderSet<PlacedFeature> holderset = (HolderSet) list2.get(l);
+-                                FeatureSorter.StepFeatureData featuresorter_b = (FeatureSorter.StepFeatureData) list.get(l);
++                                HolderSet<PlacedFeature> holderset = list2.get(l);
++                                FeatureSorter.StepFeatureData featuresorter_b = list.get(l);
+ 
+                                 holderset.stream().map(Holder::value).forEach((placedfeature) -> {
+                                     intarrayset.add(featuresorter_b.indexMapping().applyAsInt(placedfeature));
+@@ -418,13 +408,13 @@ public abstract class ChunkGenerator {
+                         int[] aint = intarrayset.toIntArray();
+ 
+                         Arrays.sort(aint);
+-                        FeatureSorter.StepFeatureData featuresorter_b1 = (FeatureSorter.StepFeatureData) list.get(l);
++                        FeatureSorter.StepFeatureData featuresorter_b1 = list.get(l);
+ 
+                         for (int k1 = 0; k1 < j1; ++k1) {
+                             int l1 = aint[k1];
+                             PlacedFeature placedfeature = (PlacedFeature) featuresorter_b1.features().get(l1);
+                             Supplier<String> supplier1 = () -> {
+-                                Optional optional = iregistry1.getResourceKey(placedfeature).map(Object::toString);
++                                Optional<String> optional = iregistry1.getResourceKey(placedfeature).map(Object::toString);
+ 
+                                 Objects.requireNonNull(placedfeature);
+                                 return (String) optional.orElseGet(placedfeature::toString);
+@@ -518,22 +508,16 @@ public abstract class ChunkGenerator {
+ 
+     public WeightedRandomList<MobSpawnSettings.SpawnerData> getMobsAt(Holder<Biome> biome, StructureManager accessor, MobCategory group, BlockPos pos) {
+         Map<Structure, LongSet> map = accessor.getAllStructuresAt(pos);
+-        Iterator iterator = map.entrySet().iterator();
+ 
+-        while (iterator.hasNext()) {
+-            Entry<Structure, LongSet> entry = (Entry) iterator.next();
+-            Structure structure = (Structure) entry.getKey();
+-            StructureSpawnOverride structurespawnoverride = (StructureSpawnOverride) structure.spawnOverrides().get(group);
++        for (Entry<Structure, LongSet> structureLongSetEntry : map.entrySet()) {
++            Structure structure = structureLongSetEntry.getKey();
++            StructureSpawnOverride structurespawnoverride = structure.spawnOverrides().get(group);
+ 
+             if (structurespawnoverride != null) {
+                 MutableBoolean mutableboolean = new MutableBoolean(false);
+-                Predicate<StructureStart> predicate = structurespawnoverride.boundingBox() == StructureSpawnOverride.BoundingBoxType.PIECE ? (structurestart) -> {
+-                    return accessor.structureHasPieceAt(pos, structurestart);
+-                } : (structurestart) -> {
+-                    return structurestart.getBoundingBox().isInside(pos);
+-                };
++                Predicate<StructureStart> predicate = structurespawnoverride.boundingBox() == StructureSpawnOverride.BoundingBoxType.PIECE ? (structurestart) -> accessor.structureHasPieceAt(pos, structurestart) : (structurestart) -> structurestart.getBoundingBox().isInside(pos);
+ 
+-                accessor.fillStartsForStructure(structure, (LongSet) entry.getValue(), (structurestart) -> {
++                accessor.fillStartsForStructure(structure, structureLongSetEntry.getValue(), (structurestart) -> {
+                     if (mutableboolean.isFalse() && predicate.test(structurestart)) {
+                         mutableboolean.setTrue();
+                     }
+@@ -554,12 +538,10 @@ public abstract class ChunkGenerator {
+         RandomState randomstate = placementCalculator.randomState();
+ 
+         placementCalculator.possibleStructureSets().forEach((holder) -> {
+-            StructurePlacement structureplacement = ((StructureSet) holder.value()).placement();
+-            List<StructureSet.StructureSelectionEntry> list = ((StructureSet) holder.value()).structures();
+-            Iterator iterator = list.iterator();
++            StructurePlacement structureplacement = holder.value().placement();
++            List<StructureSet.StructureSelectionEntry> list = holder.value().structures();
+ 
+-            while (iterator.hasNext()) {
+-                StructureSet.StructureSelectionEntry structureset_a = (StructureSet.StructureSelectionEntry) iterator.next();
++            for (StructureSet.StructureSelectionEntry structureset_a : list) {
+                 StructureStart structurestart = structureAccessor.getStartForStructure(sectionposition, (Structure) structureset_a.structure().value(), chunk);
+ 
+                 if (structurestart != null && structurestart.isValid()) {
+@@ -569,12 +551,19 @@ public abstract class ChunkGenerator {
+ 
+             if (structureplacement.isStructureChunk(placementCalculator, chunkcoordintpair.x, chunkcoordintpair.z, structureplacement instanceof net.minecraft.world.level.chunk.ChunkGeneratorStructureState.KeyedRandomSpreadStructurePlacement keyed ? keyed.key : null)) { // Paper - Add missing structure set seed configs
+                 if (list.size() == 1) {
+-                    this.tryGenerateStructure((StructureSet.StructureSelectionEntry) list.get(0), structureAccessor, registryManager, randomstate, structureTemplateManager, placementCalculator.getLevelSeed(), chunk, chunkcoordintpair, sectionposition);
++                    this.tryGenerateStructure(list.get(0), structureAccessor, registryManager, randomstate, structureTemplateManager, placementCalculator.getLevelSeed(), chunk, chunkcoordintpair, sectionposition);
+                 } else {
+-                    ArrayList<StructureSet.StructureSelectionEntry> arraylist = new ArrayList(list.size());
++                    ArrayList<StructureSet.StructureSelectionEntry> arraylist = new ArrayList<>(list.size());
+ 
+                     arraylist.addAll(list);
+-                    WorldgenRandom seededrandom = new WorldgenCryptoRandom(chunkcoordintpair.x, chunkcoordintpair.z, Globals.Salt.GENERATE_FEATURE, 0);
++
++                    WorldgenRandom seededrandom;
++                    if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++                        seededrandom = new WorldgenCryptoRandom(chunkcoordintpair.x, chunkcoordintpair.z, Globals.Salt.GENERATE_FEATURE, 0);
++                    } else {
++                        seededrandom = new WorldgenRandom(new LegacyRandomSource(0L));
++                        seededrandom.setLargeFeatureSeed(placementCalculator.getLevelSeed(), chunkcoordintpair.x, chunkcoordintpair.z);
++                    }
+ 
+                     int i = 0;
+ 
+@@ -587,7 +576,7 @@ public abstract class ChunkGenerator {
+                     while (!arraylist.isEmpty()) {
+                         int j = seededrandom.nextInt(i);
+                         int k = 0;
+-                        Iterator iterator2 = arraylist.iterator();
++                        Iterator<StructureSet.StructureSelectionEntry> iterator2 = arraylist.iterator();
+ 
+                         while (true) {
+                             if (iterator2.hasNext()) {
+@@ -618,7 +607,7 @@ public abstract class ChunkGenerator {
+     }
+ 
+     private boolean tryGenerateStructure(StructureSet.StructureSelectionEntry weightedEntry, StructureManager structureAccessor, RegistryAccess dynamicRegistryManager, RandomState noiseConfig, StructureTemplateManager structureManager, long seed, ChunkAccess chunk, ChunkPos pos, SectionPos sectionPos) {
+-        Structure structure = (Structure) weightedEntry.structure().value();
++        Structure structure = weightedEntry.structure().value();
+         int j = ChunkGenerator.fetchReferences(structureAccessor, chunk, sectionPos, structure);
+         HolderSet<Biome> holderset = structure.biomes();
+ 
+@@ -660,11 +649,8 @@ public abstract class ChunkGenerator {
+         for (int i1 = i - 8; i1 <= i + 8; ++i1) {
+             for (int j1 = j - 8; j1 <= j + 8; ++j1) {
+                 long k1 = ChunkPos.asLong(i1, j1);
+-                Iterator iterator = world.getChunk(i1, j1).getAllStarts().values().iterator();
+-
+-                while (iterator.hasNext()) {
+-                    StructureStart structurestart = (StructureStart) iterator.next();
+ 
++                for (StructureStart structurestart : world.getChunk(i1, j1).getAllStarts().values()) {
+                     try {
+                         if (structurestart.isValid() && structurestart.getBoundingBox().intersects(k, l, k + 15, l + 15)) {
+                             structureAccessor.addReferenceForStructure(sectionposition, structurestart.getStructure(), k1, chunk);
+@@ -675,17 +661,9 @@ public abstract class ChunkGenerator {
+                         CrashReportCategory crashreportsystemdetails = crashreport.addCategory("Structure");
+                         Optional<? extends Registry<Structure>> optional = world.registryAccess().registry(Registries.STRUCTURE);
+ 
+-                        crashreportsystemdetails.setDetail("Id", () -> {
+-                            return (String) optional.map((iregistry) -> {
+-                                return iregistry.getKey(structurestart.getStructure()).toString();
+-                            }).orElse("UNKNOWN");
+-                        });
+-                        crashreportsystemdetails.setDetail("Name", () -> {
+-                            return BuiltInRegistries.STRUCTURE_TYPE.getKey(structurestart.getStructure().type()).toString();
+-                        });
+-                        crashreportsystemdetails.setDetail("Class", () -> {
+-                            return structurestart.getStructure().getClass().getCanonicalName();
+-                        });
++                        crashreportsystemdetails.setDetail("Id", () -> optional.map((iregistry) -> iregistry.getKey(structurestart.getStructure()).toString()).orElse("UNKNOWN"));
++                        crashreportsystemdetails.setDetail("Name", () -> BuiltInRegistries.STRUCTURE_TYPE.getKey(structurestart.getStructure().type()).toString());
++                        crashreportsystemdetails.setDetail("Class", () -> structurestart.getStructure().getClass().getCanonicalName());
+                         throw new ReportedException(crashreport);
+                     }
+                 }
+diff --git a/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java b/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java
+index 7665b417c72269575304eded1bee70d6544d4c00..4ed9f2f6278f5506efdb3e3ffdd0cca5c5ac4673 100644
+--- a/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java
++++ b/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java
+@@ -4,6 +4,7 @@ package net.minecraft.world.level.chunk;
+ import com.google.common.base.Stopwatch;
+ import com.mojang.datafixers.util.Pair;
+ import com.mojang.logging.LogUtils;
++import dev.paged.lb.Config.LevelBukkitConfig;
+ import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
+ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+ import java.util.ArrayList;
+@@ -220,7 +221,9 @@ public class ChunkGeneratorStructureState {
+             List<CompletableFuture<ChunkPos>> list = new ArrayList<>(j);
+             int k = placement.spread();
+             HolderSet<Biome> holderset = placement.preferredBiomes();
+-            RandomSource randomsource = new net.edenor.foldenor.secureseed.WorldgenCryptoRandom(0, 0, net.edenor.foldenor.secureseed.Globals.Salt.STRONGHOLDS, 0);
++            RandomSource randomsource = LevelBukkitConfig.foldenor.enableSecureSeed
++                    ? new net.edenor.foldenor.secureseed.WorldgenCryptoRandom(0, 0, net.edenor.foldenor.secureseed.Globals.Salt.STRONGHOLDS, 0)
++                    : RandomSource.create();
+ 
+             // Paper start - Add missing structure set seed configs
+             if (this.conf.strongholdSeed != null && structureSetEntry.is(net.minecraft.world.level.levelgen.structure.BuiltinStructureSets.STRONGHOLDS)) {
+diff --git a/src/main/java/net/minecraft/world/level/chunk/ChunkStatus.java b/src/main/java/net/minecraft/world/level/chunk/ChunkStatus.java
+index 4b21f7a46bc52c4166ce644654b5a87e2595dea2..f3969034a7a79c0381178de8987aab0dfbd71993 100644
+--- a/src/main/java/net/minecraft/world/level/chunk/ChunkStatus.java
++++ b/src/main/java/net/minecraft/world/level/chunk/ChunkStatus.java
+@@ -3,6 +3,7 @@ package net.minecraft.world.level.chunk;
+ import com.google.common.collect.ImmutableList;
+ import com.google.common.collect.Lists;
+ import com.mojang.datafixers.util.Either;
++import dev.paged.lb.Config.LevelBukkitConfig;
+ import it.unimi.dsi.fastutil.ints.IntArrayList;
+ import it.unimi.dsi.fastutil.ints.IntList;
+ import java.util.Collections;
+@@ -246,7 +247,8 @@ public class ChunkStatus {
+     }
+ 
+     public CompletableFuture<Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure>> generate(Executor executor, ServerLevel world, ChunkGenerator generator, StructureTemplateManager structureTemplateManager, ThreadedLevelLightEngine lightingProvider, Function<ChunkAccess, CompletableFuture<Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure>>> fullChunkConverter, List<ChunkAccess> chunks) {
+-        Globals.setupGlobals(world);
++        if (LevelBukkitConfig.foldenor.enableSecureSeed)
++            Globals.setupGlobals(world);
+         ChunkAccess ichunkaccess = chunks.get(chunks.size() / 2);
+         ProfiledDuration profiledduration = JvmProfiler.INSTANCE.onChunkGenerate(ichunkaccess.getPos(), world.dimension(), this.toString());
+ 
+diff --git a/src/main/java/net/minecraft/world/level/levelgen/WorldOptions.java b/src/main/java/net/minecraft/world/level/levelgen/WorldOptions.java
+index 40438221fa1c00a80130bbaf458410154ed0a42c..11d4379dfb0a891c6ba70d67096b88652fdb0533 100644
+--- a/src/main/java/net/minecraft/world/level/levelgen/WorldOptions.java
++++ b/src/main/java/net/minecraft/world/level/levelgen/WorldOptions.java
+@@ -7,12 +7,13 @@ import java.util.Optional;
+ import java.util.OptionalLong;
+ import java.util.stream.LongStream;
+ 
++import dev.paged.lb.Config.LevelBukkitConfig;
+ import net.edenor.foldenor.secureseed.Globals;
+ import net.minecraft.util.RandomSource;
+ import org.apache.commons.lang3.StringUtils;
+ 
+ public class WorldOptions {
+-    public static final MapCodec<WorldOptions> CODEC = RecordCodecBuilder.mapCodec((instance) -> {
++    public static MapCodec<WorldOptions> CODEC = LevelBukkitConfig.foldenor.enableSecureSeed ? RecordCodecBuilder.mapCodec((instance) -> {
+         return instance.group(Codec.LONG.fieldOf("seed").stable().forGetter(WorldOptions::seed),
+                 Codec.LONG_STREAM.fieldOf("feature_seed").stable().forGetter(WorldOptions::featureSeedStream),
+                 Codec.BOOL.fieldOf("generate_features").orElse(true).stable().forGetter(WorldOptions::generateStructures),
+@@ -20,20 +21,36 @@ public class WorldOptions {
+                 Codec.STRING.optionalFieldOf("legacy_custom_options").stable().forGetter((generatorOptions) -> {
+                     return generatorOptions.legacyCustomOptions;
+                 })).apply(instance, instance.stable(WorldOptions::new));
+-    });
+-    public static final WorldOptions DEMO_OPTIONS = new WorldOptions((long)"North Carolina".hashCode(), Globals.createRandomWorldSeed(), true, true);
++    }) : RecordCodecBuilder.mapCodec(
++            instance -> instance.group(
++                    Codec.LONG.fieldOf("seed").stable().forGetter(WorldOptions::seed),
++                    Codec.BOOL.fieldOf("generate_features").orElse(true).stable().forGetter(WorldOptions::generateStructures),
++                    Codec.BOOL.fieldOf("bonus_chest").orElse(false).stable().forGetter(WorldOptions::generateBonusChest),
++                    Codec.STRING.optionalFieldOf("legacy_custom_options").stable().forGetter(generatorOptions -> generatorOptions.legacyCustomOptions)
++            ).apply(instance, instance.stable(WorldOptions::new))
++    );
++
++    public static final WorldOptions DEMO_OPTIONS = LevelBukkitConfig.foldenor.enableSecureSeed ? new WorldOptions((long)"North Carolina".hashCode(), Globals.createRandomWorldSeed(), true, true) : new WorldOptions((long)"North Carolina".hashCode(), true, true);
+     private final long seed;
+     private final long[] featureSeed;
+     private final boolean generateStructures;
+     private final boolean generateBonusChest;
+     private final Optional<String> legacyCustomOptions;
+ 
++    public WorldOptions(long seed, boolean generateStructures, boolean bonusChest) {
++        this(seed, generateStructures, bonusChest, Optional.empty());
++    }
++
+     public WorldOptions(long seed, long[] featureSeed, boolean generateStructures, boolean bonusChest) {
+         this(seed, featureSeed, generateStructures, bonusChest, Optional.empty());
+     }
+ 
+     public static WorldOptions defaultWithRandomSeed() {
+-        return new WorldOptions(randomSeed(), Globals.createRandomWorldSeed(), true, false);
++        if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++            return new WorldOptions(randomSeed(), Globals.createRandomWorldSeed(), true, false);
++        } else {
++            return new WorldOptions(randomSeed(), true, false);
++        }
+     }
+ 
+     private WorldOptions(long seed, LongStream featureSeed, boolean generateStructures, boolean bonusChest, Optional<String> legacyCustomOptions) {
+@@ -48,6 +65,14 @@ public class WorldOptions {
+         this.legacyCustomOptions = legacyCustomOptions;
+     }
+ 
++    private WorldOptions(long seed, boolean generateStructures, boolean bonusChest, Optional<String> legacyCustomOptions) {
++        this.featureSeed = new long[0];
++        this.seed = seed;
++        this.generateStructures = generateStructures;
++        this.generateBonusChest = bonusChest;
++        this.legacyCustomOptions = legacyCustomOptions;
++    }
++
+     public long[] featureSeed() {
+         return this.featureSeed;
+     }
+@@ -73,15 +98,21 @@ public class WorldOptions {
+     }
+ 
+     public WorldOptions withBonusChest(boolean bonusChest) {
+-        return new WorldOptions(this.seed, this.featureSeed, this.generateStructures, bonusChest, this.legacyCustomOptions);
++        if (LevelBukkitConfig.foldenor.enableSecureSeed)
++            return new WorldOptions(this.seed, this.featureSeed, this.generateStructures, bonusChest, this.legacyCustomOptions);
++        return new WorldOptions(this.seed, this.generateStructures, bonusChest, this.legacyCustomOptions);
+     }
+ 
+     public WorldOptions withStructures(boolean structures) {
+-        return new WorldOptions(this.seed, this.featureSeed, structures, this.generateBonusChest, this.legacyCustomOptions);
++        if (LevelBukkitConfig.foldenor.enableSecureSeed)
++            return new WorldOptions(this.seed, this.featureSeed, structures, this.generateBonusChest, this.legacyCustomOptions);
++        return new WorldOptions(this.seed, structures, this.generateBonusChest, this.legacyCustomOptions);
+     }
+ 
+     public WorldOptions withSeed(OptionalLong seed) {
+-        return new WorldOptions(seed.orElse(randomSeed()), Globals.createRandomWorldSeed(), this.generateStructures, this.generateBonusChest, this.legacyCustomOptions);
++        if (LevelBukkitConfig.foldenor.enableSecureSeed)
++            return new WorldOptions(seed.orElse(randomSeed()), Globals.createRandomWorldSeed(), this.generateStructures, this.generateBonusChest, this.legacyCustomOptions);
++        return new WorldOptions(seed.orElse(randomSeed()), this.generateStructures, this.generateBonusChest, this.legacyCustomOptions);
+     }
+ 
+     public static OptionalLong parseSeed(String seed) {
+diff --git a/src/main/java/net/minecraft/world/level/levelgen/feature/GeodeFeature.java b/src/main/java/net/minecraft/world/level/levelgen/feature/GeodeFeature.java
+index d06b4e05f375691fbc6f4a56d4d91a4d5b3b0f00..0d408c415425299f40459ce00bc53f53e4088263 100644
+--- a/src/main/java/net/minecraft/world/level/levelgen/feature/GeodeFeature.java
++++ b/src/main/java/net/minecraft/world/level/levelgen/feature/GeodeFeature.java
+@@ -3,9 +3,11 @@ package net.minecraft.world.level.levelgen.feature;
+ import com.google.common.collect.Lists;
+ import com.mojang.datafixers.util.Pair;
+ import com.mojang.serialization.Codec;
++
+ import java.util.List;
+ import java.util.function.Predicate;
+ 
++import io.papermc.paper.configuration.GlobalConfiguration;
+ import net.edenor.foldenor.secureseed.Globals;
+ import net.edenor.foldenor.secureseed.WorldgenCryptoRandom;
+ import net.minecraft.Util;
+@@ -45,10 +47,13 @@ public class GeodeFeature extends Feature<GeodeConfiguration> {
+         int j = geodeConfiguration.maxGenOffset;
+         List<Pair<BlockPos, Integer>> list = Lists.newLinkedList();
+         int k = geodeConfiguration.distributionPoints.sample(randomSource);
+-        WorldgenRandom worldgenRandom = new WorldgenCryptoRandom(0, 0, Globals.Salt.GEODE_FEATURE, 0);
++        WorldgenRandom worldgenRandom = GlobalConfiguration.get().foldenor.enableSecureSeed
++                ? new WorldgenCryptoRandom(0, 0, Globals.Salt.GEODE_FEATURE, 0)
++                : new WorldgenRandom(new LegacyRandomSource(worldGenLevel.getSeed()));
++
+         NormalNoise normalNoise = NormalNoise.create(worldgenRandom, -4, 1.0);
+         List<BlockPos> list2 = Lists.newLinkedList();
+-        double d = (double)k / (double)geodeConfiguration.outerWallDistance.getMaxValue();
++        double d = (double) k / (double) geodeConfiguration.outerWallDistance.getMaxValue();
+         GeodeLayerSettings geodeLayerSettings = geodeConfiguration.geodeLayerSettings;
+         GeodeBlockSettings geodeBlockSettings = geodeConfiguration.geodeBlockSettings;
+         GeodeCrackSettings geodeCrackSettings = geodeConfiguration.geodeCrackSettings;
+@@ -57,7 +62,7 @@ public class GeodeFeature extends Feature<GeodeConfiguration> {
+         double g = 1.0 / Math.sqrt(geodeLayerSettings.middleLayer + d);
+         double h = 1.0 / Math.sqrt(geodeLayerSettings.outerLayer + d);
+         double l = 1.0 / Math.sqrt(geodeCrackSettings.baseCrackSize + randomSource.nextDouble() / 2.0 + (k > 3 ? d : 0.0));
+-        boolean bl = (double)randomSource.nextFloat() < geodeCrackSettings.generateCrackChance;
++        boolean bl = (double) randomSource.nextFloat() < geodeCrackSettings.generateCrackChance;
+         int m = 0;
+ 
+         for (int n = 0; n < k; n++) {
+@@ -101,16 +106,16 @@ public class GeodeFeature extends Feature<GeodeConfiguration> {
+         Predicate<BlockState> predicate = isReplaceable(geodeConfiguration.geodeBlockSettings.cannotReplace);
+ 
+         for (BlockPos blockPos3 : BlockPos.betweenClosed(blockPos.offset(i, i, i), blockPos.offset(j, j, j))) {
+-            double t = normalNoise.getValue((double)blockPos3.getX(), (double)blockPos3.getY(), (double)blockPos3.getZ()) * geodeConfiguration.noiseMultiplier;
++            double t = normalNoise.getValue((double) blockPos3.getX(), (double) blockPos3.getY(), (double) blockPos3.getZ()) * geodeConfiguration.noiseMultiplier;
+             double u = 0.0;
+             double v = 0.0;
+ 
+             for (Pair<BlockPos, Integer> pair : list) {
+-                u += Mth.invSqrt(blockPos3.distSqr(pair.getFirst()) + (double)pair.getSecond().intValue()) + t;
++                u += Mth.invSqrt(blockPos3.distSqr(pair.getFirst()) + (double) pair.getSecond().intValue()) + t;
+             }
+ 
+             for (BlockPos blockPos4 : list2) {
+-                v += Mth.invSqrt(blockPos3.distSqr(blockPos4) + (double)geodeCrackSettings.crackPointOffset) + t;
++                v += Mth.invSqrt(blockPos3.distSqr(blockPos4) + (double) geodeCrackSettings.crackPointOffset) + t;
+             }
+ 
+             if (!(u < h)) {
+@@ -127,7 +132,7 @@ public class GeodeFeature extends Feature<GeodeConfiguration> {
+                 } else if (u >= e) {
+                     this.safeSetBlock(worldGenLevel, blockPos3, geodeBlockSettings.fillingProvider.getState(randomSource, blockPos3), predicate);
+                 } else if (u >= f) {
+-                    boolean bl2 = (double)randomSource.nextFloat() < geodeConfiguration.useAlternateLayer0Chance;
++                    boolean bl2 = (double) randomSource.nextFloat() < geodeConfiguration.useAlternateLayer0Chance;
+                     if (bl2) {
+                         this.safeSetBlock(worldGenLevel, blockPos3, geodeBlockSettings.alternateInnerLayerProvider.getState(randomSource, blockPos3), predicate);
+                     } else {
+@@ -135,7 +140,7 @@ public class GeodeFeature extends Feature<GeodeConfiguration> {
+                     }
+ 
+                     if ((!geodeConfiguration.placementsRequireLayer0Alternate || bl2)
+-                        && (double)randomSource.nextFloat() < geodeConfiguration.usePotentialPlacementsChance) {
++                            && (double) randomSource.nextFloat() < geodeConfiguration.usePotentialPlacementsChance) {
+                         list3.add(blockPos3.immutable());
+                     }
+                 } else if (u >= g) {
+diff --git a/src/main/java/net/minecraft/world/level/levelgen/structure/Structure.java b/src/main/java/net/minecraft/world/level/levelgen/structure/Structure.java
+index c82b4e44fea4539dac0651d97ecd98b539b919ee..87e010646bf6d3a57076f0de9eaa9bbd456e1f1e 100644
+--- a/src/main/java/net/minecraft/world/level/levelgen/structure/Structure.java
++++ b/src/main/java/net/minecraft/world/level/levelgen/structure/Structure.java
+@@ -10,6 +10,8 @@ import java.util.Optional;
+ import java.util.function.Consumer;
+ import java.util.function.Function;
+ import java.util.function.Predicate;
++
++import io.papermc.paper.configuration.GlobalConfiguration;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Holder;
+ import net.minecraft.core.HolderSet;
+@@ -30,10 +32,7 @@ import net.minecraft.world.level.biome.Biome;
+ import net.minecraft.world.level.biome.BiomeSource;
+ import net.minecraft.world.level.block.Rotation;
+ import net.minecraft.world.level.chunk.ChunkGenerator;
+-import net.minecraft.world.level.levelgen.GenerationStep;
+-import net.minecraft.world.level.levelgen.Heightmap;
+-import net.minecraft.world.level.levelgen.RandomState;
+-import net.minecraft.world.level.levelgen.WorldgenRandom;
++import net.minecraft.world.level.levelgen.*;
+ import net.minecraft.world.level.levelgen.structure.pieces.PiecesContainer;
+ import net.minecraft.world.level.levelgen.structure.pieces.StructurePiecesBuilder;
+ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
+@@ -228,9 +227,15 @@ public abstract class Structure {
+         }
+ 
+         private static WorldgenRandom makeRandom(long seed, ChunkPos chunkPos) {
+-            return new WorldgenCryptoRandom(
+-                    chunkPos.x, chunkPos.z, Globals.Salt.GENERATE_FEATURE, seed
+-            );
++            if (GlobalConfiguration.get().foldenor.enableSecureSeed) {
++                return new WorldgenCryptoRandom(
++                        chunkPos.x, chunkPos.z, Globals.Salt.GENERATE_FEATURE, seed
++                );
++            } else {
++                WorldgenRandom worldgenRandom = new WorldgenRandom(new LegacyRandomSource(0L));
++                worldgenRandom.setLargeFeatureSeed(seed, chunkPos.x, chunkPos.z);
++                return worldgenRandom;
++            }
+         }
+     }
+ 
+diff --git a/src/main/java/net/minecraft/world/level/levelgen/structure/placement/RandomSpreadStructurePlacement.java b/src/main/java/net/minecraft/world/level/levelgen/structure/placement/RandomSpreadStructurePlacement.java
+index 6538fcee874640b4ec62bddf8b00f8fea8e92e1b..1beece6449e09bfcea53e30046af138b9abf7720 100644
+--- a/src/main/java/net/minecraft/world/level/levelgen/structure/placement/RandomSpreadStructurePlacement.java
++++ b/src/main/java/net/minecraft/world/level/levelgen/structure/placement/RandomSpreadStructurePlacement.java
+@@ -3,8 +3,10 @@ package net.minecraft.world.level.levelgen.structure.placement;
+ import com.mojang.serialization.Codec;
+ import com.mojang.serialization.DataResult;
+ import com.mojang.serialization.codecs.RecordCodecBuilder;
++
+ import java.util.Optional;
+ 
++import io.papermc.paper.configuration.GlobalConfiguration;
+ import net.edenor.foldenor.secureseed.Globals;
+ import net.edenor.foldenor.secureseed.WorldgenCryptoRandom;
+ import net.minecraft.core.Vec3i;
+@@ -16,41 +18,35 @@ import net.minecraft.world.level.levelgen.WorldgenRandom;
+ 
+ public class RandomSpreadStructurePlacement extends StructurePlacement {
+     public static final Codec<RandomSpreadStructurePlacement> CODEC = ExtraCodecs.validate(
+-            RecordCodecBuilder.mapCodec(
+-                instance -> placementCodec(instance)
+-                        .and(
+-                            instance.group(
+-                                Codec.intRange(0, 4096).fieldOf("spacing").forGetter(RandomSpreadStructurePlacement::spacing),
+-                                Codec.intRange(0, 4096).fieldOf("separation").forGetter(RandomSpreadStructurePlacement::separation),
+-                                RandomSpreadType.CODEC
+-                                    .optionalFieldOf("spread_type", RandomSpreadType.LINEAR)
+-                                    .forGetter(RandomSpreadStructurePlacement::spreadType)
+-                            )
+-                        )
+-                        .apply(instance, RandomSpreadStructurePlacement::new)
+-            ),
+-            RandomSpreadStructurePlacement::validate
+-        )
+-        .codec();
++                    RecordCodecBuilder.mapCodec(
++                            instance -> placementCodec(instance)
++                                    .and(
++                                            instance.group(
++                                                    Codec.intRange(0, 4096).fieldOf("spacing").forGetter(RandomSpreadStructurePlacement::spacing),
++                                                    Codec.intRange(0, 4096).fieldOf("separation").forGetter(RandomSpreadStructurePlacement::separation),
++                                                    RandomSpreadType.CODEC
++                                                            .optionalFieldOf("spread_type", RandomSpreadType.LINEAR)
++                                                            .forGetter(RandomSpreadStructurePlacement::spreadType)
++                                            )
++                                    )
++                                    .apply(instance, RandomSpreadStructurePlacement::new)
++                    ),
++                    RandomSpreadStructurePlacement::validate
++            )
++            .codec();
+     private final int spacing;
+     private final int separation;
+     private final RandomSpreadType spreadType;
+ 
+-    private static DataResult<RandomSpreadStructurePlacement> validate(RandomSpreadStructurePlacement structurePlacement) {
+-        return structurePlacement.spacing <= structurePlacement.separation
+-            ? DataResult.error(() -> "Spacing has to be larger than separation")
+-            : DataResult.success(structurePlacement);
+-    }
+-
+     public RandomSpreadStructurePlacement(
+-        Vec3i locateOffset,
+-        StructurePlacement.FrequencyReductionMethod frequencyReductionMethod,
+-        float frequency,
+-        int salt,
+-        Optional<StructurePlacement.ExclusionZone> exclusionZone,
+-        int spacing,
+-        int separation,
+-        RandomSpreadType spreadType
++            Vec3i locateOffset,
++            StructurePlacement.FrequencyReductionMethod frequencyReductionMethod,
++            float frequency,
++            int salt,
++            Optional<StructurePlacement.ExclusionZone> exclusionZone,
++            int spacing,
++            int separation,
++            RandomSpreadType spreadType
+     ) {
+         super(locateOffset, frequencyReductionMethod, frequency, salt, exclusionZone);
+         this.spacing = spacing;
+@@ -62,6 +58,12 @@ public class RandomSpreadStructurePlacement extends StructurePlacement {
+         this(Vec3i.ZERO, StructurePlacement.FrequencyReductionMethod.DEFAULT, 1.0F, salt, Optional.empty(), spacing, separation, spreadType);
+     }
+ 
++    private static DataResult<RandomSpreadStructurePlacement> validate(RandomSpreadStructurePlacement structurePlacement) {
++        return structurePlacement.spacing <= structurePlacement.separation
++                ? DataResult.error(() -> "Spacing has to be larger than separation")
++                : DataResult.success(structurePlacement);
++    }
++
+     public int spacing() {
+         return this.spacing;
+     }
+@@ -77,9 +79,19 @@ public class RandomSpreadStructurePlacement extends StructurePlacement {
+     public ChunkPos getPotentialStructureChunk(long seed, int chunkX, int chunkZ) {
+         int i = Math.floorDiv(chunkX, this.spacing);
+         int j = Math.floorDiv(chunkZ, this.spacing);
+-        WorldgenRandom worldgenRandom = new WorldgenCryptoRandom(
+-                i, j, Globals.Salt.POTENTIONAL_FEATURE, this.salt
+-        );
++
++        // LevelBukkit start
++        WorldgenRandom worldgenRandom;
++        if (GlobalConfiguration.get().foldenor.enableSecureSeed) {
++            worldgenRandom = new WorldgenCryptoRandom(
++                    i, j, Globals.Salt.POTENTIONAL_FEATURE, this.salt
++            );
++        } else {
++            worldgenRandom = new WorldgenRandom(new LegacyRandomSource(0L));
++            worldgenRandom.setLargeFeatureWithSalt(seed, i, j, this.salt());
++        }
++        // LevelBukkit end
++
+         int k = this.spacing - this.separation;
+         int l = this.spreadType.evaluate(worldgenRandom, k);
+         int m = this.spreadType.evaluate(worldgenRandom, k);
+diff --git a/src/main/java/net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java b/src/main/java/net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java
+index bf1a634ebcd6b70803032ea4df3923184f39f51e..81c5b5b90a9b966b75baf21dea1235dda4ab2401 100644
+--- a/src/main/java/net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java
++++ b/src/main/java/net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java
+@@ -5,8 +5,10 @@ import com.mojang.serialization.Codec;
+ import com.mojang.serialization.codecs.RecordCodecBuilder;
+ import com.mojang.serialization.codecs.RecordCodecBuilder.Instance;
+ import com.mojang.serialization.codecs.RecordCodecBuilder.Mu;
++
+ import java.util.Optional;
+ 
++import dev.paged.lb.Config.LevelBukkitConfig;
+ import net.edenor.foldenor.secureseed.Globals;
+ import net.edenor.foldenor.secureseed.WorldgenCryptoRandom;
+ import net.minecraft.core.BlockPos;
+@@ -25,8 +27,8 @@ import net.minecraft.world.level.levelgen.structure.StructureSet;
+ 
+ public abstract class StructurePlacement {
+     public static final Codec<StructurePlacement> CODEC = BuiltInRegistries.STRUCTURE_PLACEMENT
+-        .byNameCodec()
+-        .dispatch(StructurePlacement::type, StructurePlacementType::codec);
++            .byNameCodec()
++            .dispatch(StructurePlacement::type, StructurePlacementType::codec);
+     private static final int HIGHLY_ARBITRARY_RANDOM_SALT = 10387320;
+     public final Vec3i locateOffset;
+     public final StructurePlacement.FrequencyReductionMethod frequencyReductionMethod;
+@@ -34,26 +36,12 @@ public abstract class StructurePlacement {
+     public final int salt;
+     public final Optional<StructurePlacement.ExclusionZone> exclusionZone;
+ 
+-    protected static <S extends StructurePlacement> P5<Mu<S>, Vec3i, StructurePlacement.FrequencyReductionMethod, Float, Integer, Optional<StructurePlacement.ExclusionZone>> placementCodec(
+-        Instance<S> instance
+-    ) {
+-        return instance.group(
+-            Vec3i.offsetCodec(16).optionalFieldOf("locate_offset", Vec3i.ZERO).forGetter(StructurePlacement::locateOffset),
+-            StructurePlacement.FrequencyReductionMethod.CODEC
+-                .optionalFieldOf("frequency_reduction_method", StructurePlacement.FrequencyReductionMethod.DEFAULT)
+-                .forGetter(StructurePlacement::frequencyReductionMethod),
+-            Codec.floatRange(0.0F, 1.0F).optionalFieldOf("frequency", 1.0F).forGetter(StructurePlacement::frequency),
+-            ExtraCodecs.NON_NEGATIVE_INT.fieldOf("salt").forGetter(StructurePlacement::salt),
+-            StructurePlacement.ExclusionZone.CODEC.optionalFieldOf("exclusion_zone").forGetter(StructurePlacement::exclusionZone)
+-        );
+-    }
+-
+     protected StructurePlacement(
+-        Vec3i locateOffset,
+-        StructurePlacement.FrequencyReductionMethod frequencyReductionMethod,
+-        float frequency,
+-        int salt,
+-        Optional<StructurePlacement.ExclusionZone> exclusionZone
++            Vec3i locateOffset,
++            StructurePlacement.FrequencyReductionMethod frequencyReductionMethod,
++            float frequency,
++            int salt,
++            Optional<StructurePlacement.ExclusionZone> exclusionZone
+     ) {
+         this.locateOffset = locateOffset;
+         this.frequencyReductionMethod = frequencyReductionMethod;
+@@ -62,6 +50,81 @@ public abstract class StructurePlacement {
+         this.exclusionZone = exclusionZone;
+     }
+ 
++    protected static <S extends StructurePlacement> P5<Mu<S>, Vec3i, StructurePlacement.FrequencyReductionMethod, Float, Integer, Optional<StructurePlacement.ExclusionZone>> placementCodec(
++            Instance<S> instance
++    ) {
++        return instance.group(
++                Vec3i.offsetCodec(16).optionalFieldOf("locate_offset", Vec3i.ZERO).forGetter(StructurePlacement::locateOffset),
++                StructurePlacement.FrequencyReductionMethod.CODEC
++                        .optionalFieldOf("frequency_reduction_method", StructurePlacement.FrequencyReductionMethod.DEFAULT)
++                        .forGetter(StructurePlacement::frequencyReductionMethod),
++                Codec.floatRange(0.0F, 1.0F).optionalFieldOf("frequency", 1.0F).forGetter(StructurePlacement::frequency),
++                ExtraCodecs.NON_NEGATIVE_INT.fieldOf("salt").forGetter(StructurePlacement::salt),
++                StructurePlacement.ExclusionZone.CODEC.optionalFieldOf("exclusion_zone").forGetter(StructurePlacement::exclusionZone)
++        );
++    }
++
++    private static boolean probabilityReducer(long seed, int salt, int chunkX, int chunkZ, float frequency, @org.jetbrains.annotations.Nullable Integer saltOverride) { // Paper - Add missing structure set seed configs; ignore here
++        WorldgenRandom worldgenRandom;
++        if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++            worldgenRandom = new WorldgenCryptoRandom(
++                    chunkX, chunkZ, Globals.Salt.UNDEFINED, salt
++            );
++        } else {
++            worldgenRandom = new WorldgenRandom(new LegacyRandomSource(0L));
++            worldgenRandom.setLargeFeatureWithSalt(seed, salt, chunkX, chunkZ);
++        }
++        return worldgenRandom.nextFloat() < frequency;
++    }
++
++    private static boolean legacyProbabilityReducerWithDouble(long seed, int salt, int chunkX, int chunkZ, float frequency, @org.jetbrains.annotations.Nullable Integer saltOverride) { // Paper - Add missing structure set seed configs
++        WorldgenRandom worldgenRandom;
++        if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++            worldgenRandom = new WorldgenCryptoRandom(
++                    chunkX, chunkZ, Globals.Salt.MINESHAFT_FEATURE, 0
++            );
++        } else {
++            worldgenRandom = new WorldgenRandom(new LegacyRandomSource(0L));
++            if (saltOverride == null) { // Paper - Add missing structure set seed configs
++                worldgenRandom.setLargeFeatureSeed(seed, chunkX, chunkZ);
++                // Paper start - Add missing structure set seed configs
++            } else {
++                worldgenRandom.setLargeFeatureWithSalt(seed, chunkX, chunkZ, saltOverride);
++            }
++            // Paper end - Add missing structure set seed configs
++        }
++        return worldgenRandom.nextDouble() < (double) frequency;
++    }
++
++    private static boolean legacyArbitrarySaltProbabilityReducer(long seed, int salt, int chunkX, int chunkZ, float frequency, @org.jetbrains.annotations.Nullable Integer saltOverride) { // Paper - Add missing structure set seed configs
++        WorldgenRandom worldgenRandom;
++        if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++            worldgenRandom = new WorldgenCryptoRandom(
++                    chunkX, chunkZ, Globals.Salt.BURIED_TREASURE_FEATURE, 0
++            );
++        } else {
++            worldgenRandom = new WorldgenRandom(new LegacyRandomSource(0L));
++            worldgenRandom.setLargeFeatureWithSalt(seed, chunkX, chunkZ, saltOverride != null ? saltOverride : HIGHLY_ARBITRARY_RANDOM_SALT); // Paper - Add missing structure set seed configs
++        }
++        return worldgenRandom.nextFloat() < frequency;
++    }
++
++    private static boolean legacyPillagerOutpostReducer(long seed, int salt, int chunkX, int chunkZ, float frequency, @org.jetbrains.annotations.Nullable Integer saltOverride) { // Paper - Add missing structure set seed configs; ignore here
++        int i = chunkX >> 4;
++        int j = chunkZ >> 4;
++        WorldgenRandom worldgenRandom;
++        if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++            worldgenRandom = new WorldgenCryptoRandom(
++                    i, j, Globals.Salt.PILLAGER_OUTPOST_FEATURE, 0
++            );
++        } else {
++            worldgenRandom = new WorldgenRandom(new LegacyRandomSource(0L));
++            worldgenRandom.setSeed((long) (i ^ j << 4) ^ seed);
++        }
++        worldgenRandom.nextInt();
++        return worldgenRandom.nextInt((int) (1.0F / frequency)) == 0;
++    }
++
+     protected Vec3i locateOffset() {
+         return this.locateOffset;
+     }
+@@ -82,11 +145,13 @@ public abstract class StructurePlacement {
+         return this.exclusionZone;
+     }
+ 
+-    @Deprecated @io.papermc.paper.annotation.DoNotUse // Paper - Add missing structure set seed configs
++    @Deprecated
++    @io.papermc.paper.annotation.DoNotUse // Paper - Add missing structure set seed configs
+     public boolean isStructureChunk(ChunkGeneratorStructureState calculator, int chunkX, int chunkZ) {
+         // Paper start - Add missing structure set seed configs
+         return this.isStructureChunk(calculator, chunkX, chunkZ, null);
+     }
++
+     public boolean isStructureChunk(ChunkGeneratorStructureState calculator, int chunkX, int chunkZ, @org.jetbrains.annotations.Nullable net.minecraft.resources.ResourceKey<StructureSet> structureSetKey) {
+         Integer saltOverride = null;
+         if (structureSetKey != null) {
+@@ -98,8 +163,8 @@ public abstract class StructurePlacement {
+         }
+         // Paper end - Add missing structure set seed configs
+         return this.isPlacementChunk(calculator, chunkX, chunkZ)
+-            && (!(this.frequency < 1.0F) || this.frequencyReductionMethod.shouldGenerate(calculator.getLevelSeed(), this.salt, chunkX, chunkZ, this.frequency, saltOverride)) // Paper - Add missing structure set seed configs
+-            && (!this.exclusionZone.isPresent() || !this.exclusionZone.get().isPlacementForbidden(calculator, chunkX, chunkZ));
++                && (!(this.frequency < 1.0F) || this.frequencyReductionMethod.shouldGenerate(calculator.getLevelSeed(), this.salt, chunkX, chunkZ, this.frequency, saltOverride)) // Paper - Add missing structure set seed configs
++                && (!this.exclusionZone.isPresent() || !this.exclusionZone.get().isPlacementForbidden(calculator, chunkX, chunkZ));
+     }
+ 
+     protected abstract boolean isPlacementChunk(ChunkGeneratorStructureState calculator, int chunkX, int chunkZ);
+@@ -110,59 +175,6 @@ public abstract class StructurePlacement {
+ 
+     public abstract StructurePlacementType<?> type();
+ 
+-    private static boolean probabilityReducer(long seed, int salt, int chunkX, int chunkZ, float frequency, @org.jetbrains.annotations.Nullable Integer saltOverride) { // Paper - Add missing structure set seed configs; ignore here
+-        WorldgenRandom worldgenRandom = new WorldgenCryptoRandom(
+-                chunkX, chunkZ, Globals.Salt.UNDEFINED, salt
+-        );
+-        return worldgenRandom.nextFloat() < frequency;
+-    }
+-
+-    private static boolean legacyProbabilityReducerWithDouble(long seed, int salt, int chunkX, int chunkZ, float frequency, @org.jetbrains.annotations.Nullable Integer saltOverride) { // Paper - Add missing structure set seed configs
+-        WorldgenRandom worldgenRandom = new WorldgenCryptoRandom(
+-                chunkX, chunkZ, Globals.Salt.MINESHAFT_FEATURE, 0
+-        );
+-        return worldgenRandom.nextDouble() < (double)frequency;
+-    }
+-
+-    private static boolean legacyArbitrarySaltProbabilityReducer(long seed, int salt, int chunkX, int chunkZ, float frequency, @org.jetbrains.annotations.Nullable Integer saltOverride) { // Paper - Add missing structure set seed configs
+-        WorldgenRandom worldgenRandom = new WorldgenCryptoRandom(
+-                chunkX, chunkZ, Globals.Salt.BURIED_TREASURE_FEATURE, 0
+-        );
+-        return worldgenRandom.nextFloat() < frequency;
+-    }
+-
+-    private static boolean legacyPillagerOutpostReducer(long seed, int salt, int chunkX, int chunkZ, float frequency, @org.jetbrains.annotations.Nullable Integer saltOverride) { // Paper - Add missing structure set seed configs; ignore here
+-        int i = chunkX >> 4;
+-        int j = chunkZ >> 4;
+-        WorldgenRandom worldgenRandom = new WorldgenCryptoRandom(
+-                i, j, Globals.Salt.PILLAGER_OUTPOST_FEATURE, 0
+-        );
+-        worldgenRandom.nextInt();
+-        return worldgenRandom.nextInt((int)(1.0F / frequency)) == 0;
+-    }
+-
+-    @Deprecated
+-    public static record ExclusionZone(Holder<StructureSet> otherSet, int chunkCount) {
+-        public static final Codec<StructurePlacement.ExclusionZone> CODEC = RecordCodecBuilder.create(
+-            instance -> instance.group(
+-                        RegistryFileCodec.create(Registries.STRUCTURE_SET, StructureSet.DIRECT_CODEC, false)
+-                            .fieldOf("other_set")
+-                            .forGetter(StructurePlacement.ExclusionZone::otherSet),
+-                        Codec.intRange(1, 16).fieldOf("chunk_count").forGetter(StructurePlacement.ExclusionZone::chunkCount)
+-                    )
+-                    .apply(instance, StructurePlacement.ExclusionZone::new)
+-        );
+-
+-        boolean isPlacementForbidden(ChunkGeneratorStructureState calculator, int centerChunkX, int centerChunkZ) {
+-            return calculator.hasStructureChunkInRange(this.otherSet, centerChunkX, centerChunkZ, this.chunkCount);
+-        }
+-    }
+-
+-    @FunctionalInterface
+-    public interface FrequencyReducer {
+-        boolean shouldGenerate(long seed, int salt, int chunkX, int chunkZ, float chance, @org.jetbrains.annotations.Nullable Integer saltOverride); // Paper - Add missing structure set seed configs
+-    }
+-
+     public static enum FrequencyReductionMethod implements StringRepresentable {
+         DEFAULT("default", StructurePlacement::probabilityReducer),
+         LEGACY_TYPE_1("legacy_type_1", StructurePlacement::legacyPillagerOutpostReducer),
+@@ -170,7 +182,7 @@ public abstract class StructurePlacement {
+         LEGACY_TYPE_3("legacy_type_3", StructurePlacement::legacyProbabilityReducerWithDouble);
+ 
+         public static final Codec<StructurePlacement.FrequencyReductionMethod> CODEC = StringRepresentable.fromEnum(
+-            StructurePlacement.FrequencyReductionMethod::values
++                StructurePlacement.FrequencyReductionMethod::values
+         );
+         private final String name;
+         private final StructurePlacement.FrequencyReducer reducer;
+@@ -189,4 +201,26 @@ public abstract class StructurePlacement {
+             return this.name;
+         }
+     }
++
++    @FunctionalInterface
++    public interface FrequencyReducer {
++        boolean shouldGenerate(long seed, int salt, int chunkX, int chunkZ, float chance, @org.jetbrains.annotations.Nullable Integer saltOverride); // Paper - Add missing structure set seed configs
++    }
++
++    @Deprecated
++    public static record ExclusionZone(Holder<StructureSet> otherSet, int chunkCount) {
++        public static final Codec<StructurePlacement.ExclusionZone> CODEC = RecordCodecBuilder.create(
++                instance -> instance.group(
++                                RegistryFileCodec.create(Registries.STRUCTURE_SET, StructureSet.DIRECT_CODEC, false)
++                                        .fieldOf("other_set")
++                                        .forGetter(StructurePlacement.ExclusionZone::otherSet),
++                                Codec.intRange(1, 16).fieldOf("chunk_count").forGetter(StructurePlacement.ExclusionZone::chunkCount)
++                        )
++                        .apply(instance, StructurePlacement.ExclusionZone::new)
++        );
++
++        boolean isPlacementForbidden(ChunkGeneratorStructureState calculator, int centerChunkX, int centerChunkZ) {
++            return calculator.hasStructureChunkInRange(this.otherSet, centerChunkX, centerChunkZ, this.chunkCount);
++        }
++    }
+ }
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftChunk.java b/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
+index 0dee50f136b81f788f84beeb1ad8720007736517..00f55d6c82fc168dcf610657f16e92eea15f9804 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
+@@ -5,27 +5,20 @@ import com.google.common.base.Predicates;
+ import com.mojang.serialization.Codec;
+ import java.util.Arrays;
+ import java.util.Collection;
+-import java.util.Objects;
+-import java.util.concurrent.locks.LockSupport;
+-import java.util.function.BooleanSupplier;
+ import java.util.function.Predicate;
++
++import dev.paged.lb.Config.LevelBukkitConfig;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Holder;
+ import net.minecraft.core.Registry;
+ import net.minecraft.core.SectionPos;
+ import net.minecraft.core.registries.Registries;
+-import net.minecraft.nbt.CompoundTag;
+ import net.minecraft.nbt.NbtOps;
+ import net.minecraft.server.level.ServerLevel;
+-import net.minecraft.util.thread.ProcessorMailbox;
+-import net.minecraft.world.level.ChunkPos;
+ import net.minecraft.world.level.LightLayer;
+ import net.minecraft.world.level.biome.Biomes;
+ import net.minecraft.world.level.block.Blocks;
+ import net.minecraft.world.level.chunk.*;
+-import net.minecraft.world.level.chunk.storage.ChunkSerializer;
+-import net.minecraft.world.level.chunk.storage.EntityStorage;
+-import net.minecraft.world.level.entity.PersistentEntitySectionManager;
+ import net.minecraft.world.level.levelgen.Heightmap;
+ import net.minecraft.world.level.levelgen.WorldgenRandom;
+ import net.minecraft.world.level.lighting.LevelLightEngine;
+@@ -196,7 +189,9 @@ public class CraftChunk implements Chunk {
+     @Override
+     public boolean isSlimeChunk() {
+         // 987234911L is deterimined in EntitySlime when seeing if a slime can spawn in a chunk
+-        return this.worldServer.paperConfig().entities.spawning.allChunksAreSlimeChunks || WorldgenRandom.seedSlimeChunk(this.getX(), this.getZ(), this.getWorld().getSeed(), worldServer.spigotConfig.slimeSeed).nextInt(10) == 0; // Paper
++        return LevelBukkitConfig.foldenor.enableSecureSeed
++                ? this.worldServer.paperConfig().entities.spawning.allChunksAreSlimeChunks ||worldServer.getChunk(this.getX(), this.getZ()).isSlimeChunk()
++                : this.worldServer.paperConfig().entities.spawning.allChunksAreSlimeChunks || WorldgenRandom.seedSlimeChunk(this.getX(), this.getZ(), this.getWorld().getSeed(), worldServer.spigotConfig.slimeSeed).nextInt(10) == 0; // Paper
+     }
+ 
+     @Override
+diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+index 741209bba3c011d1ba1bd6b8279086579a74391e..c2508439473804f80ebec33172e1954b8a674350 100644
+--- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
++++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
+@@ -14,6 +14,7 @@ import com.mojang.brigadier.tree.CommandNode;
+ import com.mojang.brigadier.tree.LiteralCommandNode;
+ import com.mojang.serialization.Dynamic;
+ import com.mojang.serialization.Lifecycle;
++import dev.paged.lb.Config.LevelBukkitConfig;
+ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+ import java.awt.image.BufferedImage;
+ import java.io.ByteArrayOutputStream;
+@@ -1391,7 +1392,9 @@ public final class CraftServer implements Server {
+             iregistry = leveldataanddimensions.dimensions().dimensions();
+         } else {
+             LevelSettings worldsettings;
+-            WorldOptions worldoptions = new WorldOptions(creator.seed(), Globals.createRandomWorldSeed(), creator.generateStructures(), false);
++            WorldOptions worldoptions = LevelBukkitConfig.foldenor.enableSecureSeed
++                    ? new WorldOptions(creator.seed(), Globals.createRandomWorldSeed(), creator.generateStructures(), false)
++                    : new WorldOptions(creator.seed(), creator.generateStructures(), false);
+             WorldDimensions worlddimensions;
+ 
+             DedicatedServerProperties.WorldDimensionData properties = new DedicatedServerProperties.WorldDimensionData(GsonHelper.parse((creator.generatorSettings().isEmpty()) ? "{}" : creator.generatorSettings()), creator.type().name().toLowerCase(Locale.ROOT));
