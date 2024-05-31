@@ -24,13 +24,12 @@ index 11735d5a662741182666e9135afc2662bb841d43..47883134d112ef111e013624beb541ca
      archiveClassifier.set("dev")
  
 diff --git a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-index 9870278a4e34c876219e784702e7d1b5e1b5519d..4d92b5040c166047d0253a61bb330640fbfcb6c7 100644
+index 9870278a4e34c876219e784702e7d1b5e1b5519d..bca37c2026ec8a18a302515c53a665f48831d953 100644
 --- a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
 +++ b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-@@ -1,11 +1,16 @@
+@@ -1,11 +1,15 @@
  package dev.paged.lb.Config;
  
-+import org.bukkit.Bukkit;
  import org.bukkit.configuration.file.YamlConfiguration;
 +import gg.pufferfish.pufferfish.simd.SIMDDetection;
  
@@ -39,12 +38,12 @@ index 9870278a4e34c876219e784702e7d1b5e1b5519d..4d92b5040c166047d0253a61bb330640
 +import java.util.logging.Logger;
  
  public class LevelBukkitConfig {
-+    public static Logger logger = Logger.getLogger("LevelBukkit");
++    public static Logger logger = Logger.getLogger("Minecraft");
 +
      public static class foldenor {
          public static boolean enableSecureSeed = false;
      }
-@@ -22,6 +27,27 @@ public class LevelBukkitConfig {
+@@ -22,6 +26,27 @@ public class LevelBukkitConfig {
              configuration.save(configFile);
  
              foldenor.enableSecureSeed = configuration.getBoolean("foldenor.enableSecureSeed");
@@ -53,7 +52,7 @@ index 9870278a4e34c876219e784702e7d1b5e1b5519d..4d92b5040c166047d0253a61bb330640
 +            // Attempt to detect vectorization
 +            try {
 +                SIMDDetection.isEnabled = SIMDDetection.canEnable(logger);
-+                SIMDDetection.versionLimited = SIMDDetection.getJavaVersion() != 17 && SIMDDetection.getJavaVersion() != 18 && SIMDDetection.getJavaVersion() != 19;
++                SIMDDetection.versionLimited = SIMDDetection.getJavaVersion() < 17;
 +            } catch (NoClassDefFoundError | Exception ignored) {
 +                ignored.printStackTrace();
 +            }
@@ -61,7 +60,7 @@ index 9870278a4e34c876219e784702e7d1b5e1b5519d..4d92b5040c166047d0253a61bb330640
 +            if (SIMDDetection.isEnabled) {
 +                logger.info("SIMD operations detected as functional. Will replace some operations with faster versions.");
 +            } else if (SIMDDetection.versionLimited) {
-+                logger.warning("Will not enable SIMD! These optimizations are only safely supported on Java 17, Java 18, and Java 19.");
++                logger.warning("Will not enable SIMD! These optimizations are only safely supported on Java 17+.");
 +            } else {
 +                logger.warning("SIMD operations are available for your server, but are not configured!");
 +                logger.warning("To enable additional optimizations, add \"--add-modules=jdk.incubator.vector\" to your startup flags, BEFORE the \"-jar\".");

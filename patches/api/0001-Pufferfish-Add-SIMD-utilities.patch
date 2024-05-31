@@ -27,7 +27,7 @@ index 04853c43b99951bf0d4c96ef73724625bdaf018f..6eed01845d64cc4c6896212132c04192
          into("META-INF/maven/${project.group}/${project.name}")
 diff --git a/src/main/java/gg/pufferfish/pufferfish/simd/SIMDChecker.java b/src/main/java/gg/pufferfish/pufferfish/simd/SIMDChecker.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..17c55e9dac1ca3c8aeae3810c0f9a4cc6aee6d6c
+index 0000000000000000000000000000000000000000..c678e088027578ca8c11131b16be3c5fe83a5092
 --- /dev/null
 +++ b/src/main/java/gg/pufferfish/pufferfish/simd/SIMDChecker.java
 @@ -0,0 +1,40 @@
@@ -46,9 +46,9 @@ index 0000000000000000000000000000000000000000..17c55e9dac1ca3c8aeae3810c0f9a4cc
 +public class SIMDChecker {
 +
 +    @Deprecated
-+	public static boolean canEnable(Logger logger) {
++    public static boolean canEnable(Logger logger) {
 +        try {
-+            if (SIMDDetection.getJavaVersion() != 17 && SIMDDetection.getJavaVersion() != 18 && SIMDDetection.getJavaVersion() != 19) {
++            if (SIMDDetection.getJavaVersion() < 17) {
 +                return false;
 +            } else {
 +                SIMDDetection.testRun = true;
