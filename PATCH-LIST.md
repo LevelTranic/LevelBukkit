@@ -7,3 +7,4 @@
 - https://github.com/The-Fafnir/Beef
 - https://github.com/LeavesMC/Leaves
 - https://github.com/Winds-Studio/Leaf
+- https://github.com/PlazmaMC/PlazmaBukkit
