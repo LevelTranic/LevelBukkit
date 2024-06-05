@@ -1,0 +1,140 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Mon, 3 Jun 2024 18:03:29 +0800
+Subject: [PATCH] Leaves: Vanilla hopper
+
+This is a temporary solution designed to attempt to restore the vanilla behavior of the funnel while preserving optimizations as much as possible. It should ultimately be replaced by the optimization solution provided by lithium.
+
+diff --git a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
+index e25a8b3e2ab5b76de964c22357406cbacd1903ae..946fac637a16e1de7fc347b349eade93d77e6a3d 100644
+--- a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
++++ b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
+@@ -18,9 +18,19 @@ public class LevelBukkitConfig {
+             }
+             YamlConfiguration configuration = YamlConfiguration.loadConfiguration(configFile);
+ 
++            // LevelBukkit: Foldenor start
+             configuration.addDefault("foldenor.enableSecureSeed", false);
++            // LevelBukkit: Foldenor end
++
++            // LevelBukkit: Divine start
+             configuration.addDefault("divine.recipeManagerOptimization", true);
++            // LevelBukkit: Divine end
++
++            // LevelBukkit: Leaves start
++            configuration.addDefault("leaves.vanillaHopper", false);
++            // LevelBukkit: Leaves end
+ 
++            // LevelBukkit: Purpur start
+             configuration.addDefault("purpur.world.farmlandGetsMoistFromBelow", true);
+             configuration.addDefault("purpur.world.sensorOptimization", true);
+ 
+@@ -32,11 +42,14 @@ public class LevelBukkitConfig {
+             configuration.addDefault("purpur.world.villagerLobotomizeCheckInterval", 100);
+             configuration.addDefault("purpur.world.villagerLobotomizeEnabled", false);
+             configuration.addDefault("purpur.world.villagerLobotomizeWaitUntilTradeLocked", false);
++            // LevelBukkit: Purpur end
++
+             configuration.options().copyDefaults(true);
+             configuration.save(configFile);
+ 
+             foldenor.enableSecureSeed = configuration.getBoolean("foldenor.enableSecureSeed");
+             divine.recipeManagerOptimization = configuration.getBoolean("divine.recipeManagerOptimization");
++            leaves.vanillaHopper = configuration.getBoolean("leaves.vanillaHopper");
+ 
+             purpur.world.farmlandGetsMoistFromBelow = configuration.getBoolean("purpur.world.farmlandGetsMoistFromBelow");
+             purpur.world.sensorOptimization = configuration.getBoolean("purpur.world.sensorOptimization");
+@@ -83,6 +96,10 @@ public class LevelBukkitConfig {
+         public static boolean recipeManagerOptimization = true;
+     }
+ 
++    public static class leaves {
++        public static boolean vanillaHopper = false;
++    }
++
+     public static class purpur {
+         public static class world {
+             public static boolean farmlandGetsMoistFromBelow = true;
+diff --git a/src/main/java/net/minecraft/world/level/block/entity/HopperBlockEntity.java b/src/main/java/net/minecraft/world/level/block/entity/HopperBlockEntity.java
+index 882e27de852c89c837d7943c5a9ae6fb3c2e896b..1ca30e58afe7dba17dd4b64c0798d1f491268c1e 100644
+--- a/src/main/java/net/minecraft/world/level/block/entity/HopperBlockEntity.java
++++ b/src/main/java/net/minecraft/world/level/block/entity/HopperBlockEntity.java
+@@ -6,6 +6,8 @@ import java.util.function.BooleanSupplier;
+ import java.util.stream.Collectors;
+ import java.util.stream.IntStream;
+ import javax.annotation.Nullable;
++
++import dev.paged.lb.Config.LevelBukkitConfig;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Direction;
+ import net.minecraft.core.NonNullList;
+@@ -323,34 +325,47 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+         ItemStack movedItem = origItemStack;
+         final int originalItemCount = origItemStack.getCount();
+         final int movedItemCount = Math.min(level.spigotConfig.hopperAmount, originalItemCount);
+-        container.setChanged(); // original logic always marks source inv as changed even if no move happens.
+-        movedItem.setCount(movedItemCount);
+ 
+-        if (!worldData.skipPullModeEventFire) { // Folia - region threading
+-            movedItem = callPullMoveEvent(hopper, container, movedItem);
+-            if (movedItem == null) { // cancelled
+-                origItemStack.setCount(originalItemCount);
+-                // Drastically improve performance by returning true.
+-                // No plugin could of relied on the behavior of false as the other call
+-                // site for IMIE did not exhibit the same behavior
++        // Leaves start - fix vanilla
++        if (LevelBukkitConfig.leaves.vanillaHopper && movedItem.getCount() <= movedItemCount) {
++            movedItem = origItemStack.copy();
++            final ItemStack remainingItem = addItem(container, hopper,  container.removeItem(i, movedItemCount), null);
++            if (remainingItem.isEmpty()) {
++                container.setChanged();
+                 return true;
+             }
+-        }
++            container.setItem(i, movedItem);
++        } else {
++            container.setChanged(); // original logic always marks source inv as changed even if no move happens.
++            movedItem.setCount(movedItemCount);
+ 
+-        final ItemStack remainingItem = addItem(container, hopper, movedItem, null);
+-        final int remainingItemCount = remainingItem.getCount();
+-        if (remainingItemCount != movedItemCount) {
+-            origItemStack = origItemStack.copy(true);
+-            origItemStack.setCount(originalItemCount);
+-            if (!origItemStack.isEmpty()) {
+-                origItemStack.setCount(originalItemCount - movedItemCount + remainingItemCount);
++            if (!worldData.skipPullModeEventFire) { // Folia - region threading
++                movedItem = callPullMoveEvent(hopper, container, movedItem);
++                if (movedItem == null) { // cancelled
++                    origItemStack.setCount(originalItemCount);
++                    // Drastically improve performance by returning true.
++                    // No plugin could of relied on the behavior of false as the other call
++                    // site for IMIE did not exhibit the same behavior
++                    return true;
++                }
+             }
+ 
+-            IGNORE_TILE_UPDATES.set(true); // Folia - region threading
+-            container.setItem(i, origItemStack);
+-            IGNORE_TILE_UPDATES.set(false); // Folia - region threading
+-            container.setChanged();
+-            return true;
++            final ItemStack remainingItem = addItem(container, hopper, movedItem, null);
++            final int remainingItemCount = remainingItem.getCount();
++            if (remainingItemCount != movedItemCount) {
++                origItemStack = origItemStack.copy(true);
++                origItemStack.setCount(originalItemCount);
++                if (!origItemStack.isEmpty()) {
++                    origItemStack.setCount(originalItemCount - movedItemCount + remainingItemCount);
++                }
++
++                IGNORE_TILE_UPDATES.set(true); // Folia - region threading
++                container.setItem(i, origItemStack);
++                IGNORE_TILE_UPDATES.set(false); // Folia - region threading
++                container.setChanged();
++                return true;
++            }
++            // Leaves end - fix vanilla
+         }
+         origItemStack.setCount(originalItemCount);
+ 

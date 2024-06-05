@@ -1,0 +1,52 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Wed, 5 Jun 2024 19:35:37 +0800
+Subject: [PATCH] Leaf: Faster sequencing of futures for chunk structure gen
+
+Replace `thenApply` with `thenCompose`. Once one task is completed then the next task starts immediately,
+to prevent blocking threads while waiting to complete all tasks
+
+diff --git a/src/main/java/net/minecraft/Util.java b/src/main/java/net/minecraft/Util.java
+index 01a12f4d6f3c2f09bffc78692443b9fd391db45a..e424a247c47d1de7b9b8c3a560151ce91a0d5c32 100644
+--- a/src/main/java/net/minecraft/Util.java
++++ b/src/main/java/net/minecraft/Util.java
+@@ -32,9 +32,6 @@ import java.net.URL;
+ import java.nio.file.Files;
+ import java.nio.file.Path;
+ import java.nio.file.spi.FileSystemProvider;
+-import java.security.AccessController;
+-import java.security.PrivilegedActionException;
+-import java.security.PrivilegedExceptionAction;
+ import java.time.Duration;
+ import java.time.Instant;
+ import java.time.ZonedDateTime;
+@@ -54,8 +51,6 @@ import java.util.concurrent.ConcurrentHashMap;
+ import java.util.concurrent.Executor;
+ import java.util.concurrent.ExecutorService;
+ import java.util.concurrent.Executors;
+-import java.util.concurrent.ForkJoinPool;
+-import java.util.concurrent.ForkJoinWorkerThread;
+ import java.util.concurrent.LinkedBlockingQueue;
+ import java.util.concurrent.TimeUnit;
+ import java.util.concurrent.atomic.AtomicInteger;
+@@ -75,7 +70,6 @@ import java.util.stream.Stream;
+ import javax.annotation.Nullable;
+ import net.minecraft.resources.ResourceLocation;
+ import net.minecraft.server.Bootstrap;
+-import net.minecraft.util.Mth;
+ import net.minecraft.util.RandomSource;
+ import net.minecraft.util.SingleKeyCache;
+ import net.minecraft.util.TimeSource;
+@@ -410,7 +404,11 @@ public class Util {
+             return futures.get(0).thenApply(List::of);
+         } else {
+             CompletableFuture<Void> completableFuture = CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+-            return completableFuture.thenApply(void_ -> futures.stream().map(CompletableFuture::join).toList());
++            // Leaf start - Faster sequencing of futures for chunk structure gen
++            return completableFuture.thenCompose((void_) ->
++                    CompletableFuture.supplyAsync(() ->
++                            futures.stream().map(CompletableFuture::join).toList()));
++            // Leaf end
+         }
+     }
+ 

@@ -1,0 +1,59 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Wed, 5 Jun 2024 19:46:03 +0800
+Subject: [PATCH] Plazma: Optimise state lookup more
+
+
+diff --git a/src/main/java/io/papermc/paper/util/table/ZeroCollidingReferenceStateTable.java b/src/main/java/io/papermc/paper/util/table/ZeroCollidingReferenceStateTable.java
+index 57d0cd3ad6f972e986c72a57f1a6e36003f190c2..6b342ca93f48c98880cad96085780430face6fa3 100644
+--- a/src/main/java/io/papermc/paper/util/table/ZeroCollidingReferenceStateTable.java
++++ b/src/main/java/io/papermc/paper/util/table/ZeroCollidingReferenceStateTable.java
+@@ -13,6 +13,7 @@ public final class ZeroCollidingReferenceStateTable {
+     // upper 32 bits: starting index
+     // lower 32 bits: bitset for contained ids
+     protected final long[] this_index_table;
++    public long[] index_table() { return this.index_table; } // Plazma - Getter
+     protected final Comparable<?>[] this_table;
+     protected final StateHolder<?, ?> this_state;
+ 
+diff --git a/src/main/java/net/minecraft/world/level/block/state/StateHolder.java b/src/main/java/net/minecraft/world/level/block/state/StateHolder.java
+index 2630f54d499abbe52798f97c8ea14a8d0bd75e99..942fb9a89de5028b4af99339a6a8707d3c689a87 100644
+--- a/src/main/java/net/minecraft/world/level/block/state/StateHolder.java
++++ b/src/main/java/net/minecraft/world/level/block/state/StateHolder.java
+@@ -115,21 +115,15 @@ public abstract class StateHolder<O, S> {
+     }
+ 
+     public <T extends Comparable<T>, V extends T> S trySetValue(Property<T> property, V value) {
+-        Comparable<?> comparable = this.values.get(property);
+-        if (comparable != null && !comparable.equals(value)) {
+-            S object = this.neighbours.get(property, value);
+-            if (object == null) {
+-                throw new IllegalArgumentException("Cannot set property " + property + " to " + value + " on " + this.owner + ", it is not an allowed value");
+-            } else {
+-                return object;
+-            }
+-        } else {
+-            return (S)this;
+-        }
++        // Plazma start - Optimise state lookup more
++        final S ret = (S) this.optimisedTable.get(property, value);
++        if (ret == null) throw new IllegalArgumentException("Cannot set property " + property + " to " + value + " on " + this.owner + ", it is not an allowed value");
++        return ret;
++        // Plazma - Optimise state lookup more
+     }
+ 
+     public void populateNeighbours(Map<Map<Property<?>, Comparable<?>>, S> states) {
+-        if (this.neighbours != null) {
++        if (this.optimisedTable.index_table() != null) { // Plazma - optimise state lookup
+             throw new IllegalStateException();
+         } else {
+             Table<Property<?>, Comparable<?>, S> table = HashBasedTable.create();
+@@ -144,7 +138,7 @@ public abstract class StateHolder<O, S> {
+                 }
+             }
+ 
+-            this.neighbours = (Table<Property<?>, Comparable<?>, S>)(table.isEmpty() ? table : ArrayTable.create(table)); this.optimisedTable.loadInTable((Table)this.neighbours, this.values); // Paper - optimise state lookup
++            this.optimisedTable.loadInTable((Table) (table.isEmpty() ? table : ArrayTable.create(table)), this.values); // Plazma - Optimize state lookup more
+         }
+     }
+ 
