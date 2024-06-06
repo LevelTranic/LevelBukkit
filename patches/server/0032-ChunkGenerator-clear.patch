@@ -1,0 +1,396 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Thu, 6 Jun 2024 23:28:58 +0800
+Subject: [PATCH] ChunkGenerator clear
+
+
+diff --git a/src/main/java/io/papermc/paper/chunk/SingleThreadChunkRegionManager.java b/src/main/java/io/papermc/paper/chunk/SingleThreadChunkRegionManager.java
+index a5f706d6f716b2a463ae58adcde69d9e665c7733..00c667dd8dafc7e52efda98d9f47e031fd88da92 100644
+--- a/src/main/java/io/papermc/paper/chunk/SingleThreadChunkRegionManager.java
++++ b/src/main/java/io/papermc/paper/chunk/SingleThreadChunkRegionManager.java
+@@ -182,9 +182,7 @@ public final class SingleThreadChunkRegionManager {
+         region.markedForRecalc = false;
+         //region.check();
+         // clear unused regions
+-        for (final Iterator<RegionSection> iterator = region.deadSections.iterator(); iterator.hasNext();) {
+-            final RegionSection deadSection = iterator.next();
+-
++        for (final RegionSection deadSection : region.deadSections) {
+             if (deadSection.hasChunks()) {
+                 throw new IllegalStateException("Dead section '" + deadSection.toStringWithRegion() + "' is marked dead but has chunks!");
+             }
+diff --git a/src/main/java/io/papermc/paper/chunk/system/entity/EntityLookup.java b/src/main/java/io/papermc/paper/chunk/system/entity/EntityLookup.java
+index 5bef4f50082e56b89239cfd62dd7429926b71c09..58536f5518f2533a83cb6e5cd4c55aba6eb8f981 100644
+--- a/src/main/java/io/papermc/paper/chunk/system/entity/EntityLookup.java
++++ b/src/main/java/io/papermc/paper/chunk/system/entity/EntityLookup.java
+@@ -229,8 +229,8 @@ public final class EntityLookup implements LevelEntityGetter<Entity> {
+     public void get(final AABB box, final Consumer<Entity> action) {
+         List<Entity> entities = new ArrayList<>();
+         this.getEntitiesWithoutDragonParts(null, box, entities, null);
+-        for (int i = 0, len = entities.size(); i < len; ++i) {
+-            action.accept(entities.get(i));
++        for (Entity entity : entities) {
++            action.accept(entity);
+         }
+     }
+ 
+@@ -238,8 +238,8 @@ public final class EntityLookup implements LevelEntityGetter<Entity> {
+     public <U extends Entity> void get(final EntityTypeTest<Entity, U> filter, final AABB box, final AbortableIterationConsumer<U> action) {
+         List<Entity> entities = new ArrayList<>();
+         this.getEntitiesWithoutDragonParts(null, box, entities, null);
+-        for (int i = 0, len = entities.size(); i < len; ++i) {
+-            final U casted = filter.tryCast(entities.get(i));
++        for (Entity entity : entities) {
++            final U casted = filter.tryCast(entity);
+             if (casted != null && action.accept(casted).shouldAbort()) {
+                 break;
+             }
+@@ -353,8 +353,7 @@ public final class EntityLookup implements LevelEntityGetter<Entity> {
+     }
+ 
+     private void addEntityChunk(final List<Entity> entities, final ChunkPos forChunk, final boolean fromDisk) {
+-        for (int i = 0, len = entities.size(); i < len; ++i) {
+-            final Entity entity = entities.get(i);
++        for (final Entity entity : entities) {
+             if (entity.isPassenger()) {
+                 continue;
+             }
+@@ -377,7 +376,7 @@ public final class EntityLookup implements LevelEntityGetter<Entity> {
+             }
+ 
+             this.addRecursivelySafe(entity, fromDisk);
+-         }
++        }
+     }
+ 
+     public boolean addNewEntity(final Entity entity) {
+diff --git a/src/main/java/io/papermc/paper/chunk/system/io/RegionFileIOThread.java b/src/main/java/io/papermc/paper/chunk/system/io/RegionFileIOThread.java
+index 2934f0cf0ef09c84739312b00186c2ef0019a165..fee7e5a15a65e14eba4e338dc0ce19d8e9b3acc3 100644
+--- a/src/main/java/io/papermc/paper/chunk/system/io/RegionFileIOThread.java
++++ b/src/main/java/io/papermc/paper/chunk/system/io/RegionFileIOThread.java
+@@ -183,8 +183,8 @@ public final class RegionFileIOThread extends PrioritisedQueueExecutorThread {
+      * @param wait Whether to wait until all tasks have completed.
+      */
+     public static void close(final boolean wait) {
+-        for (int i = 0, len = threads.length; i < len; ++i) {
+-            threads[i].close(false, true);
++        for (RegionFileIOThread thread : threads) {
++            thread.close(false, true);
+         }
+         if (wait) {
+             RegionFileIOThread.flush();
+@@ -209,8 +209,8 @@ public final class RegionFileIOThread extends PrioritisedQueueExecutorThread {
+     }
+ 
+     public static void flush() {
+-        for (int i = 0, len = threads.length; i < len; ++i) {
+-            threads[i].waitUntilAllExecuted();
++        for (RegionFileIOThread thread : threads) {
++            thread.waitUntilAllExecuted();
+         }
+     }
+ 
+diff --git a/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java b/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java
+index d41698ad66f8a326e390606a5371aad98d7f6629..215667a20cdf63b00f91d7898ced17c2a28de57d 100644
+--- a/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java
++++ b/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java
+@@ -74,6 +74,7 @@ import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStruct
+ import net.minecraft.world.level.levelgen.structure.placement.StructurePlacement;
+ import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplateManager;
+ import org.apache.commons.lang3.mutable.MutableBoolean;
++import org.bukkit.craftbukkit.generator.structure.CraftStructure;
+ 
+ public abstract class ChunkGenerator {
+ 
+@@ -83,17 +84,13 @@ public abstract class ChunkGenerator {
+     public final Function<Holder<Biome>, BiomeGenerationSettings> generationSettingsGetter;
+ 
+     public ChunkGenerator(BiomeSource biomeSource) {
+-        this(biomeSource, (holder) -> ((Biome) holder.value()).getGenerationSettings());
++        this(biomeSource, (holder) -> holder.value().getGenerationSettings());
+     }
+ 
+     public ChunkGenerator(BiomeSource biomeSource, Function<Holder<Biome>, BiomeGenerationSettings> generationSettingsGetter) {
+         this.biomeSource = biomeSource;
+         this.generationSettingsGetter = generationSettingsGetter;
+-        this.featuresPerStep = Suppliers.memoize(() -> {
+-            return FeatureSorter.buildFeaturesPerStep(List.copyOf(biomeSource.possibleBiomes()), (holder) -> {
+-                return ((BiomeGenerationSettings) generationSettingsGetter.apply(holder)).features();
+-            }, true);
+-        });
++        this.featuresPerStep = Suppliers.memoize(() -> FeatureSorter.buildFeaturesPerStep(List.copyOf(biomeSource.possibleBiomes()), (holder) -> generationSettingsGetter.apply(holder).features(), true));
+     }
+ 
+     protected abstract Codec<? extends ChunkGenerator> codec();
+@@ -120,7 +117,7 @@ public abstract class ChunkGenerator {
+         // Paper start - StructuresLocateEvent
+         final org.bukkit.World bukkitWorld = world.getWorld();
+         final org.bukkit.Location origin = io.papermc.paper.util.MCUtil.toLocation(world, center);
+-        final List<org.bukkit.generator.structure.Structure> apiStructures = structures.stream().map(Holder::value).map(nms -> org.bukkit.craftbukkit.generator.structure.CraftStructure.minecraftToBukkit(nms)).toList();
++        final List<org.bukkit.generator.structure.Structure> apiStructures = structures.stream().map(Holder::value).map(CraftStructure::minecraftToBukkit).toList();
+         if (!apiStructures.isEmpty()) {
+             final io.papermc.paper.event.world.StructuresLocateEvent event = new io.papermc.paper.event.world.StructuresLocateEvent(bukkitWorld, origin, apiStructures, radius, skipReferencedStructures);
+             if (!event.callEvent()) {
+@@ -139,7 +136,6 @@ public abstract class ChunkGenerator {
+         Map<StructurePlacement, Set<Holder<Structure>>> map = new Object2ObjectArrayMap<>();
+ 
+         for (Holder<Structure> structure : structures) {
+-
+             for (StructurePlacement structureplacement : chunkgeneratorstructurestate.getPlacementsForStructure(structure)) {
+                 (map.computeIfAbsent(structureplacement, (structureplacement1) -> new ObjectArraySet<>())).add(structure);
+             }
+@@ -270,7 +266,7 @@ public abstract class ChunkGenerator {
+ 
+     @Nullable
+     private static Pair<BlockPos, Holder<Structure>> getStructureGeneratingAt(Set<Holder<Structure>> structures, LevelReader world, StructureManager structureAccessor, boolean skipReferencedStructures, StructurePlacement placement, ChunkPos pos) {
+-        Iterator iterator = structures.iterator();
++        Iterator<Holder<Structure>> iterator = structures.iterator();
+ 
+         Holder holder;
+         StructureStart structurestart;
+@@ -285,7 +281,7 @@ public abstract class ChunkGenerator {
+                             return null;
+                         }
+ 
+-                        holder = (Holder) iterator.next();
++                        holder = iterator.next();
+                         structurecheckresult = structureAccessor.checkStructurePresence(pos, (Structure) holder.value(), skipReferencedStructures);
+                     } while (structurecheckresult == StructureCheckResult.START_NOT_PRESENT);
+ 
+diff --git a/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java b/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java
+index 4ed9f2f6278f5506efdb3e3ffdd0cca5c5ac4673..8ade2a5c8c3cb8d6611741f978b5a02356449c58 100644
+--- a/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java
++++ b/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java
+@@ -8,7 +8,6 @@ import dev.paged.lb.Config.LevelBukkitConfig;
+ import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
+ import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+ import java.util.ArrayList;
+-import java.util.Iterator;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Objects;
+@@ -47,8 +46,8 @@ public class ChunkGeneratorStructureState {
+     private final BiomeSource biomeSource;
+     private final long levelSeed;
+     private final long concentricRingsSeed;
+-    private final Map<Structure, List<StructurePlacement>> placementsForStructure = new Object2ObjectOpenHashMap();
+-    private final Map<ConcentricRingsStructurePlacement, CompletableFuture<List<ChunkPos>>> ringPositions = new Object2ObjectArrayMap();
++    private final Map<Structure, List<StructurePlacement>> placementsForStructure = new Object2ObjectOpenHashMap<>();
++    private final Map<ConcentricRingsStructurePlacement, CompletableFuture<List<ChunkPos>>> ringPositions = new Object2ObjectArrayMap<>();
+     private boolean hasGeneratedPositions;
+     private final List<Holder<StructureSet>> possibleStructureSets;
+     public final SpigotWorldConfig conf; // Paper - Add missing structure set seed configs
+@@ -85,65 +84,30 @@ public class ChunkGeneratorStructureState {
+             final Holder<StructureSet> newHolder; // Paper - Add missing structure set seed configs
+             if (structureset.placement() instanceof RandomSpreadStructurePlacement randomConfig && holder.unwrapKey().orElseThrow().location().getNamespace().equals(net.minecraft.resources.ResourceLocation.DEFAULT_NAMESPACE)) { // Paper - Add missing structure set seed configs; check namespace cause datapacks could add structure sets with the same path
+                 String name = holder.unwrapKey().orElseThrow().location().getPath();
+-                int seed = randomConfig.salt;
+-
+-                switch (name) {
+-                    case "desert_pyramids":
+-                        seed = conf.desertSeed;
+-                        break;
+-                    case "end_cities":
+-                        seed = conf.endCitySeed;
+-                        break;
+-                    case "nether_complexes":
+-                        seed = conf.netherSeed;
+-                        break;
+-                    case "igloos":
+-                        seed = conf.iglooSeed;
+-                        break;
+-                    case "jungle_temples":
+-                        seed = conf.jungleSeed;
+-                        break;
+-                    case "woodland_mansions":
+-                        seed = conf.mansionSeed;
+-                        break;
+-                    case "ocean_monuments":
+-                        seed = conf.monumentSeed;
+-                        break;
+-                    case "nether_fossils":
+-                        seed = conf.fossilSeed;
+-                        break;
+-                    case "ocean_ruins":
+-                        seed = conf.oceanSeed;
+-                        break;
+-                    case "pillager_outposts":
+-                        seed = conf.outpostSeed;
+-                        break;
+-                    case "ruined_portals":
+-                        seed = conf.portalSeed;
+-                        break;
+-                    case "shipwrecks":
+-                        seed = conf.shipwreckSeed;
+-                        break;
+-                    case "swamp_huts":
+-                        seed = conf.swampSeed;
+-                        break;
+-                    case "villages":
+-                        seed = conf.villageSeed;
+-                        break;
++                // Paper end - Add missing structure set seed configs
++                int seed = switch (name) {
++                    case "desert_pyramids" -> conf.desertSeed;
++                    case "end_cities" -> conf.endCitySeed;
++                    case "nether_complexes" -> conf.netherSeed;
++                    case "igloos" -> conf.iglooSeed;
++                    case "jungle_temples" -> conf.jungleSeed;
++                    case "woodland_mansions" -> conf.mansionSeed;
++                    case "ocean_monuments" -> conf.monumentSeed;
++                    case "nether_fossils" -> conf.fossilSeed;
++                    case "ocean_ruins" -> conf.oceanSeed;
++                    case "pillager_outposts" -> conf.outpostSeed;
++                    case "ruined_portals" -> conf.portalSeed;
++                    case "shipwrecks" -> conf.shipwreckSeed;
++                    case "swamp_huts" -> conf.swampSeed;
++                    case "villages" -> conf.villageSeed;
+                     // Paper start - Add missing structure set seed configs
+-                    case "ancient_cities":
+-                        seed = conf.ancientCitySeed;
+-                        break;
+-                    case "trail_ruins":
+-                        seed = conf.trailRuinsSeed;
+-                        break;
+-                    case "trial_chambers":
+-                        seed = conf.trialChambersSeed;
+-                        break;
+-                    // Paper end - Add missing structure set seed configs
+-                }
++                    case "ancient_cities" -> conf.ancientCitySeed;
++                    case "trail_ruins" -> conf.trailRuinsSeed;
++                    case "trial_chambers" -> conf.trialChambersSeed;
++                    default -> randomConfig.salt;
++                };
+ 
+-            // Paper start - Add missing structure set seed configs
++                // Paper start - Add missing structure set seed configs
+                 structureset = new StructureSet(structureset.structures(), new KeyedRandomSpreadStructurePlacement(holder.unwrapKey().orElseThrow(), randomConfig.locateOffset, randomConfig.frequencyReductionMethod, randomConfig.frequency, seed, randomConfig.exclusionZone, randomConfig.spacing(), randomConfig.separation(), randomConfig.spreadType()));
+                 newHolder = Holder.direct(structureset); // I really wish we didn't have to do this here
+             } else {
+@@ -151,17 +115,17 @@ public class ChunkGeneratorStructureState {
+             }
+             return newHolder;
+             // Paper end - Add missing structure set seed configs
+-        }).collect(Collectors.toUnmodifiableList());
++        }).toList();
+     }
+     // Spigot end
+ 
+     private static boolean hasBiomesForStructureSet(StructureSet structureSet, BiomeSource biomeSource) {
+         Stream<Holder<Biome>> stream = structureSet.structures().stream().flatMap((structureset_a) -> {
+-            Structure structure = (Structure) structureset_a.structure().value();
++            Structure structure = structureset_a.structure().value();
+ 
+             return structure.biomes().stream();
+         });
+-        Set set = biomeSource.possibleBiomes();
++        Set<Holder<Biome>> set = biomeSource.possibleBiomes();
+ 
+         Objects.requireNonNull(set);
+         return stream.anyMatch(set::contains);
+@@ -184,18 +148,16 @@ public class ChunkGeneratorStructureState {
+         Set<Holder<Biome>> set = this.biomeSource.possibleBiomes();
+ 
+         this.possibleStructureSets().forEach((holder) -> {
+-            StructureSet structureset = (StructureSet) holder.value();
++            StructureSet structureset = holder.value();
+             boolean flag = false;
+-            Iterator iterator = structureset.structures().iterator();
+ 
+-            while (iterator.hasNext()) {
+-                StructureSet.StructureSelectionEntry structureset_a = (StructureSet.StructureSelectionEntry) iterator.next();
+-                Structure structure = (Structure) structureset_a.structure().value();
+-                Stream stream = structure.biomes().stream();
++            for (StructureSet.StructureSelectionEntry structureset_a : structureset.structures()) {
++                Structure structure = structureset_a.structure().value();
++                Stream<Holder<Biome>> stream = structure.biomes().stream();
+ 
+                 Objects.requireNonNull(set);
+                 if (stream.anyMatch(set::contains)) {
+-                    ((List) this.placementsForStructure.computeIfAbsent(structure, (structure1) -> new ArrayList())).add(structureset.placement());
++                    this.placementsForStructure.computeIfAbsent(structure, (structure1) -> new ArrayList<>()).add(structureset.placement());
+                     flag = true;
+                 }
+             }
+diff --git a/src/main/java/net/minecraft/world/level/chunk/LevelChunk.java b/src/main/java/net/minecraft/world/level/chunk/LevelChunk.java
+index a484970c122fb190155e15109781b17155f9a499..b7a19c2ac35ab10b7e3927edcbcb0c2ed8a88c58 100644
+--- a/src/main/java/net/minecraft/world/level/chunk/LevelChunk.java
++++ b/src/main/java/net/minecraft/world/level/chunk/LevelChunk.java
+@@ -102,13 +102,10 @@ public class LevelChunk extends ChunkAccess {
+         super(pos, upgradeData, world, net.minecraft.server.MinecraftServer.getServer().registryAccess().registryOrThrow(Registries.BIOME), inhabitedTime, sectionArrayInitializer, blendingData); // Paper - Anti-Xray - The world isn't ready yet, use server singleton for registry
+         this.tickersInLevel = Maps.newHashMap();
+         this.level = (ServerLevel) world; // CraftBukkit - type
+-        this.gameEventListenerRegistrySections = new Int2ObjectOpenHashMap();
++        this.gameEventListenerRegistrySections = new Int2ObjectOpenHashMap<>();
+         Heightmap.Types[] aheightmap_type = Heightmap.Types.values();
+-        int j = aheightmap_type.length;
+-
+-        for (int k = 0; k < j; ++k) {
+-            Heightmap.Types heightmap_type = aheightmap_type[k];
+ 
++        for (Heightmap.Types heightmap_type : aheightmap_type) {
+             if (ChunkStatus.FULL.heightmapsAfter().contains(heightmap_type)) {
+                 this.heightmaps.put(heightmap_type, new Heightmap(this, heightmap_type));
+             }
+@@ -912,12 +909,7 @@ public class LevelChunk extends ChunkAccess {
+     }
+ 
+     public void replaceBiomes(FriendlyByteBuf buf) {
+-        LevelChunkSection[] achunksection = this.sections;
+-        int i = achunksection.length;
+-
+-        for (int j = 0; j < i; ++j) {
+-            LevelChunkSection chunksection = achunksection[j];
+-
++        for (LevelChunkSection chunksection : this.sections) {
+             chunksection.readBiomes(buf);
+         }
+ 
+@@ -942,10 +934,7 @@ public class LevelChunk extends ChunkAccess {
+ 
+         for (int i = 0; i < this.postProcessing.length; ++i) {
+             if (this.postProcessing[i] != null) {
+-                ShortListIterator shortlistiterator = this.postProcessing[i].iterator();
+-
+-                while (shortlistiterator.hasNext()) {
+-                    Short oshort = (Short) shortlistiterator.next();
++                for (Short oshort : this.postProcessing[i]) {
+                     BlockPos blockposition = ProtoChunk.unpackOffsetCoordinates(oshort, this.getSectionYFromSectionIndex(i), chunkcoordintpair);
+                     BlockState iblockdata = this.getBlockState(blockposition);
+                     FluidState fluid = iblockdata.getFluidState();
+@@ -958,7 +947,8 @@ public class LevelChunk extends ChunkAccess {
+                         BlockState iblockdata1 = Block.updateFromNeighbourShapes(iblockdata, this.level, blockposition);
+ 
+                         this.level.setBlock(blockposition, iblockdata1, 20);
+-                        if (iblockdata1 != iblockdata) this.level.chunkSource.blockChanged(blockposition); // Paper - replace player chunk loader - notify since we send before processing full updates
++                        if (iblockdata1 != iblockdata)
++                            this.level.chunkSource.blockChanged(blockposition); // Paper - replace player chunk loader - notify since we send before processing full updates
+                     }
+                 }
+ 
+@@ -966,11 +956,7 @@ public class LevelChunk extends ChunkAccess {
+             }
+         }
+ 
+-        UnmodifiableIterator unmodifiableiterator = ImmutableList.copyOf(this.pendingBlockEntities.keySet()).iterator();
+-
+-        while (unmodifiableiterator.hasNext()) {
+-            BlockPos blockposition1 = (BlockPos) unmodifiableiterator.next();
+-
++        for (BlockPos blockposition1 : ImmutableList.copyOf(this.pendingBlockEntities.keySet())) {
+             this.getBlockEntity(blockposition1);
+         }
+ 
+diff --git a/src/main/java/net/minecraft/world/level/chunk/PalettedContainer.java b/src/main/java/net/minecraft/world/level/chunk/PalettedContainer.java
+index 9990e60f61d678e20cfffe22848eb5cc7c554b8a..642b5c59e25f8d3387baa1f3bf4ee2f12b257d19 100644
+--- a/src/main/java/net/minecraft/world/level/chunk/PalettedContainer.java
++++ b/src/main/java/net/minecraft/world/level/chunk/PalettedContainer.java
+@@ -21,7 +21,6 @@ import net.minecraft.util.BitStorage;
+ import net.minecraft.util.ExtraCodecs;
+ import net.minecraft.util.Mth;
+ import net.minecraft.util.SimpleBitStorage;
+-import net.minecraft.util.ThreadingDetector;
+ import net.minecraft.util.ZeroBitStorage;
+ 
+ public class PalettedContainer<T> implements PaletteResize<T>, PalettedContainerRO<T> {
