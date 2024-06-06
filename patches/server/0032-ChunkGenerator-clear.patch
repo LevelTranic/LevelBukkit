@@ -91,7 +91,7 @@ index 2934f0cf0ef09c84739312b00186c2ef0019a165..fee7e5a15a65e14eba4e338dc0ce19d8
      }
  
 diff --git a/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java b/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java
-index d41698ad66f8a326e390606a5371aad98d7f6629..215667a20cdf63b00f91d7898ced17c2a28de57d 100644
+index d41698ad66f8a326e390606a5371aad98d7f6629..27d7ec4ac75a35277eaa088e213a906f44aa2527 100644
 --- a/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java
 +++ b/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java
 @@ -74,6 +74,7 @@ import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStruct
@@ -157,6 +157,25 @@ index d41698ad66f8a326e390606a5371aad98d7f6629..215667a20cdf63b00f91d7898ced17c2
                          structurecheckresult = structureAccessor.checkStructurePresence(pos, (Structure) holder.value(), skipReferencedStructures);
                      } while (structurecheckresult == StructureCheckResult.START_NOT_PRESENT);
  
+@@ -390,8 +386,7 @@ public abstract class ChunkGenerator {
+ 
+                         iterator = set.iterator();
+ 
+-                        while (iterator.hasNext()) {
+-                            Holder<Biome> holder = (Holder) iterator.next();
++                        for (Holder<Biome> holder: set) {
+                             List<HolderSet<PlacedFeature>> list2 = this.generationSettingsGetter.apply(holder).features();
+ 
+                             if (l < list2.size()) {
+@@ -454,7 +449,7 @@ public abstract class ChunkGenerator {
+         }
+     }
+ 
+-   // CraftBukkit start
++    // CraftBukkit start
+     public void applyBiomeDecoration(WorldGenLevel world, ChunkAccess chunk, StructureManager structureAccessor) {
+         this.applyBiomeDecoration(world, chunk, structureAccessor, true);
+     }
 diff --git a/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java b/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java
 index 4ed9f2f6278f5506efdb3e3ffdd0cca5c5ac4673..8ade2a5c8c3cb8d6611741f978b5a02356449c58 100644
 --- a/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java
