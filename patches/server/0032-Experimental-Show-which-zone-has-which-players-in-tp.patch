@@ -6,19 +6,18 @@ Subject: [PATCH] Experimental: Show which zone has which players in tps
 
 
 diff --git a/src/main/java/io/papermc/paper/threadedregions/TickRegionScheduler.java b/src/main/java/io/papermc/paper/threadedregions/TickRegionScheduler.java
-index ab5f832aafc479eca1c5da012e180d6374e32325..5d68e7d4e1c2c47822d0bf6daab6af05fcdc9bc7 100644
+index ab5f832aafc479eca1c5da012e180d6374e32325..d55dfdb42d1153cb05ddaaa65dc6484d8f4d1fb2 100644
 --- a/src/main/java/io/papermc/paper/threadedregions/TickRegionScheduler.java
 +++ b/src/main/java/io/papermc/paper/threadedregions/TickRegionScheduler.java
-@@ -4,6 +4,8 @@ import ca.spottedleaf.concurrentutil.scheduler.SchedulerThreadPool;
+@@ -4,6 +4,7 @@ import ca.spottedleaf.concurrentutil.scheduler.SchedulerThreadPool;
  import ca.spottedleaf.concurrentutil.util.TimeUtil;
  import com.mojang.logging.LogUtils;
  import io.papermc.paper.util.TickThread;
-+import it.unimi.dsi.fastutil.Pair;
 +import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
  import net.minecraft.server.MinecraftServer;
  import net.minecraft.server.level.ServerLevel;
  import net.minecraft.world.level.ChunkPos;
-@@ -115,6 +117,19 @@ public final class TickRegionScheduler {
+@@ -115,6 +116,19 @@ public final class TickRegionScheduler {
          return tickThreadRunner.currentTickingWorldRegionizedData;
      }
  
@@ -38,7 +37,7 @@ index ab5f832aafc479eca1c5da012e180d6374e32325..5d68e7d4e1c2c47822d0bf6daab6af05
      /**
       * Returns the current ticking task, or {@code null} if there is no ticking region.
       * If this thread is not a TickThread, then returns {@code null}.
-@@ -314,9 +329,9 @@ public final class TickRegionScheduler {
+@@ -314,9 +328,9 @@ public final class TickRegionScheduler {
  
              synchronized (this) {
                  this.currentTickData = new TickTime(
@@ -51,7 +50,7 @@ index ab5f832aafc479eca1c5da012e180d6374e32325..5d68e7d4e1c2c47822d0bf6daab6af05
                  );
                  this.currentTickingThread = Thread.currentThread();
              }
-@@ -338,8 +353,8 @@ public final class TickRegionScheduler {
+@@ -338,8 +352,8 @@ public final class TickRegionScheduler {
                  final long cpuEnd = MEASURE_CPU_TIME ? THREAD_MX_BEAN.getCurrentThreadCpuTime() : 0L;
  
                  final TickTime time = new TickTime(
@@ -62,7 +61,7 @@ index ab5f832aafc479eca1c5da012e180d6374e32325..5d68e7d4e1c2c47822d0bf6daab6af05
                  );
  
                  this.addTickTime(time);
-@@ -392,9 +407,9 @@ public final class TickRegionScheduler {
+@@ -392,9 +406,9 @@ public final class TickRegionScheduler {
              new me.earthme.luminol.api.events.TickRegionStartTickEvent(this.region == null ? -1 : this.region.region.id,System.nanoTime()); //Luminol - Threaded regions API
              synchronized (this) {
                  this.currentTickData = new TickTime(
@@ -75,7 +74,7 @@ index ab5f832aafc479eca1c5da012e180d6374e32325..5d68e7d4e1c2c47822d0bf6daab6af05
                  );
                  this.currentTickingThread = Thread.currentThread();
              }
-@@ -420,7 +435,7 @@ public final class TickRegionScheduler {
+@@ -420,7 +434,7 @@ public final class TickRegionScheduler {
                  this.setScheduledStart(TimeUtil.getGreatestTime(tickEnd, this.tickSchedule.getDeadline(TIME_BETWEEN_TICKS)));
  
                  final TickTime time = new TickTime(
@@ -84,7 +83,7 @@ index ab5f832aafc479eca1c5da012e180d6374e32325..5d68e7d4e1c2c47822d0bf6daab6af05
                  );
  
                  this.addTickTime(time);
-@@ -459,10 +474,10 @@ public final class TickRegionScheduler {
+@@ -459,10 +473,10 @@ public final class TickRegionScheduler {
              final long cpuEnd = MEASURE_CPU_TIME ? THREAD_MX_BEAN.getThreadCpuTime(this.currentTickingThread.getId()) : 0L;
  
              return new TickTime(
@@ -99,7 +98,7 @@ index ab5f832aafc479eca1c5da012e180d6374e32325..5d68e7d4e1c2c47822d0bf6daab6af05
              );
          }
  
-@@ -517,14 +532,14 @@ public final class TickRegionScheduler {
+@@ -517,14 +531,14 @@ public final class TickRegionScheduler {
  
      // All time units are in nanoseconds.
      public static final record TickTime(
