@@ -10,7 +10,8 @@
 - https://github.com/PlazmaMC/PlazmaBukkit
 
 # LevelBukkit Patch
-- Experimental: Show which zone has which players in tps command (only region)
+- Experimental: Show which zone has which players in tps command (only region), like
+![](public/tps-region-example.png)
 
 # Other Patch
 - Safe seed support (off by default)
