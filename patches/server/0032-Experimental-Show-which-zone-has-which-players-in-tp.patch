@@ -5,8 +5,125 @@ Subject: [PATCH] Experimental: Show which zone has which players in tps
  command
 
 
+diff --git a/src/main/java/io/papermc/paper/threadedregions/TickRegionScheduler.java b/src/main/java/io/papermc/paper/threadedregions/TickRegionScheduler.java
+index ab5f832aafc479eca1c5da012e180d6374e32325..5d68e7d4e1c2c47822d0bf6daab6af05fcdc9bc7 100644
+--- a/src/main/java/io/papermc/paper/threadedregions/TickRegionScheduler.java
++++ b/src/main/java/io/papermc/paper/threadedregions/TickRegionScheduler.java
+@@ -4,6 +4,8 @@ import ca.spottedleaf.concurrentutil.scheduler.SchedulerThreadPool;
+ import ca.spottedleaf.concurrentutil.util.TimeUtil;
+ import com.mojang.logging.LogUtils;
+ import io.papermc.paper.util.TickThread;
++import it.unimi.dsi.fastutil.Pair;
++import it.unimi.dsi.fastutil.objects.ObjectObjectImmutablePair;
+ import net.minecraft.server.MinecraftServer;
+ import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.world.level.ChunkPos;
+@@ -115,6 +117,19 @@ public final class TickRegionScheduler {
+         return tickThreadRunner.currentTickingWorldRegionizedData;
+     }
+ 
++    /**
++     * Returns the current ticking region and region's world regionised data, or {@code null} if there is no ticking region.
++     * This is a faster alternative to calling the {@link RegionizedData#get()} method.
++     * If this thread is not a TickThread, then returns {@code null}.
++     */
++    public static ObjectObjectImmutablePair<ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData>, RegionizedWorldData> getCurrentRegionPair() {
++        final Thread currThread = Thread.currentThread();
++        if (!(currThread instanceof TickThreadRunner tickThreadRunner)) {
++            return new ObjectObjectImmutablePair<>(RegionShutdownThread.getRegion(), RegionShutdownThread.getWorldData());
++        }
++        return new ObjectObjectImmutablePair<>(tickThreadRunner.currentTickingRegion, tickThreadRunner.currentTickingWorldRegionizedData);
++    }
++
+     /**
+      * Returns the current ticking task, or {@code null} if there is no ticking region.
+      * If this thread is not a TickThread, then returns {@code null}.
+@@ -314,9 +329,9 @@ public final class TickRegionScheduler {
+ 
+             synchronized (this) {
+                 this.currentTickData = new TickTime(
+-                    SchedulerThreadPool.DEADLINE_NOT_SET, SchedulerThreadPool.DEADLINE_NOT_SET, tickStart, cpuStart,
+-                    SchedulerThreadPool.DEADLINE_NOT_SET, SchedulerThreadPool.DEADLINE_NOT_SET, MEASURE_CPU_TIME,
+-                    false
++                        SchedulerThreadPool.DEADLINE_NOT_SET, SchedulerThreadPool.DEADLINE_NOT_SET, tickStart, cpuStart,
++                        SchedulerThreadPool.DEADLINE_NOT_SET, SchedulerThreadPool.DEADLINE_NOT_SET, MEASURE_CPU_TIME,
++                        false
+                 );
+                 this.currentTickingThread = Thread.currentThread();
+             }
+@@ -338,8 +353,8 @@ public final class TickRegionScheduler {
+                 final long cpuEnd = MEASURE_CPU_TIME ? THREAD_MX_BEAN.getCurrentThreadCpuTime() : 0L;
+ 
+                 final TickTime time = new TickTime(
+-                    SchedulerThreadPool.DEADLINE_NOT_SET, SchedulerThreadPool.DEADLINE_NOT_SET,
+-                    tickStart, cpuStart, tickEnd, cpuEnd, MEASURE_CPU_TIME, false
++                        SchedulerThreadPool.DEADLINE_NOT_SET, SchedulerThreadPool.DEADLINE_NOT_SET,
++                        tickStart, cpuStart, tickEnd, cpuEnd, MEASURE_CPU_TIME, false
+                 );
+ 
+                 this.addTickTime(time);
+@@ -392,9 +407,9 @@ public final class TickRegionScheduler {
+             new me.earthme.luminol.api.events.TickRegionStartTickEvent(this.region == null ? -1 : this.region.region.id,System.nanoTime()); //Luminol - Threaded regions API
+             synchronized (this) {
+                 this.currentTickData = new TickTime(
+-                    lastTickStart, scheduledStart, tickStart, cpuStart,
+-                    SchedulerThreadPool.DEADLINE_NOT_SET, SchedulerThreadPool.DEADLINE_NOT_SET, MEASURE_CPU_TIME,
+-                    true
++                        lastTickStart, scheduledStart, tickStart, cpuStart,
++                        SchedulerThreadPool.DEADLINE_NOT_SET, SchedulerThreadPool.DEADLINE_NOT_SET, MEASURE_CPU_TIME,
++                        true
+                 );
+                 this.currentTickingThread = Thread.currentThread();
+             }
+@@ -420,7 +435,7 @@ public final class TickRegionScheduler {
+                 this.setScheduledStart(TimeUtil.getGreatestTime(tickEnd, this.tickSchedule.getDeadline(TIME_BETWEEN_TICKS)));
+ 
+                 final TickTime time = new TickTime(
+-                    lastTickStart, scheduledStart, tickStart, cpuStart, tickEnd, cpuEnd, MEASURE_CPU_TIME, true
++                        lastTickStart, scheduledStart, tickStart, cpuStart, tickEnd, cpuEnd, MEASURE_CPU_TIME, true
+                 );
+ 
+                 this.addTickTime(time);
+@@ -459,10 +474,10 @@ public final class TickRegionScheduler {
+             final long cpuEnd = MEASURE_CPU_TIME ? THREAD_MX_BEAN.getThreadCpuTime(this.currentTickingThread.getId()) : 0L;
+ 
+             return new TickTime(
+-                currentTickData.previousTickStart(), currentTickData.scheduledTickStart(),
+-                currentTickData.tickStart(), currentTickData.tickStartCPU(),
+-                tickEnd, cpuEnd,
+-                MEASURE_CPU_TIME, currentTickData.isTickExecution()
++                    currentTickData.previousTickStart(), currentTickData.scheduledTickStart(),
++                    currentTickData.tickStart(), currentTickData.tickStartCPU(),
++                    tickEnd, cpuEnd,
++                    MEASURE_CPU_TIME, currentTickData.isTickExecution()
+             );
+         }
+ 
+@@ -517,14 +532,14 @@ public final class TickRegionScheduler {
+ 
+     // All time units are in nanoseconds.
+     public static final record TickTime(
+-        long previousTickStart,
+-        long scheduledTickStart,
+-        long tickStart,
+-        long tickStartCPU,
+-        long tickEnd,
+-        long tickEndCPU,
+-        boolean supportCPUTime,
+-        boolean isTickExecution
++            long previousTickStart,
++            long scheduledTickStart,
++            long tickStart,
++            long tickStartCPU,
++            long tickEnd,
++            long tickEndCPU,
++            boolean supportCPUTime,
++            boolean isTickExecution
+     ) {
+         /**
+          * The difference between the start tick time and the scheduled start tick time. This value is
 diff --git a/src/main/java/io/papermc/paper/threadedregions/commands/CommandServerHealth.java b/src/main/java/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
-index b74ade39b4ac18af16a7a6340033e55f2cf2947a..aa9221c32b904cee51a4c2ae92aab4ad85a7b693 100644
+index b74ade39b4ac18af16a7a6340033e55f2cf2947a..2b7b0e8c835e94fa5be51ee6ba129de767d77a7a 100644
 --- a/src/main/java/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
 +++ b/src/main/java/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
 @@ -15,6 +15,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
@@ -25,34 +142,34 @@ index b74ade39b4ac18af16a7a6340033e55f2cf2947a..aa9221c32b904cee51a4c2ae92aab4ad
  
  import java.text.DecimalFormat;
  import java.util.ArrayList;
-@@ -63,16 +65,33 @@ public final class CommandServerHealth extends Command {
-     }
- 
-     private static Component formatRegionStats(final TickRegions.RegionStats stats, final boolean newline) {
-+        List<ServerPlayer> players = TickRegionScheduler.getCurrentRegionizedWorldData().getLocalPlayers();
-+        final TextComponent builder = getTextComponent(players);
-         return Component.text()
-                 .append(Component.text("Chunks: ", PRIMARY))
-                 .append(Component.text(NO_DECIMAL_PLACES.get().format(stats.getChunkCount()), INFORMATION))
--                .append(Component.text(" Players: ", PRIMARY))
-+                .append(Component.text(" Players: ", PRIMARY).hoverEvent(HoverEvent.showText(builder)))
-                 .append(Component.text(NO_DECIMAL_PLACES.get().format(stats.getPlayerCount()), INFORMATION))
-                 .append(Component.text(" Entities: ", PRIMARY))
-                 .append(Component.text(NO_DECIMAL_PLACES.get().format(stats.getEntityCount()) + (newline ? "\n" : ""), INFORMATION))
+@@ -73,6 +75,34 @@ public final class CommandServerHealth extends Command {
                  .build();
      }
  
++    private static Component formatRegionStatsAsRegion(final TickRegions.RegionStats stats, final boolean newline) {
++        List<ServerPlayer> players = TickRegionScheduler.getCurrentRegionizedWorldData().getLocalPlayers();
++        final TextComponent builder = getTextComponent(players);
++        return Component.text()
++                .append(Component.text("Chunks: ", PRIMARY))
++                .append(Component.text(NO_DECIMAL_PLACES.get().format(stats.getChunkCount()), INFORMATION))
++                .append(Component.text(" Players: ", PRIMARY).hoverEvent(HoverEvent.showText(builder)))
++                .append(Component.text(NO_DECIMAL_PLACES.get().format(stats.getPlayerCount()), INFORMATION))
++                .append(Component.text(" Entities: ", PRIMARY))
++                .append(Component.text(NO_DECIMAL_PLACES.get().format(stats.getEntityCount()) + (newline ? "\n" : ""), INFORMATION))
++                .build();
++    }
++
 +    private static @NotNull TextComponent getTextComponent(List<ServerPlayer> players) {
-+        @NotNull TextComponent builder = Component.text("Region Player List: \n");
++        @NotNull TextComponent builder = Component.text("Region Player List: ");
 +        for (final ServerPlayer player : players) {
-+            builder = builder.append(Component.text(player.gameProfile.getName()))
++            builder = builder.append(Component.text("\n")).
++                    append(Component.text(player.gameProfile.getName()))
 +                    .append(Component.text(" | In "))
 +                    .append(Component.text(player.getOnPos().getX()))
 +                    .append(Component.text(", "))
 +                    .append(Component.text(player.getOnPos().getY()))
 +                    .append(Component.text(", "))
-+                    .append(Component.text(player.getOnPos().getZ()))
-+                    .append(Component.text("\n"));
++                    .append(Component.text(player.getOnPos().getZ()));
 +        }
 +        return builder;
 +    }
@@ -60,3 +177,12 @@ index b74ade39b4ac18af16a7a6340033e55f2cf2947a..aa9221c32b904cee51a4c2ae92aab4ad
      private static boolean executeRegion(final CommandSender sender, final String commandLabel, final String[] args) {
          final ThreadedRegionizer.ThreadedRegion<TickRegions.TickRegionData, TickRegions.TickRegionSectionData> region =
                  TickRegionScheduler.getCurrentRegion();
+@@ -114,7 +144,7 @@ public final class CommandServerHealth extends Command {
+                         formatRegionInfo("1m: ", util1m, mspt1m, tps1m, true)
+                 )
+                 .append(
+-                        formatRegionStats(region.getData().getRegionStats(), false)
++                        formatRegionStatsAsRegion(region.getData().getRegionStats(), false)
+                 )
+ 
+                 .build();

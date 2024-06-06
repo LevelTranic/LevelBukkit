@@ -9,7 +9,10 @@
 - https://github.com/Winds-Studio/Leaf
 - https://github.com/PlazmaMC/PlazmaBukkit
 
-# Did what
+# LevelBukkit Patch
+- Experimental: Show which zone has which players in tps command (only region)
+
+# Other Patch
 - Safe seed support (off by default)
 - Fix MC-98160 and MC-105103
 - Fix MC-93826
