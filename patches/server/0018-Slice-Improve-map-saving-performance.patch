@@ -60,10 +60,10 @@ index 79e9e5ece5859938ca0c86ead4c25cf5bde9da27..b1baf3fdc65b0516f666b59a81923dc4
  import java.util.Comparator;
  import java.util.List;
 diff --git a/src/main/java/net/minecraft/world/level/saveddata/maps/MapItemSavedData.java b/src/main/java/net/minecraft/world/level/saveddata/maps/MapItemSavedData.java
-index 0c8eaaaf922349097ea337d8e24f4158559baed8..bd067ca95d0de851f8ccec33b7c02a145c2ab95b 100644
+index a82b8532017904b8a2296d945621b8e2afda4763..3112d402169d4d498355213b126a44af86145f5f 100644
 --- a/src/main/java/net/minecraft/world/level/saveddata/maps/MapItemSavedData.java
 +++ b/src/main/java/net/minecraft/world/level/saveddata/maps/MapItemSavedData.java
-@@ -320,7 +320,7 @@ public class MapItemSavedData extends SavedData {
+@@ -322,7 +322,7 @@ public class MapItemSavedData extends SavedData {
              --this.trackedDecorationCount;
          }
  
