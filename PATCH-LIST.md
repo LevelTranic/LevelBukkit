@@ -1,4 +1,10 @@
 # Patch From List
+Patches held upstream are not listed here. 
+
+
+If you want to check what patches we have upstream, you can check it out at [Luminol](https://github.com/LuminolMC/Luminol/tree/ver/1.20.4/patches).
+
+
 ## Server
 ### Classic Bukkit
 - https://github.com/SparklyPower/SparklyPaper
