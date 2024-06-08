@@ -1,0 +1,121 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Sat, 8 Jun 2024 22:50:19 +0800
+Subject: [PATCH] disable respawn ceiling
+
+This feature is not yet complete, but no major bugs have been found.
+
+Note that you should set spawnRadius to at least 1, not 0, and the spawn point range should be at least 3*3 (or more)
+
+diff --git a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
+index 946fac637a16e1de7fc347b349eade93d77e6a3d..14c3e8c60bc6860d502c8137530ce89540d3af71 100644
+--- a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
++++ b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
+@@ -18,6 +18,10 @@ public class LevelBukkitConfig {
+             }
+             YamlConfiguration configuration = YamlConfiguration.loadConfiguration(configFile);
+ 
++            // LevelBukkit start
++            configuration.addDefault("level.disableRespawnCeiling", false);
++            // LevelBukkit end
++
+             // LevelBukkit: Foldenor start
+             configuration.addDefault("foldenor.enableSecureSeed", false);
+             // LevelBukkit: Foldenor end
+@@ -47,10 +51,23 @@ public class LevelBukkitConfig {
+             configuration.options().copyDefaults(true);
+             configuration.save(configFile);
+ 
++            // LevelBukkit start
++            level.disableRespawnCeiling = configuration.getBoolean("level.disableRespawnCeiling");
++            // LevelBukkit end
++
++            // LevelBukkit: Foldenor start
+             foldenor.enableSecureSeed = configuration.getBoolean("foldenor.enableSecureSeed");
++            // LevelBukkit: Foldenor end
++
++            // LevelBukkit: Divine start
+             divine.recipeManagerOptimization = configuration.getBoolean("divine.recipeManagerOptimization");
++            // LevelBukkit: Divine end
++
++            // LevelBukkit: Leaves start
+             leaves.vanillaHopper = configuration.getBoolean("leaves.vanillaHopper");
++            // LevelBukkit: Leaves end
+ 
++            // LevelBukkit: Purpur start
+             purpur.world.farmlandGetsMoistFromBelow = configuration.getBoolean("purpur.world.farmlandGetsMoistFromBelow");
+             purpur.world.sensorOptimization = configuration.getBoolean("purpur.world.sensorOptimization");
+ 
+@@ -62,6 +79,7 @@ public class LevelBukkitConfig {
+             purpur.world.villagerLobotomizeCheckInterval = configuration.getInt("purpur.world.villagerLobotomizeCheckInterval");
+             purpur.world.villagerLobotomizeEnabled = configuration.getBoolean("purpur.world.villagerLobotomizeEnabled");
+             purpur.world.villagerLobotomizeWaitUntilTradeLocked = configuration.getBoolean("purpur.world.villagerLobotomizeWaitUntilTradeLocked");
++            // LevelBukkit: Purpur end
+ 
+             // Pufferfish start
+             // Attempt to detect vectorization
+@@ -88,6 +106,10 @@ public class LevelBukkitConfig {
+         }
+     }
+ 
++    public static class level {
++        public static boolean disableRespawnCeiling = false;
++    }
++
+     public static class foldenor {
+         public static boolean enableSecureSeed = false;
+     }
+diff --git a/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java b/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java
+index 5bfdd772f2e8933acca69ed62c04755a5655fa94..45752979730d92d2b75aad9eb23c7d1f4cf7e98e 100644
+--- a/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java
++++ b/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java
+@@ -1,10 +1,13 @@
+ package net.minecraft.server.level;
+ 
+ import javax.annotation.Nullable;
++
++import dev.paged.lb.Config.LevelBukkitConfig;
+ import net.minecraft.SharedConstants;
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Direction;
+ import net.minecraft.core.SectionPos;
++import net.minecraft.server.MinecraftServer;
+ import net.minecraft.world.level.ChunkPos;
+ import net.minecraft.world.level.block.Block;
+ import net.minecraft.world.level.block.state.BlockState;
+@@ -16,14 +19,17 @@ public class PlayerRespawnLogic {
+     protected static BlockPos getOverworldRespawnPos(ServerLevel world, int x, int z) {
+         boolean bl = world.dimensionType().hasCeiling();
+         LevelChunk levelChunk = world.getChunk(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(z));
+-        int i = bl ? world.getChunkSource().getGenerator().getSpawnHeight(world) : levelChunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x & 15, z & 15);
+-        if (i < world.getMinBuildHeight()) {
+-            return null;
+-        } else {
++        // LevelBukkit start: disable respawn ceiling
++        int i = bl ?
++                world.getChunkSource().getGenerator().getSpawnHeight(world) :
++                LevelBukkitConfig.level.disableRespawnCeiling ?
++                        world.levelData.getYSpawn() :
++                        levelChunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x & 15, z & 15);
++        // LevelBukkit end: disable respawn ceiling
++
++        if (i >= world.getMinBuildHeight()) {
+             int j = levelChunk.getHeight(Heightmap.Types.WORLD_SURFACE, x & 15, z & 15);
+-            if (j <= i && j > levelChunk.getHeight(Heightmap.Types.OCEAN_FLOOR, x & 15, z & 15)) {
+-                return null;
+-            } else {
++            if (j > i || j <= levelChunk.getHeight(Heightmap.Types.OCEAN_FLOOR, x & 15, z & 15)) {
+                 BlockPos.MutableBlockPos mutableBlockPos = new BlockPos.MutableBlockPos();
+ 
+                 for (int k = i + 1; k >= world.getMinBuildHeight(); k--) {
+@@ -38,9 +44,9 @@ public class PlayerRespawnLogic {
+                     }
+                 }
+ 
+-                return null;
+             }
+         }
++        return null;
+     }
+ 
+     @Nullable
