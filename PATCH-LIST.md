@@ -20,6 +20,7 @@
 
 # LevelBukkit
 ## Features
+- Experimental: Disable respawn ceiling
 - Experimental: Show which zone has which players in tps command (only region), like
 ![](public/tps-region-example.png)
 
@@ -28,22 +29,24 @@
 - Allow soil to moisten from water directly under it
 
 ## Optimization
-- Optimize CraftServer.getWorld(UUID)
-- Lobotomize stuck villagers (off by default)
-- getBiome Optimize
-- SIMD utilities
-- Raid AI Optimize
-- Improve map-saving performance
-- HashedList Optimize
+- Cache world generator sea level
+- Cache coordinate key used for nearby players when ticking chunks
+- Elytra check Optimise, and hand swing Optimize
 - Faster sequencing of futures for chunk structure gen
+- HashedList Optimize
+- Improve map-saving performance
+- Lobotomize stuck villagers (off by default)
+- Optimize CraftServer.getWorld(UUID)
 - Optimize state lookup more
+- Raid AI Optimize
+- Random flatten triangular distribution
 - RecipeManager Optimize
-- elytra check Optimise, and hand swing Optimize
 - Reduce sensor work
-- Placing locked hopper no longer send NC updates
+- SIMD utilities
 - Skip "distanceToSqr" call in "ServerEntity#sendChanges" if the delta movement hasn't changed
 - Skip dirty stats copy when requesting player stats
-- Cache coordinate key used for nearby players when ticking chunks
+- Placing locked hopper no longer send NC updates
+- getBiome Optimize
 
 ## Security
 - Safe seed support (off by default)
