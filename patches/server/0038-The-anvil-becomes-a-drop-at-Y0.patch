@@ -1,0 +1,53 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Sun, 9 Jun 2024 21:03:51 +0800
+Subject: [PATCH] The anvil becomes a drop at Y0
+
+This is a marking patch, I will try to repair it soon, I have found a position that may have problems
+
+diff --git a/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java b/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java
+index a52c2fc38fd97ffa1684270443646d605ec35830..a29ab611da3c39ad331914f67a952e1341857d24 100644
+--- a/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java
++++ b/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java
+@@ -1,7 +1,6 @@
+ package net.minecraft.world.entity.item;
+ 
+ import com.mojang.logging.LogUtils;
+-import java.util.Iterator;
+ import java.util.function.Predicate;
+ import javax.annotation.Nullable;
+ import net.minecraft.CrashReportCategory;
+@@ -187,6 +186,8 @@ public class FallingBlockEntity extends Entity {
+                             boolean flag3 = FallingBlock.isFree(this.level().getBlockState(blockposition.below())) && (!flag || !flag1);
+                             boolean flag4 = this.blockState.canSurvive(this.level(), blockposition) && !flag3;
+ 
++                            // Here, the probability of the Iville has become a drop of probability at y = 0.
++                            // I will continue to check what causes this problem.
+                             if (flag2 && flag4) {
+                                 if (this.blockState.hasProperty(BlockStateProperties.WATERLOGGED) && this.level().getFluidState(blockposition).getType() == Fluids.WATER) {
+                                     this.blockState = (BlockState) this.blockState.setValue(BlockStateProperties.WATERLOGGED, true);
+@@ -210,11 +211,8 @@ public class FallingBlockEntity extends Entity {
+ 
+                                         if (tileentity != null) {
+                                             CompoundTag nbttagcompound = tileentity.saveWithoutMetadata();
+-                                            Iterator iterator = this.blockData.getAllKeys().iterator();
+-
+-                                            while (iterator.hasNext()) {
+-                                                String s = (String) iterator.next();
+ 
++                                            for (String s : this.blockData.getAllKeys()) {
+                                                 nbttagcompound.put(s, this.blockData.get(s).copy());
+                                             }
+ 
+@@ -345,9 +343,9 @@ public class FallingBlockEntity extends Entity {
+         }
+ 
+         // Paper start - Expand FallingBlock API
+-         if (nbt.contains("Paper.AutoExpire")) {
++        if (nbt.contains("Paper.AutoExpire")) {
+             this.autoExpire = nbt.getBoolean("Paper.AutoExpire");
+-         }
++        }
+         // Paper end - Expand FallingBlock API
+     }
+ 
