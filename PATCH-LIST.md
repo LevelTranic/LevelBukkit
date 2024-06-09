@@ -31,6 +31,9 @@ If you want to check what patches we have upstream, you can check it out at [Lum
 - Experimental: Show which zone has which players in tps command (only region), like
 ![](public/tps-region-example.png)
 
+### Bug Fix
+- Experimental: Try fix folia #217
+
 ## Other
 ### Features
 - Allow soil to moisten from water directly under it
