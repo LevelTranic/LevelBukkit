@@ -3,30 +3,141 @@ From: 404Setup <153366651+404Setup@users.noreply.github.com>
 Date: Sun, 9 Jun 2024 21:03:51 +0800
 Subject: [PATCH] The anvil becomes a drop at Y0
 
-This is a marking patch, I will try to repair it soon, I have found a position that may have problems
+try fix: https://github.com/PaperMC/Folia/issues/217
 
+This fix may work, but its implementation is not elegant, so it will not be submitted upstream
+
+diff --git a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
+index 82768968b2de3b31732a77883b7b2eb464661b46..8b5c55d99b0a7550cfc84dbbbc743b105de8d065 100644
+--- a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
++++ b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
+@@ -19,7 +19,9 @@ public class LevelBukkitConfig {
+             YamlConfiguration configuration = YamlConfiguration.loadConfiguration(configFile);
+ 
+             // LevelBukkit start
+-            configuration.addDefault("level.disableRespawnCeiling", false);
++            configuration.addDefault("level.fix.disable-respawn-ceiling", false);
++            configuration.addDefault("level.fix.try-fix-anvil-drop.enabled", false);
++            configuration.addDefault("level.fix.try-fix-anvil-drop.debug", false);
+             // LevelBukkit end
+ 
+             // LevelBukkit: Foldenor start
+@@ -54,7 +56,9 @@ public class LevelBukkitConfig {
+             configuration.save(configFile);
+ 
+             // LevelBukkit start
+-            level.disableRespawnCeiling = configuration.getBoolean("level.disableRespawnCeiling");
++            level.fix.tryFixAnvilDrop = configuration.getBoolean("level.fix.try-fix-anvil-drop.enabled");
++            level.fix.tryFixAnvilDropDebug = configuration.getBoolean("level.fix.try-fix-anvil-drop.debug");
++            level.fix.disableRespawnCeiling = configuration.getBoolean("level.fix.disable-respawn-ceiling");
+             // LevelBukkit end
+ 
+             // LevelBukkit: Foldenor start
+@@ -111,7 +115,11 @@ public class LevelBukkitConfig {
+     }
+ 
+     public static class level {
+-        public static boolean disableRespawnCeiling = false;
++        public static class fix {
++            public static boolean disableRespawnCeiling = false;
++            public static boolean tryFixAnvilDrop = false;
++            public static boolean tryFixAnvilDropDebug = false;
++        }
+     }
+ 
+     public static class foldenor {
+diff --git a/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java b/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java
+index 45752979730d92d2b75aad9eb23c7d1f4cf7e98e..76385551add6c14b3ef45258908900429c23d187 100644
+--- a/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java
++++ b/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java
+@@ -22,7 +22,7 @@ public class PlayerRespawnLogic {
+         // LevelBukkit start: disable respawn ceiling
+         int i = bl ?
+                 world.getChunkSource().getGenerator().getSpawnHeight(world) :
+-                LevelBukkitConfig.level.disableRespawnCeiling ?
++                LevelBukkitConfig.level.fix.disableRespawnCeiling ?
+                         world.levelData.getYSpawn() :
+                         levelChunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x & 15, z & 15);
+         // LevelBukkit end: disable respawn ceiling
 diff --git a/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java b/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java
-index a52c2fc38fd97ffa1684270443646d605ec35830..a29ab611da3c39ad331914f67a952e1341857d24 100644
+index a52c2fc38fd97ffa1684270443646d605ec35830..987bbb65ef0da200e7811e4e7e6db4ac9ddca90d 100644
 --- a/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java
 +++ b/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java
-@@ -1,7 +1,6 @@
+@@ -1,9 +1,10 @@
  package net.minecraft.world.entity.item;
  
  import com.mojang.logging.LogUtils;
 -import java.util.Iterator;
  import java.util.function.Predicate;
  import javax.annotation.Nullable;
++
++import dev.paged.lb.Config.LevelBukkitConfig;
  import net.minecraft.CrashReportCategory;
-@@ -187,6 +186,8 @@ public class FallingBlockEntity extends Entity {
+ import net.minecraft.core.BlockPos;
+ import net.minecraft.core.Direction;
+@@ -18,6 +19,7 @@ import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
+ import net.minecraft.network.syncher.EntityDataAccessor;
+ import net.minecraft.network.syncher.EntityDataSerializers;
+ import net.minecraft.network.syncher.SynchedEntityData;
++import net.minecraft.server.MinecraftServer;
+ import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.tags.BlockTags;
+ import net.minecraft.tags.FluidTags;
+@@ -28,7 +30,6 @@ import net.minecraft.world.entity.EntitySelector;
+ import net.minecraft.world.entity.EntityType;
+ import net.minecraft.world.entity.MoverType;
+ import net.minecraft.world.item.ItemStack;
+-import net.minecraft.world.item.context.BlockPlaceContext;
+ import net.minecraft.world.item.context.DirectionalPlaceContext;
+ import net.minecraft.world.level.ClipContext;
+ import net.minecraft.world.level.GameRules;
+@@ -41,12 +42,14 @@ import net.minecraft.world.level.block.ConcretePowderBlock;
+ import net.minecraft.world.level.block.Fallable;
+ import net.minecraft.world.level.block.FallingBlock;
+ import net.minecraft.world.level.block.entity.BlockEntity;
++import net.minecraft.world.level.block.state.BlockBehaviour;
+ import net.minecraft.world.level.block.state.BlockState;
+ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+ import net.minecraft.world.level.material.Fluids;
+ import net.minecraft.world.phys.BlockHitResult;
+ import net.minecraft.world.phys.HitResult;
+ import net.minecraft.world.phys.Vec3;
++import org.bukkit.Material;
+ import org.slf4j.Logger;
+ 
+ // CraftBukkit start;
+@@ -183,13 +186,28 @@ public class FallingBlockEntity extends Entity {
+                     this.setDeltaMovement(this.getDeltaMovement().multiply(0.7D, -0.5D, 0.7D));
+                     if (!iblockdata.is(Blocks.MOVING_PISTON)) {
+                         if (!this.cancelDrop) {
+-                            boolean flag2 = iblockdata.canBeReplaced((BlockPlaceContext) (new DirectionalPlaceContext(this.level(), blockposition, Direction.DOWN, ItemStack.EMPTY, Direction.UP)));
++                            // LevelBukkit start: try fix: https://github.com/PaperMC/Folia/issues/217
++                            if (LevelBukkitConfig.level.fix.tryFixAnvilDrop)
++                                if ((
++                                        iblockdata.getBukkitMaterial().equals(Material.ANVIL) ||
++                                                iblockdata.getBukkitMaterial().equals(Material.CHIPPED_ANVIL) ||
++                                                iblockdata.getBukkitMaterial().equals(Material.DAMAGED_ANVIL)
++                                )) {
++                                    iblockdata = Blocks.VOID_AIR.defaultBlockState();
++                                }
++                            // LevelBukkit end: try fix: https://github.com/PaperMC/Folia/issues/217
++                            boolean flag2 = iblockdata.canBeReplaced(new DirectionalPlaceContext(this.level(), blockposition, Direction.DOWN, ItemStack.EMPTY, Direction.UP));
                              boolean flag3 = FallingBlock.isFree(this.level().getBlockState(blockposition.below())) && (!flag || !flag1);
                              boolean flag4 = this.blockState.canSurvive(this.level(), blockposition) && !flag3;
  
-+                            // Here, the probability of the Iville has become a drop of probability at y = 0.
-+                            // I will continue to check what causes this problem.
++                            // LevelBukkit start: try fix: https://github.com/PaperMC/Folia/issues/217
++                            if (LevelBukkitConfig.level.fix.tryFixAnvilDropDebug)
++                                MinecraftServer.LOGGER.info("BlockState at {}: {}, Can be replaced: {}", blockposition, iblockdata, flag2);
++                            // LevelBukkit end: try fix: https://github.com/PaperMC/Folia/issues/217
++
                              if (flag2 && flag4) {
                                  if (this.blockState.hasProperty(BlockStateProperties.WATERLOGGED) && this.level().getFluidState(blockposition).getType() == Fluids.WATER) {
-                                     this.blockState = (BlockState) this.blockState.setValue(BlockStateProperties.WATERLOGGED, true);
-@@ -210,11 +211,8 @@ public class FallingBlockEntity extends Entity {
+-                                    this.blockState = (BlockState) this.blockState.setValue(BlockStateProperties.WATERLOGGED, true);
++                                    this.blockState = this.blockState.setValue(BlockStateProperties.WATERLOGGED, true);
+                                 }
+ 
+                                 // CraftBukkit start
+@@ -210,11 +228,8 @@ public class FallingBlockEntity extends Entity {
  
                                          if (tileentity != null) {
                                              CompoundTag nbttagcompound = tileentity.saveWithoutMetadata();
@@ -39,7 +150,62 @@ index a52c2fc38fd97ffa1684270443646d605ec35830..a29ab611da3c39ad331914f67a952e13
                                                  nbttagcompound.put(s, this.blockData.get(s).copy());
                                              }
  
-@@ -345,9 +343,9 @@ public class FallingBlockEntity extends Entity {
+@@ -228,11 +243,18 @@ public class FallingBlockEntity extends Entity {
+                                         }
+                                     }
+                                 } else if (this.dropItem && this.level().getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
++                                    if (LevelBukkitConfig.level.fix.tryFixAnvilDropDebug)
++                                        MinecraftServer.LOGGER.info("Dropping at y=0 or other position, blockState: {}, position: {}, with setBlock is false", this.blockState, blockposition);
+                                     this.discard(EntityRemoveEvent.Cause.DROP); // CraftBukkit - add Bukkit remove cause
+                                     this.callOnBrokenAfterFall(block, blockposition);
+                                     this.spawnAtLocation((ItemLike) block);
+                                 }
+                             } else {
++                                // LevelBukkit start: try fix: https://github.com/PaperMC/Folia/issues/217
++                                if (LevelBukkitConfig.level.fix.tryFixAnvilDropDebug)
++                                    MinecraftServer.LOGGER.info("Dropping at y=0 or other position, blockState: {}, position: {}", this.blockState, blockposition);
++                                // LevelBukkit end: try fix: https://github.com/PaperMC/Folia/issues/217
++
+                                 this.discard(EntityRemoveEvent.Cause.DROP); // CraftBukkit - add Bukkit remove cause
+                                 if (this.dropItem && this.level().getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
+                                     this.callOnBrokenAfterFall(block, blockposition);
+@@ -260,21 +282,15 @@ public class FallingBlockEntity extends Entity {
+ 
+     @Override
+     public boolean causeFallDamage(float fallDistance, float damageMultiplier, DamageSource damageSource) {
+-        if (!this.hurtEntities) {
+-            return false;
+-        } else {
++        if (this.hurtEntities) {
+             int i = Mth.ceil(fallDistance - 1.0F);
+ 
+-            if (i < 0) {
+-                return false;
+-            } else {
++            if (i >= 0) {
+                 Predicate<Entity> predicate = EntitySelector.NO_CREATIVE_OR_SPECTATOR.and(EntitySelector.LIVING_ENTITY_STILL_ALIVE);
+                 Block block = this.blockState.getBlock();
+                 DamageSource damagesource1;
+ 
+-                if (block instanceof Fallable) {
+-                    Fallable fallable = (Fallable) block;
+-
++                if (block instanceof Fallable fallable) {
+                     damagesource1 = fallable.getFallDamageSource(this);
+                 } else {
+                     damagesource1 = this.damageSources().fallingBlock(this);
+@@ -298,9 +314,9 @@ public class FallingBlockEntity extends Entity {
+                     }
+                 }
+ 
+-                return false;
+             }
+         }
++        return false;
+     }
+ 
+     @Override
+@@ -345,9 +361,9 @@ public class FallingBlockEntity extends Entity {
          }
  
          // Paper start - Expand FallingBlock API
@@ -51,3 +217,134 @@ index a52c2fc38fd97ffa1684270443646d605ec35830..a29ab611da3c39ad331914f67a952e13
          // Paper end - Expand FallingBlock API
      }
  
+diff --git a/src/main/java/net/minecraft/world/level/block/Block.java b/src/main/java/net/minecraft/world/level/block/Block.java
+index 6df3913145aaf37f9a1b7dc77fed12f6952d77e6..87fa70ffa300edcd6be0667bc0853d2c94190df7 100644
+--- a/src/main/java/net/minecraft/world/level/block/Block.java
++++ b/src/main/java/net/minecraft/world/level/block/Block.java
+@@ -7,7 +7,6 @@ import com.google.common.collect.ImmutableMap;
+ import com.mojang.logging.LogUtils;
+ import com.mojang.serialization.MapCodec;
+ import it.unimi.dsi.fastutil.objects.Object2ByteLinkedOpenHashMap;
+-import java.util.Iterator;
+ import java.util.List;
+ import java.util.function.Function;
+ import java.util.function.Supplier;
+@@ -92,16 +91,16 @@ public class Block extends BlockBehaviour implements ItemLike {
+     // Paper start
+     public final boolean isDestroyable() {
+         return io.papermc.paper.configuration.GlobalConfiguration.get().unsupportedSettings.allowPermanentBlockBreakExploits ||
+-            this != Blocks.BEDROCK &&
+-            this != Blocks.END_PORTAL_FRAME &&
+-            this != Blocks.END_PORTAL &&
+-            this != Blocks.END_GATEWAY &&
+-            this != Blocks.COMMAND_BLOCK &&
+-            this != Blocks.REPEATING_COMMAND_BLOCK &&
+-            this != Blocks.CHAIN_COMMAND_BLOCK &&
+-            this != Blocks.BARRIER &&
+-            this != Blocks.STRUCTURE_BLOCK &&
+-            this != Blocks.JIGSAW;
++                this != Blocks.BEDROCK &&
++                        this != Blocks.END_PORTAL_FRAME &&
++                        this != Blocks.END_PORTAL &&
++                        this != Blocks.END_GATEWAY &&
++                        this != Blocks.COMMAND_BLOCK &&
++                        this != Blocks.REPEATING_COMMAND_BLOCK &&
++                        this != Blocks.CHAIN_COMMAND_BLOCK &&
++                        this != Blocks.BARRIER &&
++                        this != Blocks.STRUCTURE_BLOCK &&
++                        this != Blocks.JIGSAW;
+     }
+     public co.aikar.timings.Timing timing;
+     public co.aikar.timings.Timing getTiming() {
+@@ -153,21 +152,16 @@ public class Block extends BlockBehaviour implements ItemLike {
+     public static BlockState pushEntitiesUp(BlockState from, BlockState to, LevelAccessor world, BlockPos pos) {
+         VoxelShape voxelshape = Shapes.joinUnoptimized(from.getCollisionShape(world, pos), to.getCollisionShape(world, pos), BooleanOp.ONLY_SECOND).move((double) pos.getX(), (double) pos.getY(), (double) pos.getZ());
+ 
+-        if (voxelshape.isEmpty()) {
+-            return to;
+-        } else {
++        if (!voxelshape.isEmpty()) {
+             List<Entity> list = world.getEntities((Entity) null, voxelshape.bounds());
+-            Iterator iterator = list.iterator();
+-
+-            while (iterator.hasNext()) {
+-                Entity entity = (Entity) iterator.next();
++            for (Entity entity : list) {
+                 double d0 = Shapes.collide(Direction.Axis.Y, entity.getBoundingBox().move(0.0D, 1.0D, 0.0D), List.of(voxelshape), -1.0D);
+ 
+                 entity.teleportRelative(0.0D, 1.0D + d0, 0.0D);
+             }
+ 
+-            return to;
+         }
++        return to;
+     }
+ 
+     public static VoxelShape box(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
+@@ -177,12 +171,8 @@ public class Block extends BlockBehaviour implements ItemLike {
+     public static BlockState updateFromNeighbourShapes(BlockState state, LevelAccessor world, BlockPos pos) {
+         BlockState iblockdata1 = state;
+         BlockPos.MutableBlockPos blockposition_mutableblockposition = new BlockPos.MutableBlockPos();
+-        Direction[] aenumdirection = Block.UPDATE_SHAPE_ORDER;
+-        int i = aenumdirection.length;
+-
+-        for (int j = 0; j < i; ++j) {
+-            Direction enumdirection = aenumdirection[j];
+ 
++        for (Direction enumdirection : Block.UPDATE_SHAPE_ORDER) {
+             blockposition_mutableblockposition.setWithOffset(pos, enumdirection);
+             iblockdata1 = iblockdata1.updateShape(enumdirection, world.getBlockState(blockposition_mutableblockposition), world, pos, blockposition_mutableblockposition);
+         }
+@@ -349,11 +339,11 @@ public class Block extends BlockBehaviour implements ItemLike {
+     // Paper end - Add BlockBreakBlockEvent
+ 
+     public static void dropResources(BlockState state, Level world, BlockPos pos, @Nullable BlockEntity blockEntity, @Nullable Entity entity, ItemStack tool) {
+-    // Paper start - Properly handle xp dropping
++        // Paper start - Properly handle xp dropping
+         dropResources(state, world, pos, blockEntity, entity, tool, true);
+     }
+     public static void dropResources(BlockState state, Level world, BlockPos pos, @Nullable BlockEntity blockEntity, @Nullable Entity entity, ItemStack tool, boolean dropExperience) {
+-    // Paper end - Properly handle xp dropping
++        // Paper end - Properly handle xp dropping
+         if (world instanceof ServerLevel) {
+             Block.getDrops(state, (ServerLevel) world, pos, blockEntity, entity, tool).forEach((itemstack1) -> {
+                 Block.popResource(world, pos, itemstack1);
+@@ -442,7 +432,7 @@ public class Block extends BlockBehaviour implements ItemLike {
+         player.awardStat(Stats.BLOCK_MINED.get(this));
+         player.causeFoodExhaustion(0.005F, org.bukkit.event.entity.EntityExhaustionEvent.ExhaustionReason.BLOCK_MINED); // CraftBukkit - EntityExhaustionEvent
+         if (includeDrops) { // Paper - fix drops not preventing stats/food exhaustion
+-        Block.dropResources(state, world, pos, blockEntity, player, tool, dropExp); // Paper - Properly handle xp dropping
++            Block.dropResources(state, world, pos, blockEntity, player, tool, dropExp); // Paper - Properly handle xp dropping
+         } // Paper - fix drops not preventing stats/food exhaustion
+     }
+ 
+@@ -524,13 +514,10 @@ public class Block extends BlockBehaviour implements ItemLike {
+ 
+     public final BlockState withPropertiesOf(BlockState state) {
+         BlockState iblockdata1 = this.defaultBlockState();
+-        Iterator iterator = state.getBlock().getStateDefinition().getProperties().iterator();
+ 
+-        while (iterator.hasNext()) {
+-            Property<?> iblockstate = (Property) iterator.next();
+-
+-            if (iblockdata1.hasProperty(iblockstate)) {
+-                iblockdata1 = Block.copyProperty(state, iblockdata1, iblockstate);
++        for (Property<?> property : state.getBlock().getStateDefinition().getProperties()) {
++            if (iblockdata1.hasProperty(property)) {
++                iblockdata1 = Block.copyProperty(state, iblockdata1, property);
+             }
+         }
+ 
+@@ -625,11 +612,9 @@ public class Block extends BlockBehaviour implements ItemLike {
+         public boolean equals(Object object) {
+             if (this == object) {
+                 return true;
+-            } else if (!(object instanceof Block.BlockStatePairKey)) {
++            } else if (!(object instanceof BlockStatePairKey block_a)) {
+                 return false;
+             } else {
+-                Block.BlockStatePairKey block_a = (Block.BlockStatePairKey) object;
+-
+                 return this.first == block_a.first && this.second == block_a.second && this.direction == block_a.direction;
+             }
+         }
