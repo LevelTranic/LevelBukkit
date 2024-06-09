@@ -47,6 +47,7 @@ If you want to check what patches we have upstream, you can check it out at [Lum
 - Raid AI Optimize
 - Random flatten triangular distribution
 - RecipeManager Optimize
+- Reduce array allocations
 - Reduce sensor work
 - SIMD utilities
 - Skip "distanceToSqr" call in "ServerEntity#sendChanges" if the delta movement hasn't changed
