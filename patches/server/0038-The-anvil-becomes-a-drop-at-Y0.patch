@@ -7,60 +7,8 @@ try fix: https://github.com/PaperMC/Folia/issues/217
 
 This fix may work, but its implementation is not elegant, so it will not be submitted upstream
 
-diff --git a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-index 82768968b2de3b31732a77883b7b2eb464661b46..8b5c55d99b0a7550cfc84dbbbc743b105de8d065 100644
---- a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-+++ b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-@@ -19,7 +19,9 @@ public class LevelBukkitConfig {
-             YamlConfiguration configuration = YamlConfiguration.loadConfiguration(configFile);
- 
-             // LevelBukkit start
--            configuration.addDefault("level.disableRespawnCeiling", false);
-+            configuration.addDefault("level.fix.disable-respawn-ceiling", false);
-+            configuration.addDefault("level.fix.try-fix-anvil-drop.enabled", false);
-+            configuration.addDefault("level.fix.try-fix-anvil-drop.debug", false);
-             // LevelBukkit end
- 
-             // LevelBukkit: Foldenor start
-@@ -54,7 +56,9 @@ public class LevelBukkitConfig {
-             configuration.save(configFile);
- 
-             // LevelBukkit start
--            level.disableRespawnCeiling = configuration.getBoolean("level.disableRespawnCeiling");
-+            level.fix.tryFixAnvilDrop = configuration.getBoolean("level.fix.try-fix-anvil-drop.enabled");
-+            level.fix.tryFixAnvilDropDebug = configuration.getBoolean("level.fix.try-fix-anvil-drop.debug");
-+            level.fix.disableRespawnCeiling = configuration.getBoolean("level.fix.disable-respawn-ceiling");
-             // LevelBukkit end
- 
-             // LevelBukkit: Foldenor start
-@@ -111,7 +115,11 @@ public class LevelBukkitConfig {
-     }
- 
-     public static class level {
--        public static boolean disableRespawnCeiling = false;
-+        public static class fix {
-+            public static boolean disableRespawnCeiling = false;
-+            public static boolean tryFixAnvilDrop = false;
-+            public static boolean tryFixAnvilDropDebug = false;
-+        }
-     }
- 
-     public static class foldenor {
-diff --git a/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java b/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java
-index 45752979730d92d2b75aad9eb23c7d1f4cf7e98e..76385551add6c14b3ef45258908900429c23d187 100644
---- a/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java
-+++ b/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java
-@@ -22,7 +22,7 @@ public class PlayerRespawnLogic {
-         // LevelBukkit start: disable respawn ceiling
-         int i = bl ?
-                 world.getChunkSource().getGenerator().getSpawnHeight(world) :
--                LevelBukkitConfig.level.disableRespawnCeiling ?
-+                LevelBukkitConfig.level.fix.disableRespawnCeiling ?
-                         world.levelData.getYSpawn() :
-                         levelChunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x & 15, z & 15);
-         // LevelBukkit end: disable respawn ceiling
 diff --git a/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java b/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java
-index a52c2fc38fd97ffa1684270443646d605ec35830..987bbb65ef0da200e7811e4e7e6db4ac9ddca90d 100644
+index a52c2fc38fd97ffa1684270443646d605ec35830..2b3c5ad564a1ffdaee373b0f006da65a87b1c0e6 100644
 --- a/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java
 +++ b/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java
 @@ -1,9 +1,10 @@
@@ -71,7 +19,7 @@ index a52c2fc38fd97ffa1684270443646d605ec35830..987bbb65ef0da200e7811e4e7e6db4ac
  import java.util.function.Predicate;
  import javax.annotation.Nullable;
 +
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
  import net.minecraft.CrashReportCategory;
  import net.minecraft.core.BlockPos;
  import net.minecraft.core.Direction;
@@ -112,7 +60,7 @@ index a52c2fc38fd97ffa1684270443646d605ec35830..987bbb65ef0da200e7811e4e7e6db4ac
                          if (!this.cancelDrop) {
 -                            boolean flag2 = iblockdata.canBeReplaced((BlockPlaceContext) (new DirectionalPlaceContext(this.level(), blockposition, Direction.DOWN, ItemStack.EMPTY, Direction.UP)));
 +                            // LevelBukkit start: try fix: https://github.com/PaperMC/Folia/issues/217
-+                            if (LevelBukkitConfig.level.fix.tryFixAnvilDrop)
++                            if (LevelBukkitConfig.Level.Fix.tryFixAnvilDrop)
 +                                if ((
 +                                        iblockdata.getBukkitMaterial().equals(Material.ANVIL) ||
 +                                                iblockdata.getBukkitMaterial().equals(Material.CHIPPED_ANVIL) ||
@@ -126,7 +74,7 @@ index a52c2fc38fd97ffa1684270443646d605ec35830..987bbb65ef0da200e7811e4e7e6db4ac
                              boolean flag4 = this.blockState.canSurvive(this.level(), blockposition) && !flag3;
  
 +                            // LevelBukkit start: try fix: https://github.com/PaperMC/Folia/issues/217
-+                            if (LevelBukkitConfig.level.fix.tryFixAnvilDropDebug)
++                            if (LevelBukkitConfig.Level.Fix.tryFixAnvilDropDebug)
 +                                MinecraftServer.LOGGER.info("BlockState at {}: {}, Can be replaced: {}", blockposition, iblockdata, flag2);
 +                            // LevelBukkit end: try fix: https://github.com/PaperMC/Folia/issues/217
 +
@@ -154,7 +102,7 @@ index a52c2fc38fd97ffa1684270443646d605ec35830..987bbb65ef0da200e7811e4e7e6db4ac
                                          }
                                      }
                                  } else if (this.dropItem && this.level().getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
-+                                    if (LevelBukkitConfig.level.fix.tryFixAnvilDropDebug)
++                                    if (LevelBukkitConfig.Level.Fix.tryFixAnvilDropDebug)
 +                                        MinecraftServer.LOGGER.info("Dropping at y=0 or other position, blockState: {}, position: {}, with setBlock is false", this.blockState, blockposition);
                                      this.discard(EntityRemoveEvent.Cause.DROP); // CraftBukkit - add Bukkit remove cause
                                      this.callOnBrokenAfterFall(block, blockposition);
@@ -162,7 +110,7 @@ index a52c2fc38fd97ffa1684270443646d605ec35830..987bbb65ef0da200e7811e4e7e6db4ac
                                  }
                              } else {
 +                                // LevelBukkit start: try fix: https://github.com/PaperMC/Folia/issues/217
-+                                if (LevelBukkitConfig.level.fix.tryFixAnvilDropDebug)
++                                if (LevelBukkitConfig.Level.Fix.tryFixAnvilDropDebug)
 +                                    MinecraftServer.LOGGER.info("Dropping at y=0 or other position, blockState: {}, position: {}", this.blockState, blockposition);
 +                                // LevelBukkit end: try fix: https://github.com/PaperMC/Folia/issues/217
 +

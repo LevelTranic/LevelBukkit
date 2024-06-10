@@ -6,51 +6,8 @@ Subject: [PATCH] Divine: Reduce sensor work
 Original project: Bloom-host/Petal
 Link: https://github.com/Bloom-host/Petal
 
-diff --git a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-index 5747b65d9107c0acd0bf0c6c90f19ec74fad9a20..2d292a9adcec37c49041b3b7cd6647097324165c 100644
---- a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-+++ b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-@@ -18,6 +18,16 @@ public class LevelBukkitConfig {
-         public static boolean recipeManagerOptimization = true;
-     }
- 
-+    public static class purpur {
-+        public static class world {
-+                public static boolean sensorOptimization = true;
-+                public static double skeletonHeadVisibilityPercent = 0;
-+                public static double zombieHeadVisibilityPercent = 0.5D;
-+                public static double creeperHeadVisibilityPercent = 0.5D;
-+                public static double piglinHeadVisibilityPercent = 0.5D;
-+        }
-+    }
-+
-     public static void load() {
-         try {
-             File configFile = new File("levelbukkit.yml");
-@@ -27,11 +37,21 @@ public class LevelBukkitConfig {
-             YamlConfiguration configuration = YamlConfiguration.loadConfiguration(configFile);
-             configuration.addDefault("foldenor.enableSecureSeed", false);
-             configuration.addDefault("divine.recipeManagerOptimization", true);
-+            configuration.addDefault("purpur.world.sensorOptimization", true);
-+            configuration.addDefault("purpur.world.skeletonHeadVisibilityPercent", 0.5D);
-+            configuration.addDefault("purpur.world.zombieHeadVisibilityPercent", 0.5D);
-+            configuration.addDefault("purpur.world.creeperHeadVisibilityPercent", 0.5D);
-+            configuration.addDefault("purpur.world.piglinHeadVisibilityPercent", 0.5D);
-             configuration.options().copyDefaults(true);
-             configuration.save(configFile);
- 
-             foldenor.enableSecureSeed = configuration.getBoolean("foldenor.enableSecureSeed");
-             divine.recipeManagerOptimization = configuration.getBoolean("divine.recipeManagerOptimization");
-+            purpur.world.sensorOptimization = configuration.getBoolean("purpur.world.sensorOptimization");
-+            purpur.world.skeletonHeadVisibilityPercent = configuration.getDouble("purpur.world.skeletonHeadVisibilityPercent");
-+            purpur.world.zombieHeadVisibilityPercent = configuration.getDouble("purpur.world.zombieHeadVisibilityPercent");
-+            purpur.world.creeperHeadVisibilityPercent = configuration.getDouble("purpur.world.creeperHeadVisibilityPercent");
-+            purpur.world.piglinHeadVisibilityPercent = configuration.getDouble("purpur.world.piglinHeadVisibilityPercent");
- 
-             // Pufferfish start
-             // Attempt to detect vectorization
 diff --git a/src/main/java/net/minecraft/world/entity/LivingEntity.java b/src/main/java/net/minecraft/world/entity/LivingEntity.java
-index a39c9596e8247b38c2dba7b9c8b3c98178e57a32..16d060c1ec00b1453d3ba27181a1d7b341244da9 100644
+index a39c9596e8247b38c2dba7b9c8b3c98178e57a32..1958a67b505264050541ff996533111a2c41571d 100644
 --- a/src/main/java/net/minecraft/world/entity/LivingEntity.java
 +++ b/src/main/java/net/minecraft/world/entity/LivingEntity.java
 @@ -18,6 +18,8 @@ import java.util.Optional;
@@ -58,7 +15,7 @@ index a39c9596e8247b38c2dba7b9c8b3c98178e57a32..16d060c1ec00b1453d3ba27181a1d7b3
  import java.util.function.Predicate;
  import javax.annotation.Nullable;
 +
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
  import net.minecraft.BlockUtil;
  import net.minecraft.advancements.CriteriaTriggers;
  import net.minecraft.commands.arguments.EntityAnchorArgument;
@@ -85,19 +42,19 @@ index a39c9596e8247b38c2dba7b9c8b3c98178e57a32..16d060c1ec00b1453d3ba27181a1d7b3
 -            if (entitytypes == EntityType.SKELETON && itemstack.is(Items.SKELETON_SKULL) || entitytypes == EntityType.ZOMBIE && itemstack.is(Items.ZOMBIE_HEAD) || entitytypes == EntityType.PIGLIN && itemstack.is(Items.PIGLIN_HEAD) || entitytypes == EntityType.PIGLIN_BRUTE && itemstack.is(Items.PIGLIN_HEAD) || entitytypes == EntityType.CREEPER && itemstack.is(Items.CREEPER_HEAD)) {
 -                d0 *= 0.5D;
 +            EntityType<?> entitytypes = entity.getType();
-+            if (LevelBukkitConfig.purpur.world.sensorOptimization) {
++            if (LevelBukkitConfig.Purpur.World.sensorOptimization) {
 +                // Purpur start
 +                if (entitytypes == EntityType.SKELETON && this.getItemBySlot(EquipmentSlot.HEAD).is(Items.SKELETON_SKULL)) { // DivineMC - Reduce sensor work
-+                    d0 *= LevelBukkitConfig.purpur.world.skeletonHeadVisibilityPercent;
++                    d0 *= LevelBukkitConfig.Purpur.World.skeletonHeadVisibilityPercent;
 +                }
 +                else if (entitytypes == EntityType.ZOMBIE && this.getItemBySlot(EquipmentSlot.HEAD).is(Items.ZOMBIE_HEAD)) { // DivineMC - Reduce sensor work
-+                    d0 *= LevelBukkitConfig.purpur.world.zombieHeadVisibilityPercent;
++                    d0 *= LevelBukkitConfig.Purpur.World.zombieHeadVisibilityPercent;
 +                }
 +                else if (entitytypes == EntityType.CREEPER && this.getItemBySlot(EquipmentSlot.HEAD).is(Items.CREEPER_HEAD)) { // DivineMC - Reduce sensor work
-+                    d0 *= LevelBukkitConfig.purpur.world.creeperHeadVisibilityPercent;
++                    d0 *= LevelBukkitConfig.Purpur.World.creeperHeadVisibilityPercent;
 +                }
 +                else if ((entitytypes == EntityType.PIGLIN || entitytypes == EntityType.PIGLIN_BRUTE) && this.getItemBySlot(EquipmentSlot.HEAD).is(Items.PIGLIN_HEAD)) { // DivineMC - Reduce sensor work
-+                    d0 *= LevelBukkitConfig.purpur.world.piglinHeadVisibilityPercent;
++                    d0 *= LevelBukkitConfig.Purpur.World.piglinHeadVisibilityPercent;
 +                }
 +                // Purpur end
 +            } else {

@@ -5,42 +5,14 @@ Subject: [PATCH] Leaves: Random flatten triangular distribution
 
 This patch is Powered by Carpet-TIS-Addition(https://github.com/plusls/Carpet-TIS-Addition)
 
-diff --git a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-index e06d0742c520fbc459caf77c758a85dbedfe9e27..82768968b2de3b31732a77883b7b2eb464661b46 100644
---- a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-+++ b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-@@ -31,6 +31,7 @@ public class LevelBukkitConfig {
-             // LevelBukkit: Divine end
- 
-             // LevelBukkit: Leaves start
-+            configuration.addDefault("leaves.flattenTriangularDistribution", false);
-             configuration.addDefault("leaves.cacheWorldGeneratorSeaLevel", false);
-             configuration.addDefault("leaves.vanillaHopper", false);
-             // LevelBukkit: Leaves end
-@@ -65,6 +66,7 @@ public class LevelBukkitConfig {
-             // LevelBukkit: Divine end
- 
-             // LevelBukkit: Leaves start
-+            leaves.flattenTriangularDistribution = configuration.getBoolean("leaves.flattenTriangularDistribution");
-             leaves.cacheWorldGeneratorSeaLevel = configuration.getBoolean("leaves.cacheWorldGeneratorSeaLevel");
-             leaves.vanillaHopper = configuration.getBoolean("leaves.vanillaHopper");
-             // LevelBukkit: Leaves end
-@@ -121,6 +123,7 @@ public class LevelBukkitConfig {
-     }
- 
-     public static class leaves {
-+        public static boolean flattenTriangularDistribution = false;
-         public static boolean cacheWorldGeneratorSeaLevel = false;
-         public static boolean vanillaHopper = false;
-     }
 diff --git a/src/main/java/net/minecraft/util/RandomSource.java b/src/main/java/net/minecraft/util/RandomSource.java
-index 9c6f5b55b1f1376fa75e216cd366ee47c79fafc4..799c3455fc9ed4ea67130f0fdd0144d838f32a74 100644
+index 9c6f5b55b1f1376fa75e216cd366ee47c79fafc4..ad0a701af09db388296622f0242ff859b3246ac2 100644
 --- a/src/main/java/net/minecraft/util/RandomSource.java
 +++ b/src/main/java/net/minecraft/util/RandomSource.java
 @@ -1,5 +1,6 @@
  package net.minecraft.util;
  
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
  import io.netty.util.internal.ThreadLocalRandom;
  import net.minecraft.world.level.levelgen.LegacyRandomSource;
  import net.minecraft.world.level.levelgen.PositionalRandomFactory;
@@ -50,7 +22,7 @@ index 9c6f5b55b1f1376fa75e216cd366ee47c79fafc4..799c3455fc9ed4ea67130f0fdd0144d8
      default double triangle(double mode, double deviation) {
 -        return mode + deviation * (this.nextDouble() - this.nextDouble());
 +        // Leaves start - flattenTriangularDistribution
-+        if (LevelBukkitConfig.leaves.flattenTriangularDistribution) {
++        if (LevelBukkitConfig.Leaves.flattenTriangularDistribution) {
 +            this.nextDouble();
 +            return mode + deviation * (-1 + this.nextDouble() * 2);
 +        } else {

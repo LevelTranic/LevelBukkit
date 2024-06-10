@@ -4,77 +4,8 @@ Date: Fri, 31 May 2024 20:07:56 +0800
 Subject: [PATCH] Purpur: Allow soil to moisten from water directly under it
 
 
-diff --git a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-index 2d292a9adcec37c49041b3b7cd6647097324165c..af074a37104942af41e26e7ccb51274b823a4602 100644
---- a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-+++ b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-@@ -10,24 +10,6 @@ import java.util.logging.Logger;
- public class LevelBukkitConfig {
-     public static Logger logger = Logger.getLogger("Minecraft");
- 
--    public static class foldenor {
--        public static boolean enableSecureSeed = false;
--    }
--
--    public static class divine {
--        public static boolean recipeManagerOptimization = true;
--    }
--
--    public static class purpur {
--        public static class world {
--                public static boolean sensorOptimization = true;
--                public static double skeletonHeadVisibilityPercent = 0;
--                public static double zombieHeadVisibilityPercent = 0.5D;
--                public static double creeperHeadVisibilityPercent = 0.5D;
--                public static double piglinHeadVisibilityPercent = 0.5D;
--        }
--    }
--
-     public static void load() {
-         try {
-             File configFile = new File("levelbukkit.yml");
-@@ -37,6 +19,7 @@ public class LevelBukkitConfig {
-             YamlConfiguration configuration = YamlConfiguration.loadConfiguration(configFile);
-             configuration.addDefault("foldenor.enableSecureSeed", false);
-             configuration.addDefault("divine.recipeManagerOptimization", true);
-+            configuration.addDefault("purpur.world.farmlandGetsMoistFromBelow", true);
-             configuration.addDefault("purpur.world.sensorOptimization", true);
-             configuration.addDefault("purpur.world.skeletonHeadVisibilityPercent", 0.5D);
-             configuration.addDefault("purpur.world.zombieHeadVisibilityPercent", 0.5D);
-@@ -47,6 +30,7 @@ public class LevelBukkitConfig {
- 
-             foldenor.enableSecureSeed = configuration.getBoolean("foldenor.enableSecureSeed");
-             divine.recipeManagerOptimization = configuration.getBoolean("divine.recipeManagerOptimization");
-+            purpur.world.farmlandGetsMoistFromBelow = configuration.getBoolean("purpur.world.farmlandGetsMoistFromBelow");
-             purpur.world.sensorOptimization = configuration.getBoolean("purpur.world.sensorOptimization");
-             purpur.world.skeletonHeadVisibilityPercent = configuration.getDouble("purpur.world.skeletonHeadVisibilityPercent");
-             purpur.world.zombieHeadVisibilityPercent = configuration.getDouble("purpur.world.zombieHeadVisibilityPercent");
-@@ -77,4 +61,23 @@ public class LevelBukkitConfig {
-             throw new RuntimeException(e);
-         }
-     }
-+
-+    public static class foldenor {
-+        public static boolean enableSecureSeed = false;
-+    }
-+
-+    public static class divine {
-+        public static boolean recipeManagerOptimization = true;
-+    }
-+
-+    public static class purpur {
-+        public static class world {
-+            public static boolean farmlandGetsMoistFromBelow = true;
-+            public static boolean sensorOptimization = true;
-+            public static double skeletonHeadVisibilityPercent = 0;
-+            public static double zombieHeadVisibilityPercent = 0.5D;
-+            public static double creeperHeadVisibilityPercent = 0.5D;
-+            public static double piglinHeadVisibilityPercent = 0.5D;
-+        }
-+    }
- }
 diff --git a/src/main/java/net/minecraft/world/level/block/FarmBlock.java b/src/main/java/net/minecraft/world/level/block/FarmBlock.java
-index ab2b9b85b844cf3e6ef5a0379fa3279b85a7328c..3372b1d1376eb4e3bd698611b52d33acbc693a8b 100644
+index ab2b9b85b844cf3e6ef5a0379fa3279b85a7328c..8dfb7342d7ae603114613f1c7310d245b8121900 100644
 --- a/src/main/java/net/minecraft/world/level/block/FarmBlock.java
 +++ b/src/main/java/net/minecraft/world/level/block/FarmBlock.java
 @@ -3,6 +3,8 @@ package net.minecraft.world.level.block;
@@ -82,7 +13,7 @@ index ab2b9b85b844cf3e6ef5a0379fa3279b85a7328c..3372b1d1376eb4e3bd698611b52d33ac
  import java.util.Iterator;
  import javax.annotation.Nullable;
 +
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
  import net.minecraft.core.BlockPos;
  import net.minecraft.core.Direction;
  import net.minecraft.server.level.ServerLevel;
@@ -92,7 +23,7 @@ index ab2b9b85b844cf3e6ef5a0379fa3279b85a7328c..3372b1d1376eb4e3bd698611b52d33ac
  
 -        return false;
 +
-+        return (LevelBukkitConfig.purpur.world.farmlandGetsMoistFromBelow && world.getFluidState(pos.relative(Direction.DOWN)).is(FluidTags.WATER)); // Purpur;
++        return (LevelBukkitConfig.Purpur.World.farmlandGetsMoistFromBelow && world.getFluidState(pos.relative(Direction.DOWN)).is(FluidTags.WATER)); // Purpur;
          // Paper end - Perf: remove abstract block iteration
      }
  

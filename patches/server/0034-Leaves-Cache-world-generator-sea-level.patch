@@ -5,36 +5,8 @@ Subject: [PATCH] Leaves: Cache world generator sea level
 
 This patch is Powered by Gale(https://github.com/GaleMC/Gale)
 
-diff --git a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-index 14c3e8c60bc6860d502c8137530ce89540d3af71..e06d0742c520fbc459caf77c758a85dbedfe9e27 100644
---- a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-+++ b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-@@ -31,6 +31,7 @@ public class LevelBukkitConfig {
-             // LevelBukkit: Divine end
- 
-             // LevelBukkit: Leaves start
-+            configuration.addDefault("leaves.cacheWorldGeneratorSeaLevel", false);
-             configuration.addDefault("leaves.vanillaHopper", false);
-             // LevelBukkit: Leaves end
- 
-@@ -64,6 +65,7 @@ public class LevelBukkitConfig {
-             // LevelBukkit: Divine end
- 
-             // LevelBukkit: Leaves start
-+            leaves.cacheWorldGeneratorSeaLevel = configuration.getBoolean("leaves.cacheWorldGeneratorSeaLevel");
-             leaves.vanillaHopper = configuration.getBoolean("leaves.vanillaHopper");
-             // LevelBukkit: Leaves end
- 
-@@ -119,6 +121,7 @@ public class LevelBukkitConfig {
-     }
- 
-     public static class leaves {
-+        public static boolean cacheWorldGeneratorSeaLevel = false;
-         public static boolean vanillaHopper = false;
-     }
- 
 diff --git a/src/main/java/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java b/src/main/java/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java
-index 98c7f695093acbcf9382a5f07a7a89e373709763..9690bc659367275f003925476ec655952827c6b1 100644
+index 98c7f695093acbcf9382a5f07a7a89e373709763..478e97c83e2994bc0e03e76f42ed658dd609a8a3 100644
 --- a/src/main/java/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java
 +++ b/src/main/java/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java
 @@ -7,7 +7,6 @@ import com.google.common.collect.Sets;
@@ -50,7 +22,7 @@ index 98c7f695093acbcf9382a5f07a7a89e373709763..9690bc659367275f003925476ec65595
  import java.util.function.Supplier;
  import javax.annotation.Nullable;
 +
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
  import net.minecraft.SharedConstants;
  import net.minecraft.Util;
  import net.minecraft.core.BlockPos;
@@ -119,7 +91,7 @@ index 98c7f695093acbcf9382a5f07a7a89e373709763..9690bc659367275f003925476ec65595
      public int getSeaLevel() {
 -        return ((NoiseGeneratorSettings) this.settings.value()).seaLevel();
 +        // Leaves start - cache world generator sea level
-+        return !LevelBukkitConfig.leaves.cacheWorldGeneratorSeaLevel ?
++        return !LevelBukkitConfig.Leaves.cacheWorldGeneratorSeaLevel ?
 +                this.settings.value().seaLevel():
 +                cachedSeaLevel;
 +        // Leaves end - cache world generator sea level

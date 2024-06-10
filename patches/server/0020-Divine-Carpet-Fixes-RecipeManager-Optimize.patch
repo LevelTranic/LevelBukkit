@@ -6,36 +6,8 @@ Subject: [PATCH] Divine: Carpet-Fixes: RecipeManager Optimize
 Original project: https://github.com/fxmorin/carpet-fixes
 Improves: [Blast]Furnace/Campfire/Smoker/Stonecutter/Crafting/Sheep Color Choosing
 
-diff --git a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-index bca37c2026ec8a18a302515c53a665f48831d953..5747b65d9107c0acd0bf0c6c90f19ec74fad9a20 100644
---- a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-+++ b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-@@ -14,6 +14,10 @@ public class LevelBukkitConfig {
-         public static boolean enableSecureSeed = false;
-     }
- 
-+    public static class divine {
-+        public static boolean recipeManagerOptimization = true;
-+    }
-+
-     public static void load() {
-         try {
-             File configFile = new File("levelbukkit.yml");
-@@ -22,10 +26,12 @@ public class LevelBukkitConfig {
-             }
-             YamlConfiguration configuration = YamlConfiguration.loadConfiguration(configFile);
-             configuration.addDefault("foldenor.enableSecureSeed", false);
-+            configuration.addDefault("divine.recipeManagerOptimization", true);
-             configuration.options().copyDefaults(true);
-             configuration.save(configFile);
- 
-             foldenor.enableSecureSeed = configuration.getBoolean("foldenor.enableSecureSeed");
-+            divine.recipeManagerOptimization = configuration.getBoolean("divine.recipeManagerOptimization");
- 
-             // Pufferfish start
-             // Attempt to detect vectorization
 diff --git a/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java b/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java
-index d87124f5356180a37e581febc6141fdc5f1395a7..12522a773eab7b78c8dee1431181f118cc9ce3c1 100644
+index d87124f5356180a37e581febc6141fdc5f1395a7..c50940cdcbd3fc8f76fe3fe02112ad10ddb0501f 100644
 --- a/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java
 +++ b/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java
 @@ -11,17 +11,15 @@ import com.google.gson.JsonParseException;
@@ -56,7 +28,7 @@ index d87124f5356180a37e581febc6141fdc5f1395a7..12522a773eab7b78c8dee1431181f118
  import java.util.stream.Stream;
  import javax.annotation.Nullable;
 +
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
 +import it.unimi.dsi.fastutil.objects.ObjectArrayList;
  import net.minecraft.Util;
  import net.minecraft.core.NonNullList;
@@ -90,7 +62,7 @@ index d87124f5356180a37e581febc6141fdc5f1395a7..12522a773eab7b78c8dee1431181f118
  
      public <C extends Container, T extends Recipe<C>> List<RecipeHolder<T>> getAllRecipesFor(RecipeType<T> type) {
 -        return List.copyOf(this.byType(type).values());
-+        return LevelBukkitConfig.divine.recipeManagerOptimization ? new ObjectArrayList<>(this.byType(type).values()) : List.copyOf(this.byType(type).values()); // DivineMC - Carpet-Fixes: RecipeManager Optimize
++        return LevelBukkitConfig.Divine.recipeManagerOptimization ? new ObjectArrayList<>(this.byType(type).values()) : List.copyOf(this.byType(type).values()); // DivineMC - Carpet-Fixes: RecipeManager Optimize
      }
  
      public <C extends Container, T extends Recipe<C>> List<RecipeHolder<T>> getRecipesFor(RecipeType<T> type, C inventory, Level world) {

@@ -4,75 +4,15 @@ Date: Fri, 31 May 2024 20:37:00 +0800
 Subject: [PATCH] Purpur: Lobotomize stuck villagers
 
 
-diff --git a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-index af074a37104942af41e26e7ccb51274b823a4602..e25a8b3e2ab5b76de964c22357406cbacd1903ae 100644
---- a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-+++ b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-@@ -17,26 +17,39 @@ public class LevelBukkitConfig {
-                 configFile.createNewFile();
-             }
-             YamlConfiguration configuration = YamlConfiguration.loadConfiguration(configFile);
-+
-             configuration.addDefault("foldenor.enableSecureSeed", false);
-             configuration.addDefault("divine.recipeManagerOptimization", true);
-+
-             configuration.addDefault("purpur.world.farmlandGetsMoistFromBelow", true);
-             configuration.addDefault("purpur.world.sensorOptimization", true);
-+
-             configuration.addDefault("purpur.world.skeletonHeadVisibilityPercent", 0.5D);
-             configuration.addDefault("purpur.world.zombieHeadVisibilityPercent", 0.5D);
-             configuration.addDefault("purpur.world.creeperHeadVisibilityPercent", 0.5D);
-             configuration.addDefault("purpur.world.piglinHeadVisibilityPercent", 0.5D);
-+
-+            configuration.addDefault("purpur.world.villagerLobotomizeCheckInterval", 100);
-+            configuration.addDefault("purpur.world.villagerLobotomizeEnabled", false);
-+            configuration.addDefault("purpur.world.villagerLobotomizeWaitUntilTradeLocked", false);
-             configuration.options().copyDefaults(true);
-             configuration.save(configFile);
- 
-             foldenor.enableSecureSeed = configuration.getBoolean("foldenor.enableSecureSeed");
-             divine.recipeManagerOptimization = configuration.getBoolean("divine.recipeManagerOptimization");
-+
-             purpur.world.farmlandGetsMoistFromBelow = configuration.getBoolean("purpur.world.farmlandGetsMoistFromBelow");
-             purpur.world.sensorOptimization = configuration.getBoolean("purpur.world.sensorOptimization");
-+
-             purpur.world.skeletonHeadVisibilityPercent = configuration.getDouble("purpur.world.skeletonHeadVisibilityPercent");
-             purpur.world.zombieHeadVisibilityPercent = configuration.getDouble("purpur.world.zombieHeadVisibilityPercent");
-             purpur.world.creeperHeadVisibilityPercent = configuration.getDouble("purpur.world.creeperHeadVisibilityPercent");
-             purpur.world.piglinHeadVisibilityPercent = configuration.getDouble("purpur.world.piglinHeadVisibilityPercent");
- 
-+            purpur.world.villagerLobotomizeCheckInterval = configuration.getInt("purpur.world.villagerLobotomizeCheckInterval");
-+            purpur.world.villagerLobotomizeEnabled = configuration.getBoolean("purpur.world.villagerLobotomizeEnabled");
-+            purpur.world.villagerLobotomizeWaitUntilTradeLocked = configuration.getBoolean("purpur.world.villagerLobotomizeWaitUntilTradeLocked");
-+
-             // Pufferfish start
-             // Attempt to detect vectorization
-             try {
-@@ -74,10 +87,15 @@ public class LevelBukkitConfig {
-         public static class world {
-             public static boolean farmlandGetsMoistFromBelow = true;
-             public static boolean sensorOptimization = true;
-+
-             public static double skeletonHeadVisibilityPercent = 0;
-             public static double zombieHeadVisibilityPercent = 0.5D;
-             public static double creeperHeadVisibilityPercent = 0.5D;
-             public static double piglinHeadVisibilityPercent = 0.5D;
-+
-+            public static int villagerLobotomizeCheckInterval = 100;
-+            public static boolean villagerLobotomizeEnabled = false;
-+            public static boolean villagerLobotomizeWaitUntilTradeLocked = false;
-         }
-     }
- }
 diff --git a/src/main/java/net/minecraft/world/entity/npc/Villager.java b/src/main/java/net/minecraft/world/entity/npc/Villager.java
-index 90d8cd94d987416a3e9f6e6d47a5b366d4687fe0..bcdff7b3b000118f90c85d95e509fe0af0861bff 100644
+index 90d8cd94d987416a3e9f6e6d47a5b366d4687fe0..40ec6a93c75020b3e4158551e65f17992681e1b7 100644
 --- a/src/main/java/net/minecraft/world/entity/npc/Villager.java
 +++ b/src/main/java/net/minecraft/world/entity/npc/Villager.java
 @@ -8,6 +8,7 @@ import com.mojang.datafixers.util.Pair;
  import com.mojang.logging.LogUtils;
  import com.mojang.serialization.DataResult;
  import com.mojang.serialization.Dynamic;
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
  import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
  import java.util.Iterator;
  import java.util.List;
@@ -92,8 +32,8 @@ index 90d8cd94d987416a3e9f6e6d47a5b366d4687fe0..bcdff7b3b000118f90c85d95e509fe0a
      }
  
 +    private boolean checkLobotomized() {
-+        int interval = LevelBukkitConfig.purpur.world.villagerLobotomizeCheckInterval;
-+        boolean shouldCheckForTradeLocked = LevelBukkitConfig.purpur.world.villagerLobotomizeWaitUntilTradeLocked;
++        int interval = LevelBukkitConfig.Purpur.World.villagerLobotomizeCheckInterval;
++        boolean shouldCheckForTradeLocked = LevelBukkitConfig.Purpur.World.villagerLobotomizeWaitUntilTradeLocked;
 +        if (this.notLobotomizedCount > 3) {
 +            // check half as often if not lobotomized for the last 3+ consecutive checks
 +            interval *= 2;
@@ -145,7 +85,7 @@ index 90d8cd94d987416a3e9f6e6d47a5b366d4687fe0..bcdff7b3b000118f90c85d95e509fe0a
          // Paper end
          this.level().getProfiler().push("villagerBrain");
          // Pufferfish start
-+        if (LevelBukkitConfig.purpur.world.villagerLobotomizeEnabled) {
++        if (LevelBukkitConfig.Purpur.World.villagerLobotomizeEnabled) {
 +            // treat as inactive if lobotomized
 +            inactive = inactive || checkLobotomized();
 +        } else {

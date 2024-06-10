@@ -27,14 +27,13 @@ index 04853c43b99951bf0d4c96ef73724625bdaf018f..6eed01845d64cc4c6896212132c04192
          into("META-INF/maven/${project.group}/${project.name}")
 diff --git a/src/main/java/gg/pufferfish/pufferfish/simd/SIMDChecker.java b/src/main/java/gg/pufferfish/pufferfish/simd/SIMDChecker.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..c678e088027578ca8c11131b16be3c5fe83a5092
+index 0000000000000000000000000000000000000000..993b009e1966a1422142e8506dfa00543c542cfa
 --- /dev/null
 +++ b/src/main/java/gg/pufferfish/pufferfish/simd/SIMDChecker.java
-@@ -0,0 +1,40 @@
+@@ -0,0 +1,39 @@
 +package gg.pufferfish.pufferfish.simd;
 +
-+import java.util.logging.Level;
-+import java.util.logging.Logger;
++import org.slf4j.Logger;
 +import jdk.incubator.vector.FloatVector;
 +import jdk.incubator.vector.IntVector;
 +import jdk.incubator.vector.VectorSpecies;
@@ -56,11 +55,11 @@ index 0000000000000000000000000000000000000000..c678e088027578ca8c11131b16be3c5f
 +                VectorSpecies<Integer> ISPEC = IntVector.SPECIES_PREFERRED;
 +                VectorSpecies<Float> FSPEC = FloatVector.SPECIES_PREFERRED;
 +
-+                logger.log(Level.INFO, "Max SIMD vector size on this system is " + ISPEC.vectorBitSize() + " bits (int)");
-+                logger.log(Level.INFO, "Max SIMD vector size on this system is " + FSPEC.vectorBitSize() + " bits (float)");
++                logger.info("Max SIMD vector size on this system is {} bits (int)", ISPEC.vectorBitSize());
++                logger.info("Max SIMD vector size on this system is {} bits (float)", FSPEC.vectorBitSize());
 +
 +                if (ISPEC.elementSize() < 2 || FSPEC.elementSize() < 2) {
-+                    logger.log(Level.WARNING, "SIMD is not properly supported on this system!");
++                    logger.warn("SIMD is not properly supported on this system!");
 +                    return false;
 +                }
 +
@@ -74,13 +73,13 @@ index 0000000000000000000000000000000000000000..c678e088027578ca8c11131b16be3c5f
 \ No newline at end of file
 diff --git a/src/main/java/gg/pufferfish/pufferfish/simd/SIMDDetection.java b/src/main/java/gg/pufferfish/pufferfish/simd/SIMDDetection.java
 new file mode 100644
-index 0000000000000000000000000000000000000000..b63c987878992323295386c2e3a84ec9e3f9867e
+index 0000000000000000000000000000000000000000..817929d14867eddbda65f9af4c62ce7b77549fbc
 --- /dev/null
 +++ b/src/main/java/gg/pufferfish/pufferfish/simd/SIMDDetection.java
 @@ -0,0 +1,35 @@
 +package gg.pufferfish.pufferfish.simd;
 +
-+import java.util.logging.Logger;
++import org.slf4j.Logger;
 +
 +@Deprecated
 +public class SIMDDetection {

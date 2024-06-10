@@ -3,12 +3,22 @@ From: 404Setup <153366651+404Setup@users.noreply.github.com>
 Date: Wed, 29 May 2024 21:59:04 +0800
 Subject: [PATCH] Fix-build
 
+and add kotlin support
 
 diff --git a/build.gradle.kts b/build.gradle.kts
-index 247598b6c73aca3743f4b16b47520f8ba16b2ed0..11735d5a662741182666e9135afc2662bb841d43 100644
+index 247598b6c73aca3743f4b16b47520f8ba16b2ed0..661164d82dc526b5c2cfc34a5cb88abe6474e0ac 100644
 --- a/build.gradle.kts
 +++ b/build.gradle.kts
-@@ -14,7 +14,7 @@ val alsoShade: Configuration by configurations.creating
+@@ -4,6 +4,8 @@ plugins {
+     java
+     `maven-publish`
+     id("com.github.johnrengelman.shadow")
++    kotlin("jvm") version "2.0.0"
++    kotlin("plugin.serialization") version "2.0.0"
+ }
+ 
+ val log4jPlugins = sourceSets.create("log4jPlugins")
+@@ -14,7 +16,7 @@ val alsoShade: Configuration by configurations.creating
  
  dependencies {
      // Folia start
@@ -17,7 +27,21 @@ index 247598b6c73aca3743f4b16b47520f8ba16b2ed0..11735d5a662741182666e9135afc2662
      implementation("io.papermc.paper:paper-mojangapi:${project.version}") {
          exclude("io.papermc.paper", "paper-api")
      }
-@@ -76,7 +76,7 @@ tasks.jar {
+@@ -51,6 +53,13 @@ dependencies {
+     }
+     // Paper end - Use Velocity cipher
+ 
++    // LevelBukkit start
++    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0-RC")
++    implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.4.0")
++    implementation("org.jetbrains.kotlinx:atomicfu:0.24.0")
++    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.0")
++    // LevelBukkit end
++
+     runtimeOnly("org.apache.maven:maven-resolver-provider:3.9.6")
+     runtimeOnly("org.apache.maven.resolver:maven-resolver-connector-basic:1.9.18")
+     runtimeOnly("org.apache.maven.resolver:maven-resolver-transport-http:1.9.18")
+@@ -76,7 +85,7 @@ tasks.jar {
          attributes(
              "Main-Class" to "org.bukkit.craftbukkit.Main",
              "Implementation-Title" to "CraftBukkit",
@@ -26,3 +50,20 @@ index 247598b6c73aca3743f4b16b47520f8ba16b2ed0..11735d5a662741182666e9135afc2662
              "Implementation-Vendor" to date, // Paper
              "Specification-Title" to "Bukkit",
              "Specification-Version" to project.version,
+@@ -103,6 +112,16 @@ publishing {
+     }
+ }
+ 
++// LevelBukkit start
++kotlin {
++    compilerOptions {
++        languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
++        apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
++        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
++    }
++}
++// LevelBukkit end
++
+ relocation {
+     // Order matters here - e.g. craftbukkit proper must be relocated before any of the libs are relocated into the cb package
+     relocate("org.bukkit.craftbukkit" to "org.bukkit.craftbukkit.v$craftbukkitPackageVersion") {

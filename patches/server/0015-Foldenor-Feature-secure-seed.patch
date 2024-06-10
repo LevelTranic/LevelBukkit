@@ -5,41 +5,6 @@ Subject: [PATCH] Foldenor: Feature secure seed
 
 Foldenor: Feature secure seed
 
-diff --git a/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-new file mode 100644
-index 0000000000000000000000000000000000000000..9870278a4e34c876219e784702e7d1b5e1b5519d
---- /dev/null
-+++ b/src/main/java/dev/paged/lb/Config/LevelBukkitConfig.java
-@@ -0,0 +1,29 @@
-+package dev.paged.lb.Config;
-+
-+import org.bukkit.configuration.file.YamlConfiguration;
-+
-+import java.io.File;
-+import java.io.IOException;
-+
-+public class LevelBukkitConfig {
-+    public static class foldenor {
-+        public static boolean enableSecureSeed = false;
-+    }
-+
-+    public static void load() {
-+        try {
-+            File configFile = new File("levelbukkit.yml");
-+            if (!configFile.exists()) {
-+                configFile.createNewFile();
-+            }
-+            YamlConfiguration configuration = YamlConfiguration.loadConfiguration(configFile);
-+            configuration.addDefault("foldenor.enableSecureSeed", false);
-+            configuration.options().copyDefaults(true);
-+            configuration.save(configFile);
-+
-+            foldenor.enableSecureSeed = configuration.getBoolean("foldenor.enableSecureSeed");
-+        } catch (IOException e) {
-+            throw new RuntimeException(e);
-+        }
-+    }
-+}
 diff --git a/src/main/java/net/edenor/foldenor/secureseed/Globals.java b/src/main/java/net/edenor/foldenor/secureseed/Globals.java
 new file mode 100644
 index 0000000000000000000000000000000000000000..74b6e37f1f8a46f4f22e2529d93fb7fcc7428b40
@@ -378,7 +343,7 @@ index 0000000000000000000000000000000000000000..c2fc935ed01d4a8071ea66db0ec53b29
 +}
 \ No newline at end of file
 diff --git a/src/main/java/net/minecraft/server/Main.java b/src/main/java/net/minecraft/server/Main.java
-index 2a67ec1d3b159e86dfbf52def12a5d44f96218fe..5d191b8b175d0cd1abcb9d283704d8e41ffa1871 100644
+index 2a67ec1d3b159e86dfbf52def12a5d44f96218fe..16d33892330ab8c485f8e35a2d767d8db7636bd9 100644
 --- a/src/main/java/net/minecraft/server/Main.java
 +++ b/src/main/java/net/minecraft/server/Main.java
 @@ -1,5 +1,6 @@
@@ -388,28 +353,19 @@ index 2a67ec1d3b159e86dfbf52def12a5d44f96218fe..5d191b8b175d0cd1abcb9d283704d8e4
  import com.mojang.datafixers.DataFixer;
  import com.mojang.logging.LogUtils;
  import com.mojang.serialization.Dynamic;
-@@ -15,8 +16,16 @@ import java.nio.file.Paths;
+@@ -15,6 +16,7 @@ import java.nio.file.Paths;
  import java.util.Optional;
  import java.util.function.BooleanSupplier;
  import javax.annotation.Nullable;
 +
-+import dev.paged.lb.Config.LevelBukkitConfig;
-+import joptsimple.NonOptionArgumentSpec;
-+import joptsimple.OptionParser;
  import joptsimple.OptionSet;
-+import joptsimple.OptionSpec;
-+import joptsimple.util.PathConverter;
-+import joptsimple.util.PathProperties;
  import net.minecraft.CrashReport;
-+import net.minecraft.DefaultUncaughtExceptionHandler;
  import net.minecraft.SharedConstants;
- import net.minecraft.Util;
- import net.minecraft.commands.Commands;
-@@ -109,6 +118,8 @@ public class Main {
+@@ -109,6 +111,8 @@ public class Main {
                  JvmProfiler.INSTANCE.start(Environment.SERVER);
              }
  
-+            LevelBukkitConfig.load();
++            dev.paged.levelbukkit.config.LevelBukkitConfig.load();
 +
              io.papermc.paper.plugin.PluginInitializerManager.load(optionset); // Paper
              Bootstrap.bootStrap();
@@ -778,14 +734,14 @@ index c020c86194723a5c89816f91e0b7c5eeaf132b7e..0e1285c9679b4499cbf89003af48e78b
                  collection1.add(s);
              }
 diff --git a/src/main/java/net/minecraft/server/commands/SeedCommand.java b/src/main/java/net/minecraft/server/commands/SeedCommand.java
-index 0b500b19a99fa6c2740c0db350a166462668df9c..dcbf272d034135230eb193543509f3751a2871fb 100644
+index 0b500b19a99fa6c2740c0db350a166462668df9c..670bfdd97978d163886624a6b48240a1297e42b5 100644
 --- a/src/main/java/net/minecraft/server/commands/SeedCommand.java
 +++ b/src/main/java/net/minecraft/server/commands/SeedCommand.java
 @@ -1,17 +1,34 @@
  package net.minecraft.server.commands;
  
  import com.mojang.brigadier.CommandDispatcher;
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
 +import net.edenor.foldenor.secureseed.Globals;
 +import net.minecraft.ChatFormatting;
  import net.minecraft.commands.CommandSourceStack;
@@ -801,7 +757,7 @@ index 0b500b19a99fa6c2740c0db350a166462668df9c..dcbf272d034135230eb193543509f375
              long l = context.getSource().getLevel().getSeed();
 -            Component component = ComponentUtils.copyOnClickText(String.valueOf(l));
 -            context.getSource().sendSuccess(() -> Component.translatable("commands.seed.success", component), false);
-+            if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++            if (LevelBukkitConfig.Foldenor.enableSecureSeed) {
 +                Globals.setupGlobals(context.getSource().getLevel());
 +                String seedStr = Globals.seedToString(Globals.worldSeed);
 +
@@ -831,10 +787,10 @@ index ea13a3b409b8a4a6a77071c700b4dd0a33b02716..a56103e905d817bdf0590564ac2fdd6f
      }
  }
 diff --git a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
-index 49555381641e9cf9a5c3f00db1e193c9d992637b..5631fe6d322173fb8fb6732bb30618f18277af1c 100644
+index 49555381641e9cf9a5c3f00db1e193c9d992637b..95412b82f58b968537c29d020a9cdf1aecae5b7d 100644
 --- a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
 +++ b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
-@@ -204,11 +204,13 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+@@ -204,13 +204,16 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
          org.spigotmc.SpigotConfig.init((java.io.File) this.options.valueOf("spigot-settings"));
          org.spigotmc.SpigotConfig.registerCommands();
          // Spigot end
@@ -848,9 +804,12 @@ index 49555381641e9cf9a5c3f00db1e193c9d992637b..5631fe6d322173fb8fb6732bb30618f1
 +        io.papermc.paper.util.ObfHelper.INSTANCE.getClass(); // Paper - load mappings for stacktrace deobf and etc.
          me.earthme.luminol.config.LuminolConfig.loadConfig(); //Luminol - load config file
          me.earthme.luminol.config.LuminolConfig.setupLatch(); //Luminol - load config file
++        dev.paged.levelbukkit.config.LevelBukkitConfig.setCommand(); //LevelBukkit - set command
          // Paper start - fix converting txt to json file; convert old users earlier after PlayerList creation but before file load/save
+         if (this.convertOldUsers()) {
+             this.getProfileCache().save(false); // Paper
 diff --git a/src/main/java/net/minecraft/server/dedicated/DedicatedServerProperties.java b/src/main/java/net/minecraft/server/dedicated/DedicatedServerProperties.java
-index bab2471616404821671264ccefd729cab8d0bf58..4cf03ddf5ce90663f8a139bc0e7511f909f866d3 100644
+index bab2471616404821671264ccefd729cab8d0bf58..e2fa5f6ea1e075ba869f9279e6c7cdfa7139866e 100644
 --- a/src/main/java/net/minecraft/server/dedicated/DedicatedServerProperties.java
 +++ b/src/main/java/net/minecraft/server/dedicated/DedicatedServerProperties.java
 @@ -20,6 +20,9 @@ import java.util.UUID;
@@ -858,7 +817,7 @@ index bab2471616404821671264ccefd729cab8d0bf58..4cf03ddf5ce90663f8a139bc0e7511f9
  import java.util.regex.Pattern;
  import javax.annotation.Nullable;
 +
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
 +import net.edenor.foldenor.secureseed.Globals;
  import net.minecraft.core.Holder;
  import net.minecraft.core.HolderLookup;
@@ -869,7 +828,7 @@ index bab2471616404821671264ccefd729cab8d0bf58..4cf03ddf5ce90663f8a139bc0e7511f9
  
 -        this.worldOptions = new WorldOptions(i, flag, false);
 +        // LevelBukkit start
-+        if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++        if (LevelBukkitConfig.Foldenor.enableSecureSeed) {
 +            // Foldenor start - Feature secure seed
 +            String featureSeedString = this.get("feature-level-seed", "");
 +            long[] featureSeed;
@@ -888,7 +847,7 @@ index bab2471616404821671264ccefd729cab8d0bf58..4cf03ddf5ce90663f8a139bc0e7511f9
              return GsonHelper.parse(!s1.isEmpty() ? s1 : "{}");
          }, new JsonObject()), (String) this.get("level-type", (s1) -> {
 diff --git a/src/main/java/net/minecraft/server/level/ServerChunkCache.java b/src/main/java/net/minecraft/server/level/ServerChunkCache.java
-index 4d199839b6a2551783a8ed98ce181cc92e56d0a7..7c9d7e6130684adbf5e7af14f7819372ed9ad47c 100644
+index 4d199839b6a2551783a8ed98ce181cc92e56d0a7..9251367430d2e94aefc705cc8b6c5a0468d42429 100644
 --- a/src/main/java/net/minecraft/server/level/ServerChunkCache.java
 +++ b/src/main/java/net/minecraft/server/level/ServerChunkCache.java
 @@ -16,6 +16,9 @@ import java.util.function.BooleanSupplier;
@@ -896,7 +855,7 @@ index 4d199839b6a2551783a8ed98ce181cc92e56d0a7..7c9d7e6130684adbf5e7af14f7819372
  import java.util.function.Supplier;
  import javax.annotation.Nullable;
 +
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
 +import net.edenor.foldenor.secureseed.Globals;
  import net.minecraft.Util;
  import net.minecraft.core.BlockPos;
@@ -905,21 +864,21 @@ index 4d199839b6a2551783a8ed98ce181cc92e56d0a7..7c9d7e6130684adbf5e7af14f7819372
      }
  
      public ChunkGenerator getGenerator() {
-+        if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++        if (LevelBukkitConfig.Foldenor.enableSecureSeed) {
 +            Globals.setupGlobals(level);
 +        }
          return this.chunkMap.generator();
      }
  
 diff --git a/src/main/java/net/minecraft/server/level/ServerLevel.java b/src/main/java/net/minecraft/server/level/ServerLevel.java
-index ba33c107cfbe9920fc33375daf8e6b62cc794d98..bdfeecd1084e18d21274e5c92da02f1406d7803e 100644
+index ba33c107cfbe9920fc33375daf8e6b62cc794d98..8dde55d7bf12e63e1a50b74cb45020ac17654d20 100644
 --- a/src/main/java/net/minecraft/server/level/ServerLevel.java
 +++ b/src/main/java/net/minecraft/server/level/ServerLevel.java
 @@ -6,6 +6,7 @@ import com.google.common.collect.Lists;
  import com.mojang.datafixers.DataFixer;
  import com.mojang.datafixers.util.Pair;
  import com.mojang.logging.LogUtils;
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
  import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
  import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
  import it.unimi.dsi.fastutil.longs.LongSet;
@@ -927,13 +886,13 @@ index ba33c107cfbe9920fc33375daf8e6b62cc794d98..bdfeecd1084e18d21274e5c92da02f14
              chunkgenerator = new org.bukkit.craftbukkit.generator.CustomChunkGenerator(this, chunkgenerator, gen);
          }
          // CraftBukkit end
-+        if (LevelBukkitConfig.foldenor.enableSecureSeed)
++        if (LevelBukkitConfig.Foldenor.enableSecureSeed)
 +            net.edenor.foldenor.secureseed.Globals.setupGlobals(this);
          boolean flag2 = minecraftserver.forceSynchronousWrites();
          DataFixer datafixer = minecraftserver.getFixerUpper();
          this.entityStorage = new EntityRegionFileStorage(convertable_conversionsession.getDimensionPath(resourcekey).resolve("entities"), flag2); // Paper - rewrite chunk system  //EntityPersistentStorage<Entity> entitypersistentstorage = new EntityStorage(this, convertable_conversionsession.getDimensionPath(resourcekey).resolve("entities"), datafixer, flag2, minecraftserver);
 diff --git a/src/main/java/net/minecraft/world/entity/monster/Slime.java b/src/main/java/net/minecraft/world/entity/monster/Slime.java
-index 3d9107d2c19a09215445aa0e0aacc32f9f82a536..493e0fad335d4f56ac9fd60c0a19a3c90c2960fa 100644
+index 3d9107d2c19a09215445aa0e0aacc32f9f82a536..1031b7a22f39c715b8cc9186648b59a2fdd69b76 100644
 --- a/src/main/java/net/minecraft/world/entity/monster/Slime.java
 +++ b/src/main/java/net/minecraft/world/entity/monster/Slime.java
 @@ -3,6 +3,8 @@ package net.minecraft.world.entity.monster;
@@ -941,7 +900,7 @@ index 3d9107d2c19a09215445aa0e0aacc32f9f82a536..493e0fad335d4f56ac9fd60c0a19a3c9
  import java.util.EnumSet;
  import javax.annotation.Nullable;
 +
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
  import net.minecraft.core.BlockPos;
  import net.minecraft.core.particles.ParticleOptions;
  import net.minecraft.core.particles.ParticleTypes;
@@ -951,7 +910,7 @@ index 3d9107d2c19a09215445aa0e0aacc32f9f82a536..493e0fad335d4f56ac9fd60c0a19a3c9
                  ChunkPos chunkcoordintpair = new ChunkPos(pos);
 -                boolean flag = world.getMinecraftWorld().paperConfig().entities.spawning.allChunksAreSlimeChunks || WorldgenRandom.seedSlimeChunk(chunkcoordintpair.x, chunkcoordintpair.z, ((WorldGenLevel) world).getSeed(), world.getMinecraftWorld().spigotConfig.slimeSeed).nextInt(10) == 0; // Spigot // Paper
 +                boolean flag;
-+                if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++                if (LevelBukkitConfig.Foldenor.enableSecureSeed) {
 +                    flag = world.getMinecraftWorld().paperConfig().entities.spawning.allChunksAreSlimeChunks || world.getChunk(chunkcoordintpair.x, chunkcoordintpair.z).isSlimeChunk(); // Spigot // Paper
 +                } else {
 +                    flag = world.getMinecraftWorld().paperConfig().entities.spawning.allChunksAreSlimeChunks || WorldgenRandom.seedSlimeChunk(chunkcoordintpair.x, chunkcoordintpair.z, ((WorldGenLevel) world).getSeed(), world.getMinecraftWorld().spigotConfig.slimeSeed).nextInt(10) == 0; // Spigot // Paper
@@ -982,14 +941,14 @@ index d0285843920f78e05ce07b1b0b2d8ce97ec8041e..78957067a00701a7122001fb59bf3177
      @Nullable
      public abstract BlockState setBlockState(BlockPos pos, BlockState state, boolean moved);
 diff --git a/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java b/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java
-index 484cd058ca3cd317d2c82e502c064edca4293e74..d41698ad66f8a326e390606a5371aad98d7f6629 100644
+index 484cd058ca3cd317d2c82e502c064edca4293e74..f961382592de9f185eb6880be15e7f95f896aac8 100644
 --- a/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java
 +++ b/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java
 @@ -3,6 +3,7 @@ package net.minecraft.world.level.chunk;
  import com.google.common.base.Suppliers;
  import com.mojang.datafixers.util.Pair;
  import com.mojang.serialization.Codec;
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
  import it.unimi.dsi.fastutil.ints.IntArraySet;
  import it.unimi.dsi.fastutil.longs.LongSet;
  import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
@@ -1133,7 +1092,7 @@ index 484cd058ca3cd317d2c82e502c064edca4293e74..d41698ad66f8a326e390606a5371aad9
 +            List<FeatureSorter.StepFeatureData> list = this.featuresPerStep.get();
 +
 +            // LevelBukkit start
-+            WorldgenRandom seededrandom = LevelBukkitConfig.foldenor.enableSecureSeed
++            WorldgenRandom seededrandom = LevelBukkitConfig.Foldenor.enableSecureSeed
 +                    ? new WorldgenCryptoRandom(blockposition.getX(), blockposition.getZ(), Globals.Salt.UNDEFINED, 0)
 +                    : new WorldgenRandom(new XoroshiroRandomSource(RandomSupport.generateUniqueSeed()));
 +            // LevelBukkit end
@@ -1252,7 +1211,7 @@ index 484cd058ca3cd317d2c82e502c064edca4293e74..d41698ad66f8a326e390606a5371aad9
  
 -                    seededrandom.setLargeFeatureSeed(placementCalculator.getLevelSeed(), chunkcoordintpair.x, chunkcoordintpair.z);
 +                    WorldgenRandom seededrandom;
-+                    if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++                    if (LevelBukkitConfig.Foldenor.enableSecureSeed) {
 +                        seededrandom = new WorldgenCryptoRandom(chunkcoordintpair.x, chunkcoordintpair.z, Globals.Salt.GENERATE_FEATURE, 0);
 +                    } else {
 +                        seededrandom = new WorldgenRandom(new LegacyRandomSource(0L));
@@ -1321,14 +1280,14 @@ index 484cd058ca3cd317d2c82e502c064edca4293e74..d41698ad66f8a326e390606a5371aad9
                      }
                  }
 diff --git a/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java b/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java
-index 798e22fb4d685b5845ebf687e8004e94f13a9751..4ed9f2f6278f5506efdb3e3ffdd0cca5c5ac4673 100644
+index 798e22fb4d685b5845ebf687e8004e94f13a9751..33e86241f23e86099da77ae55dc25830573f214f 100644
 --- a/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java
 +++ b/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java
 @@ -4,6 +4,7 @@ package net.minecraft.world.level.chunk;
  import com.google.common.base.Stopwatch;
  import com.mojang.datafixers.util.Pair;
  import com.mojang.logging.LogUtils;
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
  import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
  import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
  import java.util.ArrayList;
@@ -1363,7 +1322,7 @@ index 798e22fb4d685b5845ebf687e8004e94f13a9751..4ed9f2f6278f5506efdb3e3ffdd0cca5
              int k = placement.spread();
              HolderSet<Biome> holderset = placement.preferredBiomes();
 -            RandomSource randomsource = RandomSource.create();
-+            RandomSource randomsource = LevelBukkitConfig.foldenor.enableSecureSeed
++            RandomSource randomsource = LevelBukkitConfig.Foldenor.enableSecureSeed
 +                    ? new net.edenor.foldenor.secureseed.WorldgenCryptoRandom(0, 0, net.edenor.foldenor.secureseed.Globals.Salt.STRONGHOLDS, 0)
 +                    : RandomSource.create();
  
@@ -1415,14 +1374,14 @@ index 798e22fb4d685b5845ebf687e8004e94f13a9751..4ed9f2f6278f5506efdb3e3ffdd0cca5
          for (int l = centerChunkX - chunkCount; l <= centerChunkX + chunkCount; ++l) {
              for (int i1 = centerChunkZ - chunkCount; i1 <= centerChunkZ + chunkCount; ++i1) {
 diff --git a/src/main/java/net/minecraft/world/level/chunk/ChunkStatus.java b/src/main/java/net/minecraft/world/level/chunk/ChunkStatus.java
-index a907b79fd8291a0e92db138f37239d17424188a1..f3969034a7a79c0381178de8987aab0dfbd71993 100644
+index a907b79fd8291a0e92db138f37239d17424188a1..7b11ec4fef76b242ab1bf8321a8530989029081e 100644
 --- a/src/main/java/net/minecraft/world/level/chunk/ChunkStatus.java
 +++ b/src/main/java/net/minecraft/world/level/chunk/ChunkStatus.java
 @@ -3,6 +3,7 @@ package net.minecraft.world.level.chunk;
  import com.google.common.collect.ImmutableList;
  import com.google.common.collect.Lists;
  import com.mojang.datafixers.util.Either;
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
  import it.unimi.dsi.fastutil.ints.IntArrayList;
  import it.unimi.dsi.fastutil.ints.IntList;
  import java.util.Collections;
@@ -1501,7 +1460,7 @@ index a907b79fd8291a0e92db138f37239d17424188a1..f3969034a7a79c0381178de8987aab0d
  
      public CompletableFuture<Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure>> generate(Executor executor, ServerLevel world, ChunkGenerator generator, StructureTemplateManager structureTemplateManager, ThreadedLevelLightEngine lightingProvider, Function<ChunkAccess, CompletableFuture<Either<ChunkAccess, ChunkHolder.ChunkLoadingFailure>>> fullChunkConverter, List<ChunkAccess> chunks) {
 -        ChunkAccess ichunkaccess = (ChunkAccess) chunks.get(chunks.size() / 2);
-+        if (LevelBukkitConfig.foldenor.enableSecureSeed)
++        if (LevelBukkitConfig.Foldenor.enableSecureSeed)
 +            Globals.setupGlobals(world);
 +        ChunkAccess ichunkaccess = chunks.get(chunks.size() / 2);
          ProfiledDuration profiledduration = JvmProfiler.INSTANCE.onChunkGenerate(ichunkaccess.getPos(), world.dimension(), this.toString());
@@ -1516,7 +1475,7 @@ index a907b79fd8291a0e92db138f37239d17424188a1..f3969034a7a79c0381178de8987aab0d
                          protochunk.setStatus(this);
                      }
 diff --git a/src/main/java/net/minecraft/world/level/levelgen/WorldOptions.java b/src/main/java/net/minecraft/world/level/levelgen/WorldOptions.java
-index 147e41c5869ac9070e1cb40f1411490a756dedef..11d4379dfb0a891c6ba70d67096b88652fdb0533 100644
+index 147e41c5869ac9070e1cb40f1411490a756dedef..ac089aac7a52b33b11674ad5861d96015b0cd7a0 100644
 --- a/src/main/java/net/minecraft/world/level/levelgen/WorldOptions.java
 +++ b/src/main/java/net/minecraft/world/level/levelgen/WorldOptions.java
 @@ -5,21 +5,34 @@ import com.mojang.serialization.MapCodec;
@@ -1525,7 +1484,7 @@ index 147e41c5869ac9070e1cb40f1411490a756dedef..11d4379dfb0a891c6ba70d67096b8865
  import java.util.OptionalLong;
 +import java.util.stream.LongStream;
 +
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
 +import net.edenor.foldenor.secureseed.Globals;
  import net.minecraft.util.RandomSource;
  import org.apache.commons.lang3.StringUtils;
@@ -1533,7 +1492,7 @@ index 147e41c5869ac9070e1cb40f1411490a756dedef..11d4379dfb0a891c6ba70d67096b8865
  public class WorldOptions {
 -    public static final MapCodec<WorldOptions> CODEC = RecordCodecBuilder.mapCodec(
 -        instance -> instance.group(
-+    public static MapCodec<WorldOptions> CODEC = LevelBukkitConfig.foldenor.enableSecureSeed ? RecordCodecBuilder.mapCodec((instance) -> {
++    public static MapCodec<WorldOptions> CODEC = LevelBukkitConfig.Foldenor.enableSecureSeed ? RecordCodecBuilder.mapCodec((instance) -> {
 +        return instance.group(Codec.LONG.fieldOf("seed").stable().forGetter(WorldOptions::seed),
 +                Codec.LONG_STREAM.fieldOf("feature_seed").stable().forGetter(WorldOptions::featureSeedStream),
 +                Codec.BOOL.fieldOf("generate_features").orElse(true).stable().forGetter(WorldOptions::generateStructures),
@@ -1553,7 +1512,7 @@ index 147e41c5869ac9070e1cb40f1411490a756dedef..11d4379dfb0a891c6ba70d67096b8865
      );
 -    public static final WorldOptions DEMO_OPTIONS = new WorldOptions((long)"North Carolina".hashCode(), true, true);
 +
-+    public static final WorldOptions DEMO_OPTIONS = LevelBukkitConfig.foldenor.enableSecureSeed ? new WorldOptions((long)"North Carolina".hashCode(), Globals.createRandomWorldSeed(), true, true) : new WorldOptions((long)"North Carolina".hashCode(), true, true);
++    public static final WorldOptions DEMO_OPTIONS = LevelBukkitConfig.Foldenor.enableSecureSeed ? new WorldOptions((long)"North Carolina".hashCode(), Globals.createRandomWorldSeed(), true, true) : new WorldOptions((long)"North Carolina".hashCode(), true, true);
      private final long seed;
 +    private final long[] featureSeed;
      private final boolean generateStructures;
@@ -1569,7 +1528,7 @@ index 147e41c5869ac9070e1cb40f1411490a756dedef..11d4379dfb0a891c6ba70d67096b8865
 +
      public static WorldOptions defaultWithRandomSeed() {
 -        return new WorldOptions(randomSeed(), true, false);
-+        if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++        if (LevelBukkitConfig.Foldenor.enableSecureSeed) {
 +            return new WorldOptions(randomSeed(), Globals.createRandomWorldSeed(), true, false);
 +        } else {
 +            return new WorldOptions(randomSeed(), true, false);
@@ -1611,19 +1570,19 @@ index 147e41c5869ac9070e1cb40f1411490a756dedef..11d4379dfb0a891c6ba70d67096b8865
      }
  
      public WorldOptions withBonusChest(boolean bonusChest) {
-+        if (LevelBukkitConfig.foldenor.enableSecureSeed)
++        if (LevelBukkitConfig.Foldenor.enableSecureSeed)
 +            return new WorldOptions(this.seed, this.featureSeed, this.generateStructures, bonusChest, this.legacyCustomOptions);
          return new WorldOptions(this.seed, this.generateStructures, bonusChest, this.legacyCustomOptions);
      }
  
      public WorldOptions withStructures(boolean structures) {
-+        if (LevelBukkitConfig.foldenor.enableSecureSeed)
++        if (LevelBukkitConfig.Foldenor.enableSecureSeed)
 +            return new WorldOptions(this.seed, this.featureSeed, structures, this.generateBonusChest, this.legacyCustomOptions);
          return new WorldOptions(this.seed, structures, this.generateBonusChest, this.legacyCustomOptions);
      }
  
      public WorldOptions withSeed(OptionalLong seed) {
-+        if (LevelBukkitConfig.foldenor.enableSecureSeed)
++        if (LevelBukkitConfig.Foldenor.enableSecureSeed)
 +            return new WorldOptions(seed.orElse(randomSeed()), Globals.createRandomWorldSeed(), this.generateStructures, this.generateBonusChest, this.legacyCustomOptions);
          return new WorldOptions(seed.orElse(randomSeed()), this.generateStructures, this.generateBonusChest, this.legacyCustomOptions);
      }
@@ -1638,7 +1597,7 @@ index 147e41c5869ac9070e1cb40f1411490a756dedef..11d4379dfb0a891c6ba70d67096b8865
          }
      }
 diff --git a/src/main/java/net/minecraft/world/level/levelgen/feature/GeodeFeature.java b/src/main/java/net/minecraft/world/level/levelgen/feature/GeodeFeature.java
-index 17d2bb3f7d158ec1230a1ad7c52b9feeda586630..c54df53f9628f3fda64f3ecec2605d5a41e3110c 100644
+index 17d2bb3f7d158ec1230a1ad7c52b9feeda586630..d8e4bd778f40d8a80963cb23a522b86625400cd7 100644
 --- a/src/main/java/net/minecraft/world/level/levelgen/feature/GeodeFeature.java
 +++ b/src/main/java/net/minecraft/world/level/levelgen/feature/GeodeFeature.java
 @@ -3,8 +3,13 @@ package net.minecraft.world.level.levelgen.feature;
@@ -1649,7 +1608,7 @@ index 17d2bb3f7d158ec1230a1ad7c52b9feeda586630..c54df53f9628f3fda64f3ecec2605d5a
  import java.util.List;
  import java.util.function.Predicate;
 +
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
 +import net.edenor.foldenor.secureseed.Globals;
 +import net.edenor.foldenor.secureseed.WorldgenCryptoRandom;
  import net.minecraft.Util;
@@ -1660,7 +1619,7 @@ index 17d2bb3f7d158ec1230a1ad7c52b9feeda586630..c54df53f9628f3fda64f3ecec2605d5a
          List<Pair<BlockPos, Integer>> list = Lists.newLinkedList();
          int k = geodeConfiguration.distributionPoints.sample(randomSource);
 -        WorldgenRandom worldgenRandom = new WorldgenRandom(new LegacyRandomSource(worldGenLevel.getSeed()));
-+        WorldgenRandom worldgenRandom = LevelBukkitConfig.foldenor.enableSecureSeed
++        WorldgenRandom worldgenRandom = LevelBukkitConfig.Foldenor.enableSecureSeed
 +                ? new WorldgenCryptoRandom(0, 0, Globals.Salt.GEODE_FEATURE, 0)
 +                : new WorldgenRandom(new LegacyRandomSource(worldGenLevel.getSeed()));
 +
@@ -1719,7 +1678,7 @@ index 17d2bb3f7d158ec1230a1ad7c52b9feeda586630..c54df53f9628f3fda64f3ecec2605d5a
                      }
                  } else if (u >= g) {
 diff --git a/src/main/java/net/minecraft/world/level/levelgen/structure/Structure.java b/src/main/java/net/minecraft/world/level/levelgen/structure/Structure.java
-index e1fcc71b81c9da7180384ea1dfc656fdecf900c7..b4b2814ece5255269d05bdacce87356ef3635b47 100644
+index e1fcc71b81c9da7180384ea1dfc656fdecf900c7..3ab59720ba60ee59bc65a051cfe79c196eb1d0d0 100644
 --- a/src/main/java/net/minecraft/world/level/levelgen/structure/Structure.java
 +++ b/src/main/java/net/minecraft/world/level/levelgen/structure/Structure.java
 @@ -10,6 +10,8 @@ import java.util.Optional;
@@ -1727,7 +1686,7 @@ index e1fcc71b81c9da7180384ea1dfc656fdecf900c7..b4b2814ece5255269d05bdacce87356e
  import java.util.function.Function;
  import java.util.function.Predicate;
 +
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
  import net.minecraft.core.BlockPos;
  import net.minecraft.core.Holder;
  import net.minecraft.core.HolderSet;
@@ -1755,7 +1714,7 @@ index e1fcc71b81c9da7180384ea1dfc656fdecf900c7..b4b2814ece5255269d05bdacce87356e
 -            WorldgenRandom worldgenRandom = new WorldgenRandom(new LegacyRandomSource(0L));
 -            worldgenRandom.setLargeFeatureSeed(seed, chunkPos.x, chunkPos.z);
 -            return worldgenRandom;
-+            if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++            if (LevelBukkitConfig.Foldenor.enableSecureSeed) {
 +                return new WorldgenCryptoRandom(
 +                        chunkPos.x, chunkPos.z, Globals.Salt.GENERATE_FEATURE, seed
 +                );
@@ -1768,7 +1727,7 @@ index e1fcc71b81c9da7180384ea1dfc656fdecf900c7..b4b2814ece5255269d05bdacce87356e
      }
  
 diff --git a/src/main/java/net/minecraft/world/level/levelgen/structure/placement/RandomSpreadStructurePlacement.java b/src/main/java/net/minecraft/world/level/levelgen/structure/placement/RandomSpreadStructurePlacement.java
-index e6136d68111f47e2495de81713043865fffc864a..5877b92ea31c2f00a96d12998358ace656460de5 100644
+index e6136d68111f47e2495de81713043865fffc864a..355ca20b57ba6ae79220ba19a95f1f107c9ea710 100644
 --- a/src/main/java/net/minecraft/world/level/levelgen/structure/placement/RandomSpreadStructurePlacement.java
 +++ b/src/main/java/net/minecraft/world/level/levelgen/structure/placement/RandomSpreadStructurePlacement.java
 @@ -3,7 +3,12 @@ package net.minecraft.world.level.levelgen.structure.placement;
@@ -1778,7 +1737,7 @@ index e6136d68111f47e2495de81713043865fffc864a..5877b92ea31c2f00a96d12998358ace6
 +
  import java.util.Optional;
 +
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
 +import net.edenor.foldenor.secureseed.Globals;
 +import net.edenor.foldenor.secureseed.WorldgenCryptoRandom;
  import net.minecraft.core.Vec3i;
@@ -1872,7 +1831,7 @@ index e6136d68111f47e2495de81713043865fffc864a..5877b92ea31c2f00a96d12998358ace6
 +
 +        // LevelBukkit start
 +        WorldgenRandom worldgenRandom;
-+        if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++        if (LevelBukkitConfig.Foldenor.enableSecureSeed) {
 +            worldgenRandom = new WorldgenCryptoRandom(
 +                    i, j, Globals.Salt.POTENTIONAL_FEATURE, this.salt
 +            );
@@ -1886,7 +1845,7 @@ index e6136d68111f47e2495de81713043865fffc864a..5877b92ea31c2f00a96d12998358ace6
          int l = this.spreadType.evaluate(worldgenRandom, k);
          int m = this.spreadType.evaluate(worldgenRandom, k);
 diff --git a/src/main/java/net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java b/src/main/java/net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java
-index dc44ae806dc2779e5f0ec0de3fdb4b53da806a5b..81c5b5b90a9b966b75baf21dea1235dda4ab2401 100644
+index dc44ae806dc2779e5f0ec0de3fdb4b53da806a5b..a1a02f892f030c6fda9d75b5c22756c8b252491d 100644
 --- a/src/main/java/net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java
 +++ b/src/main/java/net/minecraft/world/level/levelgen/structure/placement/StructurePlacement.java
 @@ -5,7 +5,12 @@ import com.mojang.serialization.Codec;
@@ -1896,7 +1855,7 @@ index dc44ae806dc2779e5f0ec0de3fdb4b53da806a5b..81c5b5b90a9b966b75baf21dea1235dd
 +
  import java.util.Optional;
 +
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
 +import net.edenor.foldenor.secureseed.Globals;
 +import net.edenor.foldenor.secureseed.WorldgenCryptoRandom;
  import net.minecraft.core.BlockPos;
@@ -1965,7 +1924,7 @@ index dc44ae806dc2779e5f0ec0de3fdb4b53da806a5b..81c5b5b90a9b966b75baf21dea1235dd
 +
 +    private static boolean probabilityReducer(long seed, int salt, int chunkX, int chunkZ, float frequency, @org.jetbrains.annotations.Nullable Integer saltOverride) { // Paper - Add missing structure set seed configs; ignore here
 +        WorldgenRandom worldgenRandom;
-+        if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++        if (LevelBukkitConfig.Foldenor.enableSecureSeed) {
 +            worldgenRandom = new WorldgenCryptoRandom(
 +                    chunkX, chunkZ, Globals.Salt.UNDEFINED, salt
 +            );
@@ -1978,7 +1937,7 @@ index dc44ae806dc2779e5f0ec0de3fdb4b53da806a5b..81c5b5b90a9b966b75baf21dea1235dd
 +
 +    private static boolean legacyProbabilityReducerWithDouble(long seed, int salt, int chunkX, int chunkZ, float frequency, @org.jetbrains.annotations.Nullable Integer saltOverride) { // Paper - Add missing structure set seed configs
 +        WorldgenRandom worldgenRandom;
-+        if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++        if (LevelBukkitConfig.Foldenor.enableSecureSeed) {
 +            worldgenRandom = new WorldgenCryptoRandom(
 +                    chunkX, chunkZ, Globals.Salt.MINESHAFT_FEATURE, 0
 +            );
@@ -1997,7 +1956,7 @@ index dc44ae806dc2779e5f0ec0de3fdb4b53da806a5b..81c5b5b90a9b966b75baf21dea1235dd
 +
 +    private static boolean legacyArbitrarySaltProbabilityReducer(long seed, int salt, int chunkX, int chunkZ, float frequency, @org.jetbrains.annotations.Nullable Integer saltOverride) { // Paper - Add missing structure set seed configs
 +        WorldgenRandom worldgenRandom;
-+        if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++        if (LevelBukkitConfig.Foldenor.enableSecureSeed) {
 +            worldgenRandom = new WorldgenCryptoRandom(
 +                    chunkX, chunkZ, Globals.Salt.BURIED_TREASURE_FEATURE, 0
 +            );
@@ -2012,7 +1971,7 @@ index dc44ae806dc2779e5f0ec0de3fdb4b53da806a5b..81c5b5b90a9b966b75baf21dea1235dd
 +        int i = chunkX >> 4;
 +        int j = chunkZ >> 4;
 +        WorldgenRandom worldgenRandom;
-+        if (LevelBukkitConfig.foldenor.enableSecureSeed) {
++        if (LevelBukkitConfig.Foldenor.enableSecureSeed) {
 +            worldgenRandom = new WorldgenCryptoRandom(
 +                    i, j, Globals.Salt.PILLAGER_OUTPOST_FEATURE, 0
 +            );
@@ -2152,7 +2111,7 @@ index dc44ae806dc2779e5f0ec0de3fdb4b53da806a5b..81c5b5b90a9b966b75baf21dea1235dd
 +    }
  }
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftChunk.java b/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
-index 0dee50f136b81f788f84beeb1ad8720007736517..00f55d6c82fc168dcf610657f16e92eea15f9804 100644
+index 0dee50f136b81f788f84beeb1ad8720007736517..67db1de1e5abb522483448d130cca08658bc6835 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
 +++ b/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
 @@ -5,27 +5,20 @@ import com.google.common.base.Predicates;
@@ -2164,7 +2123,7 @@ index 0dee50f136b81f788f84beeb1ad8720007736517..00f55d6c82fc168dcf610657f16e92ee
 -import java.util.function.BooleanSupplier;
  import java.util.function.Predicate;
 +
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
  import net.minecraft.core.BlockPos;
  import net.minecraft.core.Holder;
  import net.minecraft.core.Registry;
@@ -2190,21 +2149,21 @@ index 0dee50f136b81f788f84beeb1ad8720007736517..00f55d6c82fc168dcf610657f16e92ee
      public boolean isSlimeChunk() {
          // 987234911L is deterimined in EntitySlime when seeing if a slime can spawn in a chunk
 -        return this.worldServer.paperConfig().entities.spawning.allChunksAreSlimeChunks || WorldgenRandom.seedSlimeChunk(this.getX(), this.getZ(), this.getWorld().getSeed(), worldServer.spigotConfig.slimeSeed).nextInt(10) == 0; // Paper
-+        return LevelBukkitConfig.foldenor.enableSecureSeed
++        return LevelBukkitConfig.Foldenor.enableSecureSeed
 +                ? this.worldServer.paperConfig().entities.spawning.allChunksAreSlimeChunks ||worldServer.getChunk(this.getX(), this.getZ()).isSlimeChunk()
 +                : this.worldServer.paperConfig().entities.spawning.allChunksAreSlimeChunks || WorldgenRandom.seedSlimeChunk(this.getX(), this.getZ(), this.getWorld().getSeed(), worldServer.spigotConfig.slimeSeed).nextInt(10) == 0; // Paper
      }
  
      @Override
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
-index 8f8e4bb9fd406bea173c90befa3f12feb7d6b8e1..c2508439473804f80ebec33172e1954b8a674350 100644
+index 8f8e4bb9fd406bea173c90befa3f12feb7d6b8e1..0a592e19f1292ef04fe03d1c8c15cd88df4fd4f2 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
 +++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
 @@ -14,6 +14,7 @@ import com.mojang.brigadier.tree.CommandNode;
  import com.mojang.brigadier.tree.LiteralCommandNode;
  import com.mojang.serialization.Dynamic;
  import com.mojang.serialization.Lifecycle;
-+import dev.paged.lb.Config.LevelBukkitConfig;
++import dev.paged.levelbukkit.config.LevelBukkitConfig;
  import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
  import java.awt.image.BufferedImage;
  import java.io.ByteArrayOutputStream;
@@ -2229,9 +2188,243 @@ index 8f8e4bb9fd406bea173c90befa3f12feb7d6b8e1..c2508439473804f80ebec33172e1954b
          } else {
              LevelSettings worldsettings;
 -            WorldOptions worldoptions = new WorldOptions(creator.seed(), creator.generateStructures(), false);
-+            WorldOptions worldoptions = LevelBukkitConfig.foldenor.enableSecureSeed
++            WorldOptions worldoptions = LevelBukkitConfig.Foldenor.enableSecureSeed
 +                    ? new WorldOptions(creator.seed(), Globals.createRandomWorldSeed(), creator.generateStructures(), false)
 +                    : new WorldOptions(creator.seed(), creator.generateStructures(), false);
              WorldDimensions worlddimensions;
  
              DedicatedServerProperties.WorldDimensionData properties = new DedicatedServerProperties.WorldDimensionData(GsonHelper.parse((creator.generatorSettings().isEmpty()) ? "{}" : creator.generatorSettings()), creator.type().name().toLowerCase(Locale.ROOT));
+diff --git a/src/main/kotlin/dev/paged/levelbukkit/commands/LevelBukkitCfgCommand.kt b/src/main/kotlin/dev/paged/levelbukkit/commands/LevelBukkitCfgCommand.kt
+new file mode 100644
+index 0000000000000000000000000000000000000000..0e138384b3e4f43954650eed50df5b4a16e173b5
+--- /dev/null
++++ b/src/main/kotlin/dev/paged/levelbukkit/commands/LevelBukkitCfgCommand.kt
+@@ -0,0 +1,33 @@
++package dev.paged.levelbukkit.commands
++
++import dev.paged.levelbukkit.config.LevelBukkitConfig
++import org.bukkit.command.Command
++import org.bukkit.command.CommandSender
++import net.kyori.adventure.text.Component
++import net.kyori.adventure.text.format.TextColor
++
++class LevelBukkitCfgCommand : Command("lbcfg") {
++    init {
++        this.permission = "levelbukkit.commands.cfg"
++        this.setDescription("Manage config file")
++        this.setUsage("/lbcfg")
++    }
++
++    override fun execute(sender: CommandSender, commandLabel: String, args: Array<String>): Boolean {
++        if (!this.testPermission(sender)) {
++            sender.sendMessage(
++                Component
++                    .text("No permission to execute this command!")
++                    .color(TextColor.color(255, 0, 0))
++            )
++        }
++
++        LevelBukkitConfig.reload()
++        sender.sendMessage(
++            Component
++                .text("Reloaded LevelBukkit config file!")
++                .color(TextColor.color(0, 255, 0))
++        )
++        return true
++    }
++}
+\ No newline at end of file
+diff --git a/src/main/kotlin/dev/paged/levelbukkit/config/LevelBukkitConfig.kt b/src/main/kotlin/dev/paged/levelbukkit/config/LevelBukkitConfig.kt
+new file mode 100644
+index 0000000000000000000000000000000000000000..94e834cbd8f56deec73e60e7b91f6b01d7bed2af
+--- /dev/null
++++ b/src/main/kotlin/dev/paged/levelbukkit/config/LevelBukkitConfig.kt
+@@ -0,0 +1,187 @@
++package dev.paged.levelbukkit.config
++
++import gg.pufferfish.pufferfish.simd.SIMDDetection
++import kotlinx.io.IOException
++import net.minecraft.server.MinecraftServer
++import org.bukkit.Bukkit
++import org.bukkit.configuration.file.YamlConfiguration;
++import java.io.File
++
++object LevelBukkitConfig {
++    var logger: org.slf4j.Logger = MinecraftServer.LOGGER
++
++    @JvmStatic
++    fun setCommand() {
++        Bukkit.getCommandMap().register("lbcfg", "levelbukkit", LevelBukkitCfgCommand())
++    }
++
++    @JvmStatic
++    fun load() {
++        reload()
++        // Pufferfish start
++        // Attempt to detect vectorization
++        runCatching {
++            SIMDDetection.isEnabled = SIMDDetection.canEnable(logger)
++            SIMDDetection.versionLimited = SIMDDetection.getJavaVersion() < 17
++        }.getOrElse {
++            it.printStackTrace()
++        }
++
++        if (SIMDDetection.isEnabled) {
++            logger.info("SIMD operations detected as functional. Will replace some operations with faster versions.")
++        } else if (SIMDDetection.versionLimited) {
++            logger.warn("Will not enable SIMD! These optimizations are only safely supported on Java 17+.")
++        } else {
++            logger.warn("SIMD operations are available for your server, but are not configured!")
++            logger.warn("To enable additional optimizations, add \"--add-modules=jdk.incubator.vector\" to your startup flags, BEFORE the \"-jar\".")
++            logger.warn("If you have already added this flag, then SIMD operations are not supported on your JVM or CPU.")
++            logger.warn("Debug: Java: " + System.getProperty("java.version") + ", test run: " + SIMDDetection.testRun)
++        }
++    }
++
++    @JvmStatic
++    fun reload() {
++        try {
++            val configFile = File("levelbukkit.yml")
++            if (!configFile.exists()) {
++                configFile.createNewFile()
++            }
++            val configuration = YamlConfiguration.loadConfiguration(configFile)
++
++            // LevelBukkit start
++            configuration.addDefault("level.fix.disable-respawn-ceiling", false)
++            configuration.addDefault("level.fix.try-Fix-anvil-drop.enabled", false)
++            configuration.addDefault("Level.Fix.try-Fix-anvil-drop.debug", false)
++            // LevelBukkit end
++
++            // LevelBukkit: Foldenor start
++            configuration.addDefault("Foldenor.enableSecureSeed", false)
++            // LevelBukkit: Foldenor end
++
++            // LevelBukkit: Divine start
++            configuration.addDefault("divine.recipeManagerOptimization", true)
++            // LevelBukkit: Divine end
++
++            // LevelBukkit: Leaves start
++            configuration.addDefault("leaves.flattenTriangularDistribution", false)
++            configuration.addDefault("leaves.cacheWorldGeneratorSeaLevel", false)
++            configuration.addDefault("leaves.vanillaHopper", false)
++            // LevelBukkit: Leaves end
++
++            // LevelBukkit: Purpur start
++            configuration.addDefault("Purpur.World.farmlandGetsMoistFromBelow", true)
++            configuration.addDefault("Purpur.World.sensorOptimization", true)
++
++            configuration.addDefault("Purpur.World.skeletonHeadVisibilityPercent", 0.5)
++            configuration.addDefault("Purpur.World.zombieHeadVisibilityPercent", 0.5)
++            configuration.addDefault("Purpur.World.creeperHeadVisibilityPercent", 0.5)
++            configuration.addDefault("Purpur.World.piglinHeadVisibilityPercent", 0.5)
++
++            configuration.addDefault("Purpur.World.villagerLobotomizeCheckInterval", 100)
++            configuration.addDefault("Purpur.World.villagerLobotomizeEnabled", false)
++            configuration.addDefault("Purpur.World.villagerLobotomizeWaitUntilTradeLocked", false)
++            // LevelBukkit: Purpur end
++
++            configuration.options().copyDefaults(true)
++            configuration.save(configFile)
++
++            // LevelBukkit start
++            Level.Fix.tryFixAnvilDrop = configuration.getBoolean("level.fix.try-Fix-anvil-drop.enabled")
++            Level.Fix.tryFixAnvilDropDebug = configuration.getBoolean("level.fix.try-Fix-anvil-drop.debug")
++            Level.Fix.disableRespawnCeiling = configuration.getBoolean("level.fix.disable-respawn-ceiling")
++            // LevelBukkit end
++
++            // LevelBukkit: Foldenor start
++            Foldenor.enableSecureSeed = configuration.getBoolean("Foldenor.enableSecureSeed")
++            // LevelBukkit: Foldenor end
++
++            // LevelBukkit: Divine start
++            Divine.recipeManagerOptimization = configuration.getBoolean("Divine.recipeManagerOptimization")
++            // LevelBukkit: Divine end
++
++            // LevelBukkit: Leaves start
++            Leaves.flattenTriangularDistribution = configuration.getBoolean("leaves.flattenTriangularDistribution")
++            Leaves.cacheWorldGeneratorSeaLevel = configuration.getBoolean("leaves.cacheWorldGeneratorSeaLevel")
++            Leaves.vanillaHopper = configuration.getBoolean("leaves.vanillaHopper")
++            // LevelBukkit: Leaves end
++
++            // LevelBukkit: Purpur start
++            Purpur.World.farmlandGetsMoistFromBelow =
++                configuration.getBoolean("Purpur.World.farmlandGetsMoistFromBelow")
++            Purpur.World.sensorOptimization = configuration.getBoolean("Purpur.World.sensorOptimization")
++
++            Purpur.World.skeletonHeadVisibilityPercent =
++                configuration.getDouble("Purpur.World.skeletonHeadVisibilityPercent")
++            Purpur.World.zombieHeadVisibilityPercent =
++                configuration.getDouble("Purpur.World.zombieHeadVisibilityPercent")
++            Purpur.World.creeperHeadVisibilityPercent =
++                configuration.getDouble("Purpur.World.creeperHeadVisibilityPercent")
++            Purpur.World.piglinHeadVisibilityPercent =
++                configuration.getDouble("Purpur.World.piglinHeadVisibilityPercent")
++
++            Purpur.World.villagerLobotomizeCheckInterval =
++                configuration.getInt("Purpur.World.villagerLobotomizeCheckInterval")
++            Purpur.World.villagerLobotomizeEnabled = configuration.getBoolean("Purpur.World.villagerLobotomizeEnabled")
++            Purpur.World.villagerLobotomizeWaitUntilTradeLocked =
++                configuration.getBoolean("Purpur.World.villagerLobotomizeWaitUntilTradeLocked")
++            // LevelBukkit: Purpur end
++        } catch (e: IOException) {
++            throw RuntimeException(e)
++        }
++    }
++
++    object Level {
++        object Fix {
++            @JvmField
++            var disableRespawnCeiling: Boolean = false
++            @JvmField
++            var tryFixAnvilDrop: Boolean = false
++            @JvmField
++            var tryFixAnvilDropDebug: Boolean = false
++        }
++    }
++
++    object Foldenor {
++        @JvmField
++        var enableSecureSeed: Boolean = false
++    }
++
++    object Divine {
++        @JvmField
++        var recipeManagerOptimization: Boolean = true
++    }
++
++    object Leaves {
++        @JvmField
++        var flattenTriangularDistribution: Boolean = false
++        @JvmField
++        var cacheWorldGeneratorSeaLevel: Boolean = false
++        @JvmField
++        var vanillaHopper: Boolean = false
++    }
++
++    class Purpur {
++        object World {
++            @JvmField
++            var farmlandGetsMoistFromBelow: Boolean = true
++            @JvmField
++            var sensorOptimization: Boolean = true
++
++            @JvmField
++            var skeletonHeadVisibilityPercent: Double = 0.0
++            @JvmField
++            var zombieHeadVisibilityPercent: Double = 0.5
++            @JvmField
++            var creeperHeadVisibilityPercent: Double = 0.5
++            @JvmField
++            var piglinHeadVisibilityPercent: Double = 0.5
++
++            @JvmField
++            var villagerLobotomizeCheckInterval: Int = 100
++            @JvmField
++            var villagerLobotomizeEnabled: Boolean = false
++            @JvmField
++            var villagerLobotomizeWaitUntilTradeLocked: Boolean = false
++        }
++    }
++}
+\ No newline at end of file

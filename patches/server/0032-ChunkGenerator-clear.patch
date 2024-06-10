@@ -91,7 +91,7 @@ index 2934f0cf0ef09c84739312b00186c2ef0019a165..fee7e5a15a65e14eba4e338dc0ce19d8
      }
  
 diff --git a/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java b/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java
-index d41698ad66f8a326e390606a5371aad98d7f6629..215667a20cdf63b00f91d7898ced17c2a28de57d 100644
+index f961382592de9f185eb6880be15e7f95f896aac8..8480094b05b8171adc59e1d27cbb23c9fa8d0e49 100644
 --- a/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java
 +++ b/src/main/java/net/minecraft/world/level/chunk/ChunkGenerator.java
 @@ -74,6 +74,7 @@ import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStruct
@@ -158,10 +158,10 @@ index d41698ad66f8a326e390606a5371aad98d7f6629..215667a20cdf63b00f91d7898ced17c2
                      } while (structurecheckresult == StructureCheckResult.START_NOT_PRESENT);
  
 diff --git a/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java b/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java
-index 4ed9f2f6278f5506efdb3e3ffdd0cca5c5ac4673..8ade2a5c8c3cb8d6611741f978b5a02356449c58 100644
+index 33e86241f23e86099da77ae55dc25830573f214f..51c54cb7ad382f65e647cd93c3e7014a3c5cf59a 100644
 --- a/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java
 +++ b/src/main/java/net/minecraft/world/level/chunk/ChunkGeneratorStructureState.java
-@@ -8,7 +8,6 @@ import dev.paged.lb.Config.LevelBukkitConfig;
+@@ -8,7 +8,6 @@ import dev.paged.levelbukkit.config.LevelBukkitConfig;
  import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
  import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
  import java.util.ArrayList;
