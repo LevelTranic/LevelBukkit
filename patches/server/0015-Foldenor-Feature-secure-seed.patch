@@ -2236,12 +2236,13 @@ index 0000000000000000000000000000000000000000..0e138384b3e4f43954650eed50df5b4a
 \ No newline at end of file
 diff --git a/src/main/kotlin/dev/paged/levelbukkit/config/LevelBukkitConfig.kt b/src/main/kotlin/dev/paged/levelbukkit/config/LevelBukkitConfig.kt
 new file mode 100644
-index 0000000000000000000000000000000000000000..94e834cbd8f56deec73e60e7b91f6b01d7bed2af
+index 0000000000000000000000000000000000000000..a5613ea07644b6443eb08e9573b34fe5492cf6da
 --- /dev/null
 +++ b/src/main/kotlin/dev/paged/levelbukkit/config/LevelBukkitConfig.kt
-@@ -0,0 +1,187 @@
+@@ -0,0 +1,188 @@
 +package dev.paged.levelbukkit.config
 +
++import dev.paged.levelbukkit.commands.LevelBukkitCfgCommand
 +import gg.pufferfish.pufferfish.simd.SIMDDetection
 +import kotlinx.io.IOException
 +import net.minecraft.server.MinecraftServer
