@@ -1,0 +1,42 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Mon, 10 Jun 2024 16:58:57 +0800
+Subject: [PATCH] Graphite: Player Skin API
+
+Ability to change a player's skin easily through new API
+
+diff --git a/src/main/java/org/bukkit/entity/Player.java b/src/main/java/org/bukkit/entity/Player.java
+index 7e633b448327ee01533a00bc278367c47951d3e2..30fe20809b404caad0d45a57c383cdcbe6ef6ba8 100644
+--- a/src/main/java/org/bukkit/entity/Player.java
++++ b/src/main/java/org/bukkit/entity/Player.java
+@@ -3360,6 +3360,30 @@ public interface Player extends HumanEntity, Conversable, OfflinePlayer, PluginM
+      */
+     com.destroystokyo.paper.profile.@NotNull PlayerProfile getPlayerProfile();
+ 
++    // Graphite start - Change Player Skin
++    /**
++     * Set the skin for this player using a name. This method will contact Mojang API servers when called if the skin data is not cached
++     *
++     * @param name Minecraft profile name
++     */
++    void setPlayerSkin(@NotNull String name);
++
++    /**
++     * Set the skin for this player using a UUID. This method will contact Mojang API servers when called if the skin data is not cached
++     *
++     * @param uniqueId Minecraft profile UUID
++     */
++    void setPlayerSkin(@NotNull java.util.UUID uniqueId);
++
++    /**
++     * Set the skin for this player using a texture and signature
++     *
++     * @param texture Texture to use
++     * @param signature Signature to use
++     */
++    void setPlayerSkin(@NotNull String texture, @NotNull String signature);
++    // Graphite end - Change Player Skin
++
+     /**
+      * Changes the PlayerProfile for this player. This will cause this player
+      * to be re-registered to all clients that can currently see this player.

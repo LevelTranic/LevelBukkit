@@ -6,7 +6,7 @@ Subject: [PATCH] Fix-build
 and add kotlin support
 
 diff --git a/build.gradle.kts b/build.gradle.kts
-index 247598b6c73aca3743f4b16b47520f8ba16b2ed0..661164d82dc526b5c2cfc34a5cb88abe6474e0ac 100644
+index 247598b6c73aca3743f4b16b47520f8ba16b2ed0..63936505233a62a716eaf9514bb3783b5fae47f7 100644
 --- a/build.gradle.kts
 +++ b/build.gradle.kts
 @@ -4,6 +4,8 @@ plugins {
@@ -27,11 +27,12 @@ index 247598b6c73aca3743f4b16b47520f8ba16b2ed0..661164d82dc526b5c2cfc34a5cb88abe
      implementation("io.papermc.paper:paper-mojangapi:${project.version}") {
          exclude("io.papermc.paper", "paper-api")
      }
-@@ -51,6 +53,13 @@ dependencies {
+@@ -51,6 +53,14 @@ dependencies {
      }
      // Paper end - Use Velocity cipher
  
 +    // LevelBukkit start
++    implementation(kotlin("reflect"))
 +    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0-RC")
 +    implementation("org.jetbrains.kotlinx:kotlinx-io-core:0.4.0")
 +    implementation("org.jetbrains.kotlinx:atomicfu:0.24.0")
@@ -41,7 +42,7 @@ index 247598b6c73aca3743f4b16b47520f8ba16b2ed0..661164d82dc526b5c2cfc34a5cb88abe
      runtimeOnly("org.apache.maven:maven-resolver-provider:3.9.6")
      runtimeOnly("org.apache.maven.resolver:maven-resolver-connector-basic:1.9.18")
      runtimeOnly("org.apache.maven.resolver:maven-resolver-transport-http:1.9.18")
-@@ -76,7 +85,7 @@ tasks.jar {
+@@ -76,7 +86,7 @@ tasks.jar {
          attributes(
              "Main-Class" to "org.bukkit.craftbukkit.Main",
              "Implementation-Title" to "CraftBukkit",
@@ -50,7 +51,7 @@ index 247598b6c73aca3743f4b16b47520f8ba16b2ed0..661164d82dc526b5c2cfc34a5cb88abe
              "Implementation-Vendor" to date, // Paper
              "Specification-Title" to "Bukkit",
              "Specification-Version" to project.version,
-@@ -103,6 +112,16 @@ publishing {
+@@ -103,6 +113,16 @@ publishing {
      }
  }
  

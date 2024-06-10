@@ -12,6 +12,7 @@ If you want to check what patches we have upstream, you can check it out at [Lum
 - https://github.com/pufferfish-gg/Pufferfish
 - https://github.com/Cryptite/Slice
 - https://github.com/The-Fafnir/Beef
+- https://github.com/GraphiteMC/Graphite
 - https://github.com/LeavesMC/Leaves
 - https://github.com/Winds-Studio/Leaf
 - https://github.com/PlazmaMC/PlazmaBukkit
