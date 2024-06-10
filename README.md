@@ -1,5 +1,5 @@
 <div align=center>
-    <img src="public/LevelBukkit.png">
+    <img src="public/LevelBukkit.png" alt="">
     <br /><br />
     <img src="https://img.shields.io/github/commit-activity/w/404Setup/LevelBukkit?style=flat-square" alt="">
     <img src="https://img.shields.io/github/downloads/404Setup/LevelBukkit/total?style=flat-square" alt="">
