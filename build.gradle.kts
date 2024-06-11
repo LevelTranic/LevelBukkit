@@ -60,7 +60,7 @@ subprojects {
 }
 
 tasks.generateDevelopmentBundle {
-    apiCoordinates.set("dev.paged.lb:lb-api")
+    apiCoordinates.set("one.leveltanic.levelbukkit:levelbukkit-api")
     mojangApiCoordinates.set("io.papermc.paper:paper-mojangapi")
     libraryRepositories.set(
         listOf(
@@ -102,7 +102,7 @@ paperweight {
 }
 
 tasks.generateDevelopmentBundle {
-    apiCoordinates.set("dev.paged.lb:lb-api")
+    apiCoordinates.set("one.leveltanic.levelbukkit:levelbukkit-api")
     mojangApiCoordinates.set("io.papermc.paper:paper-mojangapi")
     libraryRepositories.addAll(
         "https://repo.maven.apache.org/maven2/",
