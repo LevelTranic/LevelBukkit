@@ -2236,10 +2236,10 @@ index 0000000000000000000000000000000000000000..0e138384b3e4f43954650eed50df5b4a
 \ No newline at end of file
 diff --git a/src/main/kotlin/dev/paged/levelbukkit/config/LevelBukkitConfig.kt b/src/main/kotlin/dev/paged/levelbukkit/config/LevelBukkitConfig.kt
 new file mode 100644
-index 0000000000000000000000000000000000000000..a5613ea07644b6443eb08e9573b34fe5492cf6da
+index 0000000000000000000000000000000000000000..dfd9f58f914e0fc3c174c3b0ba58fd5976cac570
 --- /dev/null
 +++ b/src/main/kotlin/dev/paged/levelbukkit/config/LevelBukkitConfig.kt
-@@ -0,0 +1,188 @@
+@@ -0,0 +1,219 @@
 +package dev.paged.levelbukkit.config
 +
 +import dev.paged.levelbukkit.commands.LevelBukkitCfgCommand
@@ -2292,13 +2292,17 @@ index 0000000000000000000000000000000000000000..a5613ea07644b6443eb08e9573b34fe5
 +            val configuration = YamlConfiguration.loadConfiguration(configFile)
 +
 +            // LevelBukkit start
++            configuration.addDefault("level.feature.portal.chunk-load-radius", 3)
++            configuration.addDefault("level.feature.portal.chunk-load-time", 300)
++            configuration.addDefault("level.feature.portal.disable-chunk-load", false)
++
 +            configuration.addDefault("level.fix.disable-respawn-ceiling", false)
 +            configuration.addDefault("level.fix.try-Fix-anvil-drop.enabled", false)
-+            configuration.addDefault("Level.Fix.try-Fix-anvil-drop.debug", false)
++            configuration.addDefault("level.fix.try-Fix-anvil-drop.debug", false)
 +            // LevelBukkit end
 +
 +            // LevelBukkit: Foldenor start
-+            configuration.addDefault("Foldenor.enableSecureSeed", false)
++            configuration.addDefault("foldenor.enableSecureSeed", false)
 +            // LevelBukkit: Foldenor end
 +
 +            // LevelBukkit: Divine start
@@ -2312,34 +2316,38 @@ index 0000000000000000000000000000000000000000..a5613ea07644b6443eb08e9573b34fe5
 +            // LevelBukkit: Leaves end
 +
 +            // LevelBukkit: Purpur start
-+            configuration.addDefault("Purpur.World.farmlandGetsMoistFromBelow", true)
-+            configuration.addDefault("Purpur.World.sensorOptimization", true)
++            configuration.addDefault("purpur.world.farmlandGetsMoistFromBelow", true)
++            configuration.addDefault("purpur.world.sensorOptimization", true)
 +
-+            configuration.addDefault("Purpur.World.skeletonHeadVisibilityPercent", 0.5)
-+            configuration.addDefault("Purpur.World.zombieHeadVisibilityPercent", 0.5)
-+            configuration.addDefault("Purpur.World.creeperHeadVisibilityPercent", 0.5)
-+            configuration.addDefault("Purpur.World.piglinHeadVisibilityPercent", 0.5)
++            configuration.addDefault("purpur.world.skeletonHeadVisibilityPercent", 0.5)
++            configuration.addDefault("purpur.world.zombieHeadVisibilityPercent", 0.5)
++            configuration.addDefault("purpur.world.creeperHeadVisibilityPercent", 0.5)
++            configuration.addDefault("purpur.world.piglinHeadVisibilityPercent", 0.5)
 +
-+            configuration.addDefault("Purpur.World.villagerLobotomizeCheckInterval", 100)
-+            configuration.addDefault("Purpur.World.villagerLobotomizeEnabled", false)
-+            configuration.addDefault("Purpur.World.villagerLobotomizeWaitUntilTradeLocked", false)
++            configuration.addDefault("purpur.world.villagerLobotomizeCheckInterval", 100)
++            configuration.addDefault("purpur.world.villagerLobotomizeEnabled", false)
++            configuration.addDefault("purpur.world.villagerLobotomizeWaitUntilTradeLocked", false)
 +            // LevelBukkit: Purpur end
 +
 +            configuration.options().copyDefaults(true)
 +            configuration.save(configFile)
 +
 +            // LevelBukkit start
++            Level.Feature.Portal.chunkLoadRadius = configuration.getInt("level.feature.portal.chunk-load-radius")
++            Level.Feature.Portal.chunkLoadTime = configuration.getInt("level.feature.portal.chunk-load-time")
++            Level.Feature.Portal.disableChunkLoad = configuration.getBoolean("level.feature.portal.disable-chunk-load")
++
 +            Level.Fix.tryFixAnvilDrop = configuration.getBoolean("level.fix.try-Fix-anvil-drop.enabled")
 +            Level.Fix.tryFixAnvilDropDebug = configuration.getBoolean("level.fix.try-Fix-anvil-drop.debug")
 +            Level.Fix.disableRespawnCeiling = configuration.getBoolean("level.fix.disable-respawn-ceiling")
 +            // LevelBukkit end
 +
 +            // LevelBukkit: Foldenor start
-+            Foldenor.enableSecureSeed = configuration.getBoolean("Foldenor.enableSecureSeed")
++            Foldenor.enableSecureSeed = configuration.getBoolean("foldenor.enableSecureSeed")
 +            // LevelBukkit: Foldenor end
 +
 +            // LevelBukkit: Divine start
-+            Divine.recipeManagerOptimization = configuration.getBoolean("Divine.recipeManagerOptimization")
++            Divine.recipeManagerOptimization = configuration.getBoolean("divine.recipeManagerOptimization")
 +            // LevelBukkit: Divine end
 +
 +            // LevelBukkit: Leaves start
@@ -2350,23 +2358,23 @@ index 0000000000000000000000000000000000000000..a5613ea07644b6443eb08e9573b34fe5
 +
 +            // LevelBukkit: Purpur start
 +            Purpur.World.farmlandGetsMoistFromBelow =
-+                configuration.getBoolean("Purpur.World.farmlandGetsMoistFromBelow")
-+            Purpur.World.sensorOptimization = configuration.getBoolean("Purpur.World.sensorOptimization")
++                configuration.getBoolean("purpur.world.farmlandGetsMoistFromBelow")
++            Purpur.World.sensorOptimization = configuration.getBoolean("purpur.world.sensorOptimization")
 +
 +            Purpur.World.skeletonHeadVisibilityPercent =
-+                configuration.getDouble("Purpur.World.skeletonHeadVisibilityPercent")
++                configuration.getDouble("purpur.world.skeletonHeadVisibilityPercent")
 +            Purpur.World.zombieHeadVisibilityPercent =
-+                configuration.getDouble("Purpur.World.zombieHeadVisibilityPercent")
++                configuration.getDouble("purpur.world.zombieHeadVisibilityPercent")
 +            Purpur.World.creeperHeadVisibilityPercent =
-+                configuration.getDouble("Purpur.World.creeperHeadVisibilityPercent")
++                configuration.getDouble("purpur.world.creeperHeadVisibilityPercent")
 +            Purpur.World.piglinHeadVisibilityPercent =
-+                configuration.getDouble("Purpur.World.piglinHeadVisibilityPercent")
++                configuration.getDouble("purpur.world.piglinHeadVisibilityPercent")
 +
 +            Purpur.World.villagerLobotomizeCheckInterval =
-+                configuration.getInt("Purpur.World.villagerLobotomizeCheckInterval")
-+            Purpur.World.villagerLobotomizeEnabled = configuration.getBoolean("Purpur.World.villagerLobotomizeEnabled")
++                configuration.getInt("purpur.world.villagerLobotomizeCheckInterval")
++            Purpur.World.villagerLobotomizeEnabled = configuration.getBoolean("purpur.world.villagerLobotomizeEnabled")
 +            Purpur.World.villagerLobotomizeWaitUntilTradeLocked =
-+                configuration.getBoolean("Purpur.World.villagerLobotomizeWaitUntilTradeLocked")
++                configuration.getBoolean("purpur.world.villagerLobotomizeWaitUntilTradeLocked")
 +            // LevelBukkit: Purpur end
 +        } catch (e: IOException) {
 +            throw RuntimeException(e)
@@ -2374,11 +2382,26 @@ index 0000000000000000000000000000000000000000..a5613ea07644b6443eb08e9573b34fe5
 +    }
 +
 +    object Level {
++        object Feature {
++            object Portal {
++                @JvmStatic
++                var disableChunkLoad: Boolean = false
++
++                @JvmStatic
++                var chunkLoadRadius: Int = 3
++
++                @JvmStatic
++                var chunkLoadTime: Int = 300
++            }
++        }
++
 +        object Fix {
 +            @JvmField
 +            var disableRespawnCeiling: Boolean = false
++
 +            @JvmField
 +            var tryFixAnvilDrop: Boolean = false
++
 +            @JvmField
 +            var tryFixAnvilDropDebug: Boolean = false
 +        }
@@ -2397,8 +2420,10 @@ index 0000000000000000000000000000000000000000..a5613ea07644b6443eb08e9573b34fe5
 +    object Leaves {
 +        @JvmField
 +        var flattenTriangularDistribution: Boolean = false
++
 +        @JvmField
 +        var cacheWorldGeneratorSeaLevel: Boolean = false
++
 +        @JvmField
 +        var vanillaHopper: Boolean = false
 +    }
@@ -2407,22 +2432,28 @@ index 0000000000000000000000000000000000000000..a5613ea07644b6443eb08e9573b34fe5
 +        object World {
 +            @JvmField
 +            var farmlandGetsMoistFromBelow: Boolean = true
++
 +            @JvmField
 +            var sensorOptimization: Boolean = true
 +
 +            @JvmField
 +            var skeletonHeadVisibilityPercent: Double = 0.0
++
 +            @JvmField
 +            var zombieHeadVisibilityPercent: Double = 0.5
++
 +            @JvmField
 +            var creeperHeadVisibilityPercent: Double = 0.5
++
 +            @JvmField
 +            var piglinHeadVisibilityPercent: Double = 0.5
 +
 +            @JvmField
 +            var villagerLobotomizeCheckInterval: Int = 100
++
 +            @JvmField
 +            var villagerLobotomizeEnabled: Boolean = false
++
 +            @JvmField
 +            var villagerLobotomizeWaitUntilTradeLocked: Boolean = false
 +        }
