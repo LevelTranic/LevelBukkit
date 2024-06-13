@@ -207,7 +207,7 @@ index 469e175dc87e66ce73efcc04a68b19140cb7194f..de2ea63355445f4268c41101551fa8e6
      private final String bukkitVersion = Versioning.getBukkitVersion();
      private final Logger logger = Logger.getLogger("Minecraft");
 diff --git a/src/main/java/org/bukkit/craftbukkit/util/Versioning.java b/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
-index 9699d7dcca5cf67f50ad05c0e875de424a4e00c5..5f83bab1609fa546f95a590730cbbb36c7f18133 100644
+index 9699d7dcca5cf67f50ad05c0e875de424a4e00c5..e2dc994fa25721d1fd5b8ec7576e0f4c67a3add1 100644
 --- a/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
 +++ b/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
 @@ -11,7 +11,7 @@ public final class Versioning {
@@ -215,7 +215,7 @@ index 9699d7dcca5cf67f50ad05c0e875de424a4e00c5..5f83bab1609fa546f95a590730cbbb36
          String result = "Unknown-Version";
  
 -        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/me.earthme.luminol/luminol-api/pom.properties"); // Folia //Luminol
-+        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/one.leveltanic.levelbukkit/levelbukkit-api/pom.properties"); // Folia //Luminol //LevelBukkit
++        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/one.tranic.levelpowered.bukkit/levelbukkit-api/pom.properties"); // Folia //Luminol //LevelBukkit
          Properties properties = new Properties();
  
          if (stream != null) {
