@@ -2236,7 +2236,7 @@ index 0000000000000000000000000000000000000000..0e138384b3e4f43954650eed50df5b4a
 \ No newline at end of file
 diff --git a/src/main/kotlin/dev/paged/levelbukkit/config/LevelBukkitConfig.kt b/src/main/kotlin/dev/paged/levelbukkit/config/LevelBukkitConfig.kt
 new file mode 100644
-index 0000000000000000000000000000000000000000..dfd9f58f914e0fc3c174c3b0ba58fd5976cac570
+index 0000000000000000000000000000000000000000..cf70ecabe0ef923089c74aa376f61a9817ee76df
 --- /dev/null
 +++ b/src/main/kotlin/dev/paged/levelbukkit/config/LevelBukkitConfig.kt
 @@ -0,0 +1,219 @@
@@ -2297,36 +2297,36 @@ index 0000000000000000000000000000000000000000..dfd9f58f914e0fc3c174c3b0ba58fd59
 +            configuration.addDefault("level.feature.portal.disable-chunk-load", false)
 +
 +            configuration.addDefault("level.fix.disable-respawn-ceiling", false)
-+            configuration.addDefault("level.fix.try-Fix-anvil-drop.enabled", false)
-+            configuration.addDefault("level.fix.try-Fix-anvil-drop.debug", false)
++            configuration.addDefault("level.fix.anvil-drop.enabled", false)
++            configuration.addDefault("level.fix.anvil-drop.debug", false)
 +            // LevelBukkit end
 +
 +            // LevelBukkit: Foldenor start
-+            configuration.addDefault("foldenor.enableSecureSeed", false)
++            configuration.addDefault("foldenor.enable-secure-seed", false)
 +            // LevelBukkit: Foldenor end
 +
 +            // LevelBukkit: Divine start
-+            configuration.addDefault("divine.recipeManagerOptimization", true)
++            configuration.addDefault("divine.recipe-manager-optimization", true)
 +            // LevelBukkit: Divine end
 +
 +            // LevelBukkit: Leaves start
-+            configuration.addDefault("leaves.flattenTriangularDistribution", false)
-+            configuration.addDefault("leaves.cacheWorldGeneratorSeaLevel", false)
-+            configuration.addDefault("leaves.vanillaHopper", false)
++            configuration.addDefault("leaves.flatten-triangular-distribution", false)
++            configuration.addDefault("leaves.cache-world-generator-sea-level", false)
++            configuration.addDefault("leaves.vanilla-hopper", false)
 +            // LevelBukkit: Leaves end
 +
 +            // LevelBukkit: Purpur start
-+            configuration.addDefault("purpur.world.farmlandGetsMoistFromBelow", true)
-+            configuration.addDefault("purpur.world.sensorOptimization", true)
++            configuration.addDefault("purpur.farmland-gets-moist-from-below", true)
++            configuration.addDefault("purpur.sensor-optimization", true)
 +
-+            configuration.addDefault("purpur.world.skeletonHeadVisibilityPercent", 0.5)
-+            configuration.addDefault("purpur.world.zombieHeadVisibilityPercent", 0.5)
-+            configuration.addDefault("purpur.world.creeperHeadVisibilityPercent", 0.5)
-+            configuration.addDefault("purpur.world.piglinHeadVisibilityPercent", 0.5)
++            configuration.addDefault("purpur.visibility-percent.skeleton-head", 0.5)
++            configuration.addDefault("purpur.visibility-percent.zombie-head", 0.5)
++            configuration.addDefault("purpur.visibility-percent.creeper-head", 0.5)
++            configuration.addDefault("purpur.visibility-percent.piglin-head", 0.5)
 +
-+            configuration.addDefault("purpur.world.villagerLobotomizeCheckInterval", 100)
-+            configuration.addDefault("purpur.world.villagerLobotomizeEnabled", false)
-+            configuration.addDefault("purpur.world.villagerLobotomizeWaitUntilTradeLocked", false)
++            configuration.addDefault("purpur.villager-lobotomize.check-interval", 100)
++            configuration.addDefault("purpur.villager-lobotomize.enabled", false)
++            configuration.addDefault("purpur.villager-lobotomize.wait-until-trade-locked", false)
 +            // LevelBukkit: Purpur end
 +
 +            configuration.options().copyDefaults(true)
@@ -2337,44 +2337,44 @@ index 0000000000000000000000000000000000000000..dfd9f58f914e0fc3c174c3b0ba58fd59
 +            Level.Feature.Portal.chunkLoadTime = configuration.getInt("level.feature.portal.chunk-load-time")
 +            Level.Feature.Portal.disableChunkLoad = configuration.getBoolean("level.feature.portal.disable-chunk-load")
 +
-+            Level.Fix.tryFixAnvilDrop = configuration.getBoolean("level.fix.try-Fix-anvil-drop.enabled")
-+            Level.Fix.tryFixAnvilDropDebug = configuration.getBoolean("level.fix.try-Fix-anvil-drop.debug")
++            Level.Fix.tryFixAnvilDrop = configuration.getBoolean("level.fix.anvil-drop.enabled")
++            Level.Fix.tryFixAnvilDropDebug = configuration.getBoolean("level.fix.anvil-drop.debug")
 +            Level.Fix.disableRespawnCeiling = configuration.getBoolean("level.fix.disable-respawn-ceiling")
 +            // LevelBukkit end
 +
 +            // LevelBukkit: Foldenor start
-+            Foldenor.enableSecureSeed = configuration.getBoolean("foldenor.enableSecureSeed")
++            Foldenor.enableSecureSeed = configuration.getBoolean("foldenor.enable-secure-seed")
 +            // LevelBukkit: Foldenor end
 +
 +            // LevelBukkit: Divine start
-+            Divine.recipeManagerOptimization = configuration.getBoolean("divine.recipeManagerOptimization")
++            Divine.recipeManagerOptimization = configuration.getBoolean("divine.recipe-manager-optimization")
 +            // LevelBukkit: Divine end
 +
 +            // LevelBukkit: Leaves start
-+            Leaves.flattenTriangularDistribution = configuration.getBoolean("leaves.flattenTriangularDistribution")
-+            Leaves.cacheWorldGeneratorSeaLevel = configuration.getBoolean("leaves.cacheWorldGeneratorSeaLevel")
-+            Leaves.vanillaHopper = configuration.getBoolean("leaves.vanillaHopper")
++            Leaves.flattenTriangularDistribution = configuration.getBoolean("leaves.flatten-triangular-distribution")
++            Leaves.cacheWorldGeneratorSeaLevel = configuration.getBoolean("leaves.cache-world-generator-sea-level")
++            Leaves.vanillaHopper = configuration.getBoolean("leaves.vanilla-hopper")
 +            // LevelBukkit: Leaves end
 +
 +            // LevelBukkit: Purpur start
 +            Purpur.World.farmlandGetsMoistFromBelow =
-+                configuration.getBoolean("purpur.world.farmlandGetsMoistFromBelow")
-+            Purpur.World.sensorOptimization = configuration.getBoolean("purpur.world.sensorOptimization")
++                configuration.getBoolean("purpur.farmland-gets-moist-from-below")
++            Purpur.World.sensorOptimization = configuration.getBoolean("purpur.sensor-optimization")
 +
 +            Purpur.World.skeletonHeadVisibilityPercent =
-+                configuration.getDouble("purpur.world.skeletonHeadVisibilityPercent")
++                configuration.getDouble("purpur.visibility-percent.skeleton-head")
 +            Purpur.World.zombieHeadVisibilityPercent =
-+                configuration.getDouble("purpur.world.zombieHeadVisibilityPercent")
++                configuration.getDouble("purpur.visibility-percent.zombie-head")
 +            Purpur.World.creeperHeadVisibilityPercent =
-+                configuration.getDouble("purpur.world.creeperHeadVisibilityPercent")
++                configuration.getDouble("purpur.visibility-percent.creeper-head")
 +            Purpur.World.piglinHeadVisibilityPercent =
-+                configuration.getDouble("purpur.world.piglinHeadVisibilityPercent")
++                configuration.getDouble("purpur.visibility-percent.piglin-head")
 +
 +            Purpur.World.villagerLobotomizeCheckInterval =
-+                configuration.getInt("purpur.world.villagerLobotomizeCheckInterval")
-+            Purpur.World.villagerLobotomizeEnabled = configuration.getBoolean("purpur.world.villagerLobotomizeEnabled")
++                configuration.getInt("purpur.villager-lobotomize.check-interval")
++            Purpur.World.villagerLobotomizeEnabled = configuration.getBoolean("purpur.villager-lobotomize.enabled")
 +            Purpur.World.villagerLobotomizeWaitUntilTradeLocked =
-+                configuration.getBoolean("purpur.world.villagerLobotomizeWaitUntilTradeLocked")
++                configuration.getBoolean("purpur.villager-lobotomize.wait-until-trade-locked")
 +            // LevelBukkit: Purpur end
 +        } catch (e: IOException) {
 +            throw RuntimeException(e)
