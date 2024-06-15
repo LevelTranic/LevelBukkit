@@ -6,31 +6,33 @@ Subject: [PATCH] Fix-build
 and add kotlin support
 
 diff --git a/build.gradle.kts b/build.gradle.kts
-index 247598b6c73aca3743f4b16b47520f8ba16b2ed0..63936505233a62a716eaf9514bb3783b5fae47f7 100644
+index ab07c307bea0d3b79a6239bdcca9714e1ddf3b28..4d74dc28565cbe42fbc1ae4348c90c7a7c4a2496 100644
 --- a/build.gradle.kts
 +++ b/build.gradle.kts
-@@ -4,6 +4,8 @@ plugins {
+@@ -4,6 +4,9 @@ import java.time.Instant
+ plugins {
      java
      `maven-publish`
-     id("com.github.johnrengelman.shadow")
 +    kotlin("jvm") version "2.0.0"
 +    kotlin("plugin.serialization") version "2.0.0"
++
  }
  
  val log4jPlugins = sourceSets.create("log4jPlugins")
-@@ -14,7 +16,7 @@ val alsoShade: Configuration by configurations.creating
+@@ -13,7 +16,7 @@ configurations.named(log4jPlugins.compileClasspathConfigurationName) {
+ val alsoShade: Configuration by configurations.creating
  
  dependencies {
-     // Folia start
--    implementation(project(":luminol-api"))//Luminol
-+    implementation(project(":levelbukkit-api"))//LevelBukkit
-     implementation("io.papermc.paper:paper-mojangapi:${project.version}") {
-         exclude("io.papermc.paper", "paper-api")
-     }
-@@ -51,6 +53,14 @@ dependencies {
-     }
-     // Paper end - Use Velocity cipher
- 
+-    implementation(project(":luminol-api")) // Folia // Luminol
++    implementation(project(":levelbukkit-api")) // Folia // Luminol // LevelBukkit
+     implementation("com.electronwill.night-config:toml:3.6.6") // Luminol - Night config
+     // Paper start
+     implementation("org.jline:jline-terminal-jansi:3.21.0")
+@@ -62,6 +65,14 @@ dependencies {
+     implementation("io.papermc:reflection-rewriter-runtime:$reflectionRewriterVersion")
+     implementation("io.papermc:reflection-rewriter-proxy-generator:$reflectionRewriterVersion")
+     // Paper end - Remap reflection
++
 +    // LevelBukkit start
 +    implementation(kotlin("reflect"))
 +    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0-RC")
@@ -38,20 +40,30 @@ index 247598b6c73aca3743f4b16b47520f8ba16b2ed0..63936505233a62a716eaf9514bb3783b
 +    implementation("org.jetbrains.kotlinx:atomicfu:0.24.0")
 +    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.0")
 +    // LevelBukkit end
-+
-     runtimeOnly("org.apache.maven:maven-resolver-provider:3.9.6")
-     runtimeOnly("org.apache.maven.resolver:maven-resolver-connector-basic:1.9.18")
-     runtimeOnly("org.apache.maven.resolver:maven-resolver-transport-http:1.9.18")
-@@ -76,7 +86,7 @@ tasks.jar {
+ }
+ 
+ paperweight {
+@@ -81,14 +92,14 @@ tasks.jar {
+         val gitBranch = git("rev-parse", "--abbrev-ref", "HEAD").getText().trim() // Paper
          attributes(
              "Main-Class" to "org.bukkit.craftbukkit.Main",
-             "Implementation-Title" to "CraftBukkit",
--            "Implementation-Version" to "git-Luminol-$implementationVersion", // Folia //Luminol
-+            "Implementation-Version" to "git-LevelBukkit-$implementationVersion", // Folia //Luminol //LevelBukkit
+-            "Implementation-Title" to "Luminol", // Folia // Luminol
++            "Implementation-Title" to "LevelBukkit", // Folia // Luminol // LevelBukkit
+             "Implementation-Version" to implementationVersion,
              "Implementation-Vendor" to date, // Paper
-             "Specification-Title" to "Bukkit",
+-            "Specification-Title" to "Luminol", // Folia // Luminol
++            "Specification-Title" to "LevelBukkit", // Folia // Luminol // LevelBukkit
              "Specification-Version" to project.version,
-@@ -103,6 +113,16 @@ publishing {
+-            "Specification-Vendor" to "LuminolMC Team", // Luminol
+-            "Brand-Id" to "luminolmc:luminol", // Folia // Luminol
+-            "Brand-Name" to "Luminol", // Folia // Luminol
++            "Specification-Vendor" to "TranicSoft LevelPowered", // Luminol // LevelBukkit
++            "Brand-Id" to "levelpowered:bukkit", // Folia // Luminol // LevelBukkit
++            "Brand-Name" to "levelbukkit", // Folia // Luminol // LevelBukkit
+             "Build-Number" to (build ?: ""),
+             "Build-Time" to Instant.now().toString(),
+             "Git-Branch" to gitBranch, // Paper
+@@ -101,6 +112,17 @@ tasks.jar {
      }
  }
  
@@ -60,11 +72,12 @@ index 247598b6c73aca3743f4b16b47520f8ba16b2ed0..63936505233a62a716eaf9514bb3783b
 +    compilerOptions {
 +        languageVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
 +        apiVersion.set(org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_2_0)
-+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
++        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
 +    }
 +}
 +// LevelBukkit end
 +
- relocation {
-     // Order matters here - e.g. craftbukkit proper must be relocated before any of the libs are relocated into the cb package
-     relocate("org.bukkit.craftbukkit" to "org.bukkit.craftbukkit.v$craftbukkitPackageVersion") {
++
+ // Paper start - compile tests with -parameters for better junit parameterized test names
+ tasks.compileTestJava {
+     options.compilerArgs.add("-parameters")

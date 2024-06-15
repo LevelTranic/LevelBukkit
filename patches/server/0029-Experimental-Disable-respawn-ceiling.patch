@@ -8,24 +8,19 @@ This feature is not yet complete, but no major bugs have been found.
 Note that you should set spawnRadius to at least 1, not 0, and the spawn point range should be at least 3*3 (or more)
 
 diff --git a/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java b/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java
-index 5bfdd772f2e8933acca69ed62c04755a5655fa94..d54e55ea51d18f99d881ea9564ea1b5943135a96 100644
+index 5bfdd772f2e8933acca69ed62c04755a5655fa94..fc57655ffe9dd3e48ebcb6d56b876492569c67f5 100644
 --- a/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java
 +++ b/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java
-@@ -1,10 +1,13 @@
+@@ -1,6 +1,8 @@
  package net.minecraft.server.level;
  
  import javax.annotation.Nullable;
 +
-+import dev.paged.levelbukkit.config.LevelBukkitConfig;
++import one.tranic.levelpowered.bukkit.config.LevelBukkitConfig;
  import net.minecraft.SharedConstants;
  import net.minecraft.core.BlockPos;
  import net.minecraft.core.Direction;
- import net.minecraft.core.SectionPos;
-+import net.minecraft.server.MinecraftServer;
- import net.minecraft.world.level.ChunkPos;
- import net.minecraft.world.level.block.Block;
- import net.minecraft.world.level.block.state.BlockState;
-@@ -16,14 +19,17 @@ public class PlayerRespawnLogic {
+@@ -16,14 +18,17 @@ public class PlayerRespawnLogic {
      protected static BlockPos getOverworldRespawnPos(ServerLevel world, int x, int z) {
          boolean bl = world.dimensionType().hasCeiling();
          LevelChunk levelChunk = world.getChunk(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(z));
@@ -37,7 +32,7 @@ index 5bfdd772f2e8933acca69ed62c04755a5655fa94..d54e55ea51d18f99d881ea9564ea1b59
 +        int i = bl ?
 +                world.getChunkSource().getGenerator().getSpawnHeight(world) :
 +                LevelBukkitConfig.Level.Fix.disableRespawnCeiling ?
-+                        world.levelData.getYSpawn() :
++                        world.levelData.getSpawnPos().getY() :
 +                        levelChunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x & 15, z & 15);
 +        // LevelBukkit end: disable respawn ceiling
 +
@@ -50,7 +45,7 @@ index 5bfdd772f2e8933acca69ed62c04755a5655fa94..d54e55ea51d18f99d881ea9564ea1b59
                  BlockPos.MutableBlockPos mutableBlockPos = new BlockPos.MutableBlockPos();
  
                  for (int k = i + 1; k >= world.getMinBuildHeight(); k--) {
-@@ -38,9 +44,9 @@ public class PlayerRespawnLogic {
+@@ -38,9 +43,9 @@ public class PlayerRespawnLogic {
                      }
                  }
  

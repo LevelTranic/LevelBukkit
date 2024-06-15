@@ -5,10 +5,10 @@ Subject: [PATCH] Divine: Fix MC-172801
 
 
 diff --git a/src/main/java/net/minecraft/world/entity/LivingEntity.java b/src/main/java/net/minecraft/world/entity/LivingEntity.java
-index 2164413ca25dc6c1ae52e687f0786418ee4dda10..5ef2883ad977bacd2d8d8703b41e39be41d80492 100644
+index bae654c209fc423cafe66f10ba35971af7579710..7ab305ba9f3ed877f4fabd108bd37d137cc0f5ab 100644
 --- a/src/main/java/net/minecraft/world/entity/LivingEntity.java
 +++ b/src/main/java/net/minecraft/world/entity/LivingEntity.java
-@@ -3071,7 +3071,13 @@ public abstract class LivingEntity extends Entity implements Attackable {
+@@ -3137,7 +3137,13 @@ public abstract class LivingEntity extends Entity implements Attackable {
      }
  
      protected float getFlyingSpeed() {

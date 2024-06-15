@@ -1,0 +1,88 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Sun, 9 Jun 2024 21:03:51 +0800
+Subject: [PATCH] The anvil becomes a drop at Y0
+
+try fix: https://github.com/PaperMC/Folia/issues/217
+
+This fix may work, but its implementation is not elegant, so it will not be submitted upstream
+
+diff --git a/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java b/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java
+index d504d10fbe45dfe3f2f3d08d2473df6cd18f6dcf..3927d5c739f51135bb3f29156d82f53929aeefcc 100644
+--- a/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java
++++ b/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java
+@@ -18,6 +18,7 @@ import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
+ import net.minecraft.network.syncher.EntityDataAccessor;
+ import net.minecraft.network.syncher.EntityDataSerializers;
+ import net.minecraft.network.syncher.SynchedEntityData;
++import net.minecraft.server.MinecraftServer;
+ import net.minecraft.server.level.ServerLevel;
+ import net.minecraft.tags.BlockTags;
+ import net.minecraft.tags.FluidTags;
+@@ -47,6 +48,8 @@ import net.minecraft.world.level.material.Fluids;
+ import net.minecraft.world.phys.BlockHitResult;
+ import net.minecraft.world.phys.HitResult;
+ import net.minecraft.world.phys.Vec3;
++import one.tranic.levelpowered.bukkit.config.LevelBukkitConfig;
++import org.bukkit.Material;
+ import org.slf4j.Logger;
+ 
+ // CraftBukkit start;
+@@ -185,10 +188,25 @@ public class FallingBlockEntity extends Entity {
+                     this.setDeltaMovement(this.getDeltaMovement().multiply(0.7D, -0.5D, 0.7D));
+                     if (!iblockdata.is(Blocks.MOVING_PISTON)) {
+                         if (!this.cancelDrop) {
++                            // LevelBukkit start: try fix: https://github.com/PaperMC/Folia/issues/217
++                            if (LevelBukkitConfig.Level.Fix.tryFixAnvilDrop)
++                                if ((
++                                        iblockdata.getBukkitMaterial().equals(Material.ANVIL) ||
++                                                iblockdata.getBukkitMaterial().equals(Material.CHIPPED_ANVIL) ||
++                                                iblockdata.getBukkitMaterial().equals(Material.DAMAGED_ANVIL)
++                                )) {
++                                    iblockdata = Blocks.VOID_AIR.defaultBlockState();
++                                }
++                            // LevelBukkit end: try fix: https://github.com/PaperMC/Folia/issues/217
+                             boolean flag2 = iblockdata.canBeReplaced((BlockPlaceContext) (new DirectionalPlaceContext(this.level(), blockposition, Direction.DOWN, ItemStack.EMPTY, Direction.UP)));
+                             boolean flag3 = FallingBlock.isFree(this.level().getBlockState(blockposition.below())) && (!flag || !flag1);
+                             boolean flag4 = this.blockState.canSurvive(this.level(), blockposition) && !flag3;
+ 
++                            // LevelBukkit start: try fix: https://github.com/PaperMC/Folia/issues/217
++                            if (LevelBukkitConfig.Level.Fix.tryFixAnvilDropDebug)
++                                MinecraftServer.LOGGER.info("BlockState at {}: {}, Can be replaced: {}", blockposition, iblockdata, flag2);
++                            // LevelBukkit end: try fix: https://github.com/PaperMC/Folia/issues/217
++
+                             if (flag2 && flag4) {
+                                 if (this.blockState.hasProperty(BlockStateProperties.WATERLOGGED) && this.level().getFluidState(blockposition).getType() == Fluids.WATER) {
+                                     this.blockState = (BlockState) this.blockState.setValue(BlockStateProperties.WATERLOGGED, true);
+@@ -212,11 +230,8 @@ public class FallingBlockEntity extends Entity {
+ 
+                                         if (tileentity != null) {
+                                             CompoundTag nbttagcompound = tileentity.saveWithoutMetadata(this.level().registryAccess());
+-                                            Iterator iterator = this.blockData.getAllKeys().iterator();
+-
+-                                            while (iterator.hasNext()) {
+-                                                String s = (String) iterator.next();
+ 
++                                            for (String s : this.blockData.getAllKeys()) {
+                                                 nbttagcompound.put(s, this.blockData.get(s).copy());
+                                             }
+ 
+@@ -230,11 +245,18 @@ public class FallingBlockEntity extends Entity {
+                                         }
+                                     }
+                                 } else if (this.dropItem && this.level().getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
++                                    if (LevelBukkitConfig.Level.Fix.tryFixAnvilDropDebug)
++                                        MinecraftServer.LOGGER.info("Dropping at y=0 or other position, blockState: {}, position: {}, with setBlock is false", this.blockState, blockposition);
+                                     this.discard(EntityRemoveEvent.Cause.DROP); // CraftBukkit - add Bukkit remove cause
+                                     this.callOnBrokenAfterFall(block, blockposition);
+                                     this.spawnAtLocation((ItemLike) block);
+                                 }
+                             } else {
++                                // LevelBukkit start: try fix: https://github.com/PaperMC/Folia/issues/217
++                                if (LevelBukkitConfig.Level.Fix.tryFixAnvilDropDebug)
++                                    MinecraftServer.LOGGER.info("Dropping at y=0 or other position, blockState: {}, position: {}", this.blockState, blockposition);
++                                // LevelBukkit end: try fix: https://github.com/PaperMC/Folia/issues/217
++
+                                 this.discard(EntityRemoveEvent.Cause.DROP); // CraftBukkit - add Bukkit remove cause
+                                 if (this.dropItem && this.level().getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
+                                     this.callOnBrokenAfterFall(block, blockposition);

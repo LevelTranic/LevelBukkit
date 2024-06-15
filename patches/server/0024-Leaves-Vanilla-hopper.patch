@@ -6,25 +6,32 @@ Subject: [PATCH] Leaves: Vanilla hopper
 This is a temporary solution designed to attempt to restore the vanilla behavior of the funnel while preserving optimizations as much as possible. It should ultimately be replaced by the optimization solution provided by lithium.
 
 diff --git a/src/main/java/net/minecraft/world/level/block/entity/HopperBlockEntity.java b/src/main/java/net/minecraft/world/level/block/entity/HopperBlockEntity.java
-index 882e27de852c89c837d7943c5a9ae6fb3c2e896b..6be3d8ae9af34b5b3b3e84d54e927b8b04663692 100644
+index 957c217653a664bab26db476724d288b18d87102..668b241aa13e7872c0681923567f2c41cdb88ca5 100644
 --- a/src/main/java/net/minecraft/world/level/block/entity/HopperBlockEntity.java
 +++ b/src/main/java/net/minecraft/world/level/block/entity/HopperBlockEntity.java
-@@ -6,6 +6,8 @@ import java.util.function.BooleanSupplier;
- import java.util.stream.Collectors;
- import java.util.stream.IntStream;
- import javax.annotation.Nullable;
-+
-+import dev.paged.levelbukkit.config.LevelBukkitConfig;
- import net.minecraft.core.BlockPos;
- import net.minecraft.core.Direction;
- import net.minecraft.core.NonNullList;
-@@ -323,34 +325,47 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+@@ -29,6 +29,7 @@ import net.minecraft.world.level.block.ChestBlock;
+ import net.minecraft.world.level.block.HopperBlock;
+ import net.minecraft.world.level.block.state.BlockState;
+ import net.minecraft.world.phys.AABB;
++import one.tranic.levelpowered.bukkit.config.LevelBukkitConfig;
+ import org.bukkit.Bukkit;
+ import org.bukkit.craftbukkit.block.CraftBlock;
+ import org.bukkit.craftbukkit.entity.CraftHumanEntity;
+@@ -37,7 +38,6 @@ import org.bukkit.craftbukkit.inventory.CraftItemStack;
+ import org.bukkit.entity.HumanEntity;
+ import org.bukkit.event.entity.EntityRemoveEvent;
+ import org.bukkit.event.inventory.HopperInventorySearchEvent;
+-import org.bukkit.event.inventory.InventoryMoveItemEvent;
+ import org.bukkit.event.inventory.InventoryPickupItemEvent;
+ import org.bukkit.inventory.Inventory;
+ // CraftBukkit end
+@@ -326,41 +326,50 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
          ItemStack movedItem = origItemStack;
          final int originalItemCount = origItemStack.getCount();
          final int movedItemCount = Math.min(level.spigotConfig.hopperAmount, originalItemCount);
 -        container.setChanged(); // original logic always marks source inv as changed even if no move happens.
 -        movedItem.setCount(movedItemCount);
- 
+-
 -        if (!worldData.skipPullModeEventFire) { // Folia - region threading
 -            movedItem = callPullMoveEvent(hopper, container, movedItem);
 -            if (movedItem == null) { // cancelled
@@ -41,11 +48,7 @@ index 882e27de852c89c837d7943c5a9ae6fb3c2e896b..6be3d8ae9af34b5b3b3e84d54e927b8b
                  return true;
              }
 -        }
-+            container.setItem(i, movedItem);
-+        } else {
-+            container.setChanged(); // original logic always marks source inv as changed even if no move happens.
-+            movedItem.setCount(movedItemCount);
- 
+-
 -        final ItemStack remainingItem = addItem(container, hopper, movedItem, null);
 -        final int remainingItemCount = remainingItem.getCount();
 -        if (remainingItemCount != movedItemCount) {
@@ -53,7 +56,11 @@ index 882e27de852c89c837d7943c5a9ae6fb3c2e896b..6be3d8ae9af34b5b3b3e84d54e927b8b
 -            origItemStack.setCount(originalItemCount);
 -            if (!origItemStack.isEmpty()) {
 -                origItemStack.setCount(originalItemCount - movedItemCount + remainingItemCount);
-+            if (!worldData.skipPullModeEventFire) { // Folia - region threading
++            container.setItem(i, movedItem);
++        } else {
++            container.setChanged(); // original logic always marks source inv as changed even if no move happens.
++            movedItem.setCount(movedItemCount);
++            if (!worldData.skipPullModeEventFire) {  // Folia - region threading
 +                movedItem = callPullMoveEvent(hopper, container, movedItem);
 +                if (movedItem == null) { // cancelled
 +                    origItemStack.setCount(originalItemCount);
@@ -63,12 +70,6 @@ index 882e27de852c89c837d7943c5a9ae6fb3c2e896b..6be3d8ae9af34b5b3b3e84d54e927b8b
 +                    return true;
 +                }
              }
- 
--            IGNORE_TILE_UPDATES.set(true); // Folia - region threading
--            container.setItem(i, origItemStack);
--            IGNORE_TILE_UPDATES.set(false); // Folia - region threading
--            container.setChanged();
--            return true;
 +            final ItemStack remainingItem = addItem(container, hopper, movedItem, null);
 +            final int remainingItemCount = remainingItem.getCount();
 +            if (remainingItemCount != movedItemCount) {
@@ -77,7 +78,12 @@ index 882e27de852c89c837d7943c5a9ae6fb3c2e896b..6be3d8ae9af34b5b3b3e84d54e927b8b
 +                if (!origItemStack.isEmpty()) {
 +                    origItemStack.setCount(originalItemCount - movedItemCount + remainingItemCount);
 +                }
-+
+ 
+-            IGNORE_TILE_UPDATES.set(true); // Folia - region threading
+-            container.setItem(i, origItemStack);
+-            IGNORE_TILE_UPDATES.set(false); // Folia - region threading
+-            container.setChanged();
+-            return true;
 +                IGNORE_TILE_UPDATES.set(true); // Folia - region threading
 +                container.setItem(i, origItemStack);
 +                IGNORE_TILE_UPDATES.set(false); // Folia - region threading
@@ -87,4 +93,11 @@ index 882e27de852c89c837d7943c5a9ae6fb3c2e896b..6be3d8ae9af34b5b3b3e84d54e927b8b
 +            // Leaves end - fix vanilla
          }
          origItemStack.setCount(originalItemCount);
+ 
+         if (level.paperConfig().hopper.cooldownWhenFull) {
+             cooldownHopper(hopper);
+         }
+-
+         return false;
+     }
  

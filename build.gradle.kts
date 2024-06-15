@@ -1,8 +1,7 @@
 plugins {
     java
     `maven-publish`
-    id("com.github.johnrengelman.shadow") version "8.1.1" apply false
-    id("io.papermc.paperweight.patcher") version "1.5.15"
+    id("io.papermc.paperweight.patcher") version "1.7.1"
     kotlin("jvm") version "2.0.0"
     kotlin("plugin.serialization") version "2.0.0"
 }
@@ -28,13 +27,13 @@ subprojects {
 
     java {
         toolchain {
-            languageVersion = JavaLanguageVersion.of(17)
+            languageVersion = JavaLanguageVersion.of(21)
         }
     }
 
     tasks.withType<JavaCompile> {
         options.encoding = Charsets.UTF_8.name()
-        options.release = 17
+        options.release = 21
     }
 
     tasks.withType<Javadoc> {
@@ -56,18 +55,6 @@ subprojects {
         maven("https://jitpack.io")
         maven("https://repo.codemc.io/repository/maven-public/")
     }
-
-}
-
-tasks.generateDevelopmentBundle {
-    apiCoordinates.set("one.tranic.levelpowered.bukkit:levelbukkit-api")
-    mojangApiCoordinates.set("io.papermc.paper:paper-mojangapi")
-    libraryRepositories.set(
-        listOf(
-            "https://repo.maven.apache.org/maven2/",
-            "https://maven.pkg.github.com/LuminolMC/Luminol",
-        )
-    )
 }
 
 paperweight {
@@ -103,7 +90,6 @@ paperweight {
 
 tasks.generateDevelopmentBundle {
     apiCoordinates.set("one.tranic.levelpowered.bukkit:levelbukkit-api")
-    mojangApiCoordinates.set("io.papermc.paper:paper-mojangapi")
     libraryRepositories.addAll(
         "https://repo.maven.apache.org/maven2/",
         paperMavenPublicUrl,

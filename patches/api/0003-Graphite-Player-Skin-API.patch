@@ -6,10 +6,10 @@ Subject: [PATCH] Graphite: Player Skin API
 Ability to change a player's skin easily through new API
 
 diff --git a/src/main/java/org/bukkit/entity/Player.java b/src/main/java/org/bukkit/entity/Player.java
-index 7e633b448327ee01533a00bc278367c47951d3e2..30fe20809b404caad0d45a57c383cdcbe6ef6ba8 100644
+index d66a165ca910bf47da837fb166e5c295325ef9a8..b04bfd657125ec38d1a0670ee4f1257836b66aa1 100644
 --- a/src/main/java/org/bukkit/entity/Player.java
 +++ b/src/main/java/org/bukkit/entity/Player.java
-@@ -3360,6 +3360,30 @@ public interface Player extends HumanEntity, Conversable, OfflinePlayer, PluginM
+@@ -3414,6 +3414,30 @@ public interface Player extends HumanEntity, Conversable, OfflinePlayer, PluginM
       */
      com.destroystokyo.paper.profile.@NotNull PlayerProfile getPlayerProfile();
  

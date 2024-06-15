@@ -1,0 +1,49 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Sat, 8 Jun 2024 23:37:19 +0800
+Subject: [PATCH] Leaves: Cache world generator sea level
+
+This patch is Powered by Gale(https://github.com/GaleMC/Gale)
+
+diff --git a/src/main/java/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java b/src/main/java/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java
+index 8ce870a5341a61fbbaf42021ef7f7f615a6a3e09..6fdde9f77ab478aaaa6afc9ce049c4992770696c 100644
+--- a/src/main/java/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java
++++ b/src/main/java/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java
+@@ -48,6 +48,7 @@ import net.minecraft.world.level.dimension.DimensionType;
+ import net.minecraft.world.level.levelgen.blending.Blender;
+ import net.minecraft.world.level.levelgen.carver.CarvingContext;
+ import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
++import one.tranic.levelpowered.bukkit.config.LevelBukkitConfig;
+ import org.apache.commons.lang3.mutable.MutableObject;
+ 
+ public final class NoiseBasedChunkGenerator extends ChunkGenerator {
+@@ -62,12 +63,17 @@ public final class NoiseBasedChunkGenerator extends ChunkGenerator {
+     private static final BlockState AIR = Blocks.AIR.defaultBlockState();
+     public final Holder<NoiseGeneratorSettings> settings;
+     private final Supplier<Aquifer.FluidPicker> globalFluidPicker;
++    private int cachedSeaLevel; // Leaves - cache world generator sea level
+ 
+     public NoiseBasedChunkGenerator(BiomeSource biomeSource, Holder<NoiseGeneratorSettings> settings) {
+         super(biomeSource);
+         this.settings = settings;
+         this.globalFluidPicker = Suppliers.memoize(() -> {
+-            return NoiseBasedChunkGenerator.createFluidPicker((NoiseGeneratorSettings) settings.value());
++            // Leaves start - cache world generator sea level
++            var fluidPicker = NoiseBasedChunkGenerator.createFluidPicker((NoiseGeneratorSettings) settings.value());
++            this.cachedSeaLevel = settings.value().seaLevel();
++            return fluidPicker;
++            // Leaves end - cache world generator sea level
+         });
+     }
+ 
+@@ -394,7 +400,9 @@ public final class NoiseBasedChunkGenerator extends ChunkGenerator {
+ 
+     @Override
+     public int getSeaLevel() {
+-        return ((NoiseGeneratorSettings) this.settings.value()).seaLevel();
++        // Leaves start - cache world generator sea level
++        return LevelBukkitConfig.Leaves.cacheWorldGeneratorSeaLevel ? cachedSeaLevel: this.settings.value().seaLevel();
++        // Leaves end - cache world generator sea level
+     }
+ 
+     @Override

@@ -1,0 +1,19 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Fri, 31 May 2024 18:33:33 +0800
+Subject: [PATCH] Slice: Improve map-saving performance
+
+
+diff --git a/src/main/java/net/minecraft/world/level/saveddata/maps/MapItemSavedData.java b/src/main/java/net/minecraft/world/level/saveddata/maps/MapItemSavedData.java
+index 6b131c112ca227f9f910d5d88cf8314cc088be03..832cd19e25232ab60ace35d305aa910241536138 100644
+--- a/src/main/java/net/minecraft/world/level/saveddata/maps/MapItemSavedData.java
++++ b/src/main/java/net/minecraft/world/level/saveddata/maps/MapItemSavedData.java
+@@ -351,7 +351,7 @@ public class MapItemSavedData extends SavedData {
+             --this.trackedDecorationCount;
+         }
+ 
+-        this.setDecorationsDirty();
++        if (mapicon != null) this.setDecorationsDirty(); // Paper - We should not be dirtying this over unless there was mutation.
+     }
+ 
+     public static void addTargetDecoration(ItemStack stack, BlockPos pos, String id, Holder<MapDecorationType> decorationType) {

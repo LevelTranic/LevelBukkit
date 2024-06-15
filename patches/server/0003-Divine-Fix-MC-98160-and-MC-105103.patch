@@ -5,10 +5,10 @@ Subject: [PATCH] Divine: Fix MC-98160 and MC-105103
 
 
 diff --git a/src/main/java/net/minecraft/world/entity/vehicle/Boat.java b/src/main/java/net/minecraft/world/entity/vehicle/Boat.java
-index 065d4c06e3fd93fb46595b9864b150ea2480f5fc..32c5b512ef4c97ec97898958a62a40f0b2ed8bd8 100644
+index d002519a356072284faa5f879e188f3e3062939f..cc68a88ff1a975c3c303065e76d376e450a0ddcb 100644
 --- a/src/main/java/net/minecraft/world/entity/vehicle/Boat.java
 +++ b/src/main/java/net/minecraft/world/entity/vehicle/Boat.java
-@@ -875,7 +875,7 @@ public class Boat extends VehicleEntity implements VariantHolder<Boat.Type> {
+@@ -872,7 +872,7 @@ public class Boat extends VehicleEntity implements VariantHolder<Boat.Type> {
          if (!this.isPassenger()) {
              if (onGround) {
                  if (this.fallDistance > 3.0F) {

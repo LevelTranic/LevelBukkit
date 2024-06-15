@@ -17,10 +17,10 @@ index 57d0cd3ad6f972e986c72a57f1a6e36003f190c2..6b342ca93f48c98880cad96085780430
      protected final StateHolder<?, ?> this_state;
  
 diff --git a/src/main/java/net/minecraft/world/level/block/state/StateHolder.java b/src/main/java/net/minecraft/world/level/block/state/StateHolder.java
-index 2630f54d499abbe52798f97c8ea14a8d0bd75e99..942fb9a89de5028b4af99339a6a8707d3c689a87 100644
+index 45744d86e9582a93a0cec26009deea091080fbbe..8440d247ef2c9f137069df2b73e16ee77c3aecda 100644
 --- a/src/main/java/net/minecraft/world/level/block/state/StateHolder.java
 +++ b/src/main/java/net/minecraft/world/level/block/state/StateHolder.java
-@@ -115,21 +115,15 @@ public abstract class StateHolder<O, S> {
+@@ -114,21 +114,15 @@ public abstract class StateHolder<O, S> {
      }
  
      public <T extends Comparable<T>, V extends T> S trySetValue(Property<T> property, V value) {
@@ -48,7 +48,7 @@ index 2630f54d499abbe52798f97c8ea14a8d0bd75e99..942fb9a89de5028b4af99339a6a8707d
              throw new IllegalStateException();
          } else {
              Table<Property<?>, Comparable<?>, S> table = HashBasedTable.create();
-@@ -144,7 +138,7 @@ public abstract class StateHolder<O, S> {
+@@ -143,7 +137,7 @@ public abstract class StateHolder<O, S> {
                  }
              }
  

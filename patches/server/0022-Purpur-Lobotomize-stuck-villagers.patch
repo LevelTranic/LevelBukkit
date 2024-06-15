@@ -5,14 +5,14 @@ Subject: [PATCH] Purpur: Lobotomize stuck villagers
 
 
 diff --git a/src/main/java/net/minecraft/world/entity/npc/Villager.java b/src/main/java/net/minecraft/world/entity/npc/Villager.java
-index 90d8cd94d987416a3e9f6e6d47a5b366d4687fe0..40ec6a93c75020b3e4158551e65f17992681e1b7 100644
+index c4b7fd6c9d0f26361295a70d63f6fc080063d129..ada6fc73638ee8848bf77cb6921b87f7a7e2ad41 100644
 --- a/src/main/java/net/minecraft/world/entity/npc/Villager.java
 +++ b/src/main/java/net/minecraft/world/entity/npc/Villager.java
 @@ -8,6 +8,7 @@ import com.mojang.datafixers.util.Pair;
  import com.mojang.logging.LogUtils;
  import com.mojang.serialization.DataResult;
  import com.mojang.serialization.Dynamic;
-+import dev.paged.levelbukkit.config.LevelBukkitConfig;
++import one.tranic.levelpowered.bukkit.config.LevelBukkitConfig;
  import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
  import java.util.Iterator;
  import java.util.List;

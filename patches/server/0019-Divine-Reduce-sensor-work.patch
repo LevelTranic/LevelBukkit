@@ -1,0 +1,53 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Fri, 31 May 2024 19:44:00 +0800
+Subject: [PATCH] Divine: Reduce sensor work
+
+Original project: Bloom-host/Petal
+Link: https://github.com/Bloom-host/Petal
+
+diff --git a/src/main/java/net/minecraft/world/entity/LivingEntity.java b/src/main/java/net/minecraft/world/entity/LivingEntity.java
+index 148e6880ee90be7a4b5523b9768dff720b91592c..5d74190ca751e025e833fa39af0f5067e9ef892b 100644
+--- a/src/main/java/net/minecraft/world/entity/LivingEntity.java
++++ b/src/main/java/net/minecraft/world/entity/LivingEntity.java
+@@ -126,6 +126,7 @@ import net.minecraft.world.phys.HitResult;
+ import net.minecraft.world.phys.Vec3;
+ import net.minecraft.world.scores.PlayerTeam;
+ import net.minecraft.world.scores.Scoreboard;
++import one.tranic.levelpowered.bukkit.config.LevelBukkitConfig;
+ import org.slf4j.Logger;
+ 
+ // CraftBukkit start
+@@ -1072,11 +1073,28 @@ public abstract class LivingEntity extends Entity implements Attackable {
+         }
+ 
+         if (entity != null) {
+-            ItemStack itemstack = this.getItemBySlot(EquipmentSlot.HEAD);
+             EntityType<?> entitytypes = entity.getType();
+-
+-            if (entitytypes == EntityType.SKELETON && itemstack.is(Items.SKELETON_SKULL) || entitytypes == EntityType.ZOMBIE && itemstack.is(Items.ZOMBIE_HEAD) || entitytypes == EntityType.PIGLIN && itemstack.is(Items.PIGLIN_HEAD) || entitytypes == EntityType.PIGLIN_BRUTE && itemstack.is(Items.PIGLIN_HEAD) || entitytypes == EntityType.CREEPER && itemstack.is(Items.CREEPER_HEAD)) {
+-                d0 *= 0.5D;
++            if (LevelBukkitConfig.Purpur.World.sensorOptimization) {
++                // Purpur start
++                if (entitytypes == EntityType.SKELETON && this.getItemBySlot(EquipmentSlot.HEAD).is(Items.SKELETON_SKULL)) { // DivineMC - Reduce sensor work
++                    d0 *= LevelBukkitConfig.Purpur.World.skeletonHeadVisibilityPercent;
++                } else if (entitytypes == EntityType.ZOMBIE && this.getItemBySlot(EquipmentSlot.HEAD).is(Items.ZOMBIE_HEAD)) { // DivineMC - Reduce sensor work
++                    d0 *= LevelBukkitConfig.Purpur.World.zombieHeadVisibilityPercent;
++                } else if (entitytypes == EntityType.CREEPER && this.getItemBySlot(EquipmentSlot.HEAD).is(Items.CREEPER_HEAD)) { // DivineMC - Reduce sensor work
++                    d0 *= LevelBukkitConfig.Purpur.World.creeperHeadVisibilityPercent;
++                } else if ((entitytypes == EntityType.PIGLIN || entitytypes == EntityType.PIGLIN_BRUTE) && this.getItemBySlot(EquipmentSlot.HEAD).is(Items.PIGLIN_HEAD)) { // DivineMC - Reduce sensor work
++                    d0 *= LevelBukkitConfig.Purpur.World.piglinHeadVisibilityPercent;
++                }
++                // Purpur end
++            } else {
++                ItemStack itemstack = this.getItemBySlot(EquipmentSlot.HEAD);
++                if (entitytypes == EntityType.SKELETON && itemstack.is(Items.SKELETON_SKULL)
++                        || entitytypes == EntityType.ZOMBIE && itemstack.is(Items.ZOMBIE_HEAD)
++                        || entitytypes == EntityType.PIGLIN && itemstack.is(Items.PIGLIN_HEAD)
++                        || entitytypes == EntityType.PIGLIN_BRUTE && itemstack.is(Items.PIGLIN_HEAD)
++                        || entitytypes == EntityType.CREEPER && itemstack.is(Items.CREEPER_HEAD)) {
++                    d0 *= 0.5D;
++                }
+             }
+         }
+ 

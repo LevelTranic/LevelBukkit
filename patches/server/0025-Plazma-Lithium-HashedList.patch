@@ -288,10 +288,10 @@ index 0000000000000000000000000000000000000000..5744e1b2266fed304e3ec3b645fc5df3
 +}
 \ No newline at end of file
 diff --git a/src/main/java/net/minecraft/util/random/WeightedRandomList.java b/src/main/java/net/minecraft/util/random/WeightedRandomList.java
-index 1bcb5a58b945cdb3dc94efb314d7ba41fbb38e07..3bd989b2af76392a31d2aca23fdab20a79dc3933 100644
+index ef44047c3ea850fe52370b8176efbdf0515d20d6..30efa8704c1ae94027272602687cbc4a2bc8a772 100644
 --- a/src/main/java/net/minecraft/util/random/WeightedRandomList.java
 +++ b/src/main/java/net/minecraft/util/random/WeightedRandomList.java
-@@ -8,10 +8,10 @@ import net.minecraft.util.RandomSource;
+@@ -10,10 +10,10 @@ import net.minecraft.util.RandomSource;
  
  public class WeightedRandomList<E extends WeightedEntry> {
      private final int totalWeight;

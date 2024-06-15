@@ -1,0 +1,27 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Fri, 14 Jun 2024 15:43:17 +0800
+Subject: [PATCH] Rebrand
+
+
+diff --git a/src/main/java/io/papermc/paper/ServerBuildInfo.java b/src/main/java/io/papermc/paper/ServerBuildInfo.java
+index b8a5e4f02499e3a3c370d43f6bbb84ffba58e1f3..f57efc4dfd4e8608f5540c7b9de356eb2898afa4 100644
+--- a/src/main/java/io/papermc/paper/ServerBuildInfo.java
++++ b/src/main/java/io/papermc/paper/ServerBuildInfo.java
+@@ -18,12 +18,12 @@ public interface ServerBuildInfo {
+      */
+     Key BRAND_PAPER_ID = Key.key("papermc", "paper");
+ 
+-    // Luminol start
++    // LevelBukkit start
+     /**
+-     * The brand id for Luminol.
++     * The brand id for LevelBukkit.
+      */
+-    Key BRAND_LUMINOL_ID = Key.key("luminolmc", "luminol");
+-    // Luminol end
++    Key BRAND_LEVELBUKKIT_ID = Key.key("levelpowered", "bukkit");
++    // LevelBukkit end
+ 
+     /**
+      * Gets the {@code ServerBuildInfo}.

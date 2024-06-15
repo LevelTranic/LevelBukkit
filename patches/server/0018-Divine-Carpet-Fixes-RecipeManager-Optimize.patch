@@ -1,0 +1,54 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Fri, 31 May 2024 19:15:12 +0800
+Subject: [PATCH] Divine: Carpet-Fixes: RecipeManager Optimize
+
+Original project: https://github.com/fxmorin/carpet-fixes
+Improves: [Blast]Furnace/Campfire/Smoker/Stonecutter/Crafting/Sheep Color Choosing
+
+diff --git a/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java b/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java
+index a31326e24cb68472c81cd781c5e3041772712862..a6dd4a621372afe10439e1ec3306b5b6d7d671c6 100644
+--- a/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java
++++ b/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java
+@@ -12,13 +12,9 @@ import com.google.gson.JsonObject;
+ import com.google.gson.JsonParseException;
+ import com.mojang.logging.LogUtils;
+ import com.mojang.serialization.JsonOps;
+-import java.util.Collection;
+-import java.util.Comparator;
+-import java.util.Iterator;
+-import java.util.List;
+-import java.util.Map;
++
++import java.util.*;
+ import java.util.Map.Entry;
+-import java.util.Optional;
+ import java.util.stream.Collectors;
+ import java.util.stream.Stream;
+ import javax.annotation.Nullable;
+@@ -105,7 +101,7 @@ public class RecipeManager extends SimpleJsonResourceReloadListener {
+         List<RecipeHolder<T>> list = this.byType(type).stream().filter((recipeholder) -> {
+             return recipeholder.value().matches(inventory, world);
+         }).toList();
+-        Optional<RecipeHolder<T>> recipe = (list.isEmpty()) ? Optional.empty() : Optional.of(list.getLast()); // CraftBukkit - SPIGOT-4638: last recipe gets priority
++        Optional<RecipeHolder<T>> recipe = (list.isEmpty()) ? Optional.empty() : Optional.of(list.get(list.size() - 1)); // CraftBukkit - SPIGOT-4638: last recipe gets priority
+         inventory.setCurrentRecipe(recipe.orElse(null)); // CraftBukkit - Clear recipe when no recipe is found
+         return recipe;
+         // CraftBukkit end
+@@ -125,14 +121,14 @@ public class RecipeManager extends SimpleJsonResourceReloadListener {
+         List<RecipeHolder<T>> list = this.byType(type).stream().filter((recipeholder1) -> {
+             return recipeholder1.value().matches(inventory, world);
+         }).toList();
+-        Optional<RecipeHolder<T>> recipe = (list.isEmpty()) ? Optional.empty() : Optional.of(list.getLast()); // CraftBukkit - SPIGOT-4638: last recipe gets priority
++        Optional<RecipeHolder<T>> recipe = (list.isEmpty()) ? Optional.empty() : Optional.of(list.get(list.size() - 1)); // CraftBukkit - SPIGOT-4638: last recipe gets priority
+         inventory.setCurrentRecipe(recipe.orElse(null)); // CraftBukkit - Clear recipe when no recipe is found
+         return recipe;
+         // CraftBukkit end
+     }
+ 
+     public <C extends Container, T extends Recipe<C>> List<RecipeHolder<T>> getAllRecipesFor(RecipeType<T> type) {
+-        return List.copyOf(this.byType(type));
++        return one.tranic.levelpowered.bukkit.config.LevelBukkitConfig.Divine.recipeManagerOptimization ? new ArrayList<>(this.byType(type)) : List.copyOf(this.byType(type)); // DivineMC - Carpet-Fixes: RecipeManager Optimize
+     }
+ 
+     public <C extends Container, T extends Recipe<C>> List<RecipeHolder<T>> getRecipesFor(RecipeType<T> type, C inventory, Level world) {

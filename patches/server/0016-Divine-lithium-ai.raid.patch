@@ -1,0 +1,76 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Fri, 31 May 2024 18:44:44 +0800
+Subject: [PATCH] Divine: lithium: ai.raid
+
+This patch is based on the following mixin:
+"me/jellysquid/mods/lithium/mixin/ai/raid/RaidMixin.java"
+By: Angeline <jellysquid3@users.noreply.github.com>
+As part of: Lithium (https://github.com/CaffeineMC/lithium-fabric)
+Licensed under: LGPL-3.0 (https://www.gnu.org/licenses/lgpl-3.0.html)
+
+diff --git a/src/main/java/net/minecraft/world/entity/raid/Raid.java b/src/main/java/net/minecraft/world/entity/raid/Raid.java
+index 9339f7b3c4c856fc32abbca0959a961c4fe7e09b..adf3c405a6b5b6e6e413a96c78d879391c284491 100644
+--- a/src/main/java/net/minecraft/world/entity/raid/Raid.java
++++ b/src/main/java/net/minecraft/world/entity/raid/Raid.java
+@@ -110,6 +110,7 @@ public class Raid {
+     private Raid.RaidStatus status;
+     private int celebrationTicks;
+     private Optional<BlockPos> waveSpawnPos;
++    private boolean isBarDirty; // DivineMC - lithium: ai.raid
+     // Paper start
+     private static final String PDC_NBT_KEY = "BukkitValues";
+     private static final org.bukkit.craftbukkit.persistence.CraftPersistentDataTypeRegistry PDC_TYPE_REGISTRY = new org.bukkit.craftbukkit.persistence.CraftPersistentDataTypeRegistry();
+@@ -302,6 +303,12 @@ public class Raid {
+ 
+     public void tick() {
+         if (!this.isStopped()) {
++            // DivineMC start - lithium: ai.raid
++            if (this.isBarDirty) {
++                this.updateBossbarInternal();
++                this.isBarDirty = false;
++            }
++            // DivineMC end
+             if (this.status == Raid.RaidStatus.ONGOING) {
+                 boolean flag = this.active;
+ 
+@@ -678,21 +685,25 @@ public class Raid {
+ 
+     }
+ 
++    // DivineMC start - lithium: ai.raid
+     public void updateBossbar() {
++        this.isBarDirty = true;
++    }
++
++    private void updateBossbarInternal() {
+         this.raidEvent.setProgress(Mth.clamp(this.getHealthOfLivingRaiders() / this.totalHealth, 0.0F, 1.0F));
+     }
++    // DivineMC end
+ 
+     public float getHealthOfLivingRaiders() {
+         float f = 0.0F;
+-        Iterator iterator = this.groupRaiderMap.values().iterator();
+ 
+-        while (iterator.hasNext()) {
+-            Set<Raider> set = (Set) iterator.next();
++        for (Set<Raider> raiders : this.groupRaiderMap.values()) {
+ 
+             Raider entityraider;
+ 
+-            for (Iterator iterator1 = set.iterator(); iterator1.hasNext(); f += entityraider.getHealth()) {
+-                entityraider = (Raider) iterator1.next();
++            for (Iterator<Raider> iterator1 = raiders.iterator(); iterator1.hasNext(); f += entityraider.getHealth()) {
++                entityraider = iterator1.next();
+             }
+         }
+ 
+@@ -708,7 +719,7 @@ public class Raid {
+     }
+ 
+     public void removeFromRaid(Raider entity, boolean countHealth) {
+-        Set<Raider> set = (Set) this.groupRaiderMap.get(entity.getWave());
++        Set<Raider> set = this.groupRaiderMap.get(entity.getWave());
+ 
+         if (set != null) {
+             boolean flag1 = set.remove(entity);
