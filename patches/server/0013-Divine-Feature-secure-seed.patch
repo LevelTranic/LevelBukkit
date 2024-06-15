@@ -3,7 +3,6 @@ From: 404Setup <153366651+404Setup@users.noreply.github.com>
 Date: Thu, 30 May 2024 21:05:07 +0800
 Subject: [PATCH] Divine: Feature secure seed
 
-The patch provided by Foldenor did not work correctly, so I replaced it with Divine's implementation
 
 diff --git a/src/main/java/net/minecraft/server/Main.java b/src/main/java/net/minecraft/server/Main.java
 index 5443013060b62e3bfcc51cddca96d1c0bc59fe72..7d3b8a0cb8fe81c946d8947c50a1907c72741e19 100644
@@ -47,6 +46,19 @@ index 0b500b19a99fa6c2740c0db350a166462668df9c..501424c353a60e9ab7b1f9193604b020
              return (int)l;
          }));
      }
+diff --git a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
+index 6f86f25efbd4e6e79476c1563dc8f4c114c10695..d7299d46ac7d718d59bd6fb14859f77273e10aab 100644
+--- a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
++++ b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
+@@ -224,6 +224,8 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+         // Paper end - initialize global and world-defaults configuration
+         me.earthme.luminol.config.LuminolConfig.loadConfig(); //Luminol - load config file
+         me.earthme.luminol.config.LuminolConfig.setupLatch(); //Luminol - load config file
++
++        one.tranic.levelpowered.bukkit.config.LevelBukkitConfig.setCommand(); // LevelBukkit - setup commands
+         // Paper start - fix converting txt to json file; convert old users earlier after PlayerList creation but before file load/save
+         if (this.convertOldUsers()) {
+             this.getProfileCache().save(false); // Paper
 diff --git a/src/main/java/net/minecraft/server/dedicated/DedicatedServerProperties.java b/src/main/java/net/minecraft/server/dedicated/DedicatedServerProperties.java
 index 9d10cdacb3aed2c00dc60aeb6f2cbeb48905e21f..a196f647118a12e2cacca8fabb7819a1625622c2 100644
 --- a/src/main/java/net/minecraft/server/dedicated/DedicatedServerProperties.java

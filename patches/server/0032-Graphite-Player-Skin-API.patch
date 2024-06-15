@@ -6,7 +6,7 @@ Subject: [PATCH] Graphite: Player Skin API
 Ability to change a player's skin easily through new API
 
 diff --git a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
-index 6f86f25efbd4e6e79476c1563dc8f4c114c10695..0c798ad8e1de9f74b02151c5f9ce01a21fa0b8ef 100644
+index d7299d46ac7d718d59bd6fb14859f77273e10aab..d91e4a0f53a155ac9468ca7311e7e5c91fc3007e 100644
 --- a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
 +++ b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
 @@ -1,20 +1,14 @@
@@ -30,7 +30,7 @@ index 6f86f25efbd4e6e79476c1563dc8f4c114c10695..0c798ad8e1de9f74b02151c5f9ce01a2
  import java.util.Locale;
  import java.util.Optional;
  import java.util.function.BooleanSupplier;
-@@ -300,8 +294,8 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+@@ -302,8 +296,8 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
              // Spigot start
              // Paper start - Add Velocity IP Forwarding Support
              if (usingProxy) {
@@ -41,7 +41,7 @@ index 6f86f25efbd4e6e79476c1563dc8f4c114c10695..0c798ad8e1de9f74b02151c5f9ce01a2
              // Paper end - Add Velocity IP Forwarding Support
              } else {
                  DedicatedServer.LOGGER.warn("While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.");
-@@ -492,7 +486,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+@@ -494,7 +488,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
                      io.papermc.paper.util.MCUtil.dumpChunks(file, true);
                      sender.sendMessage(net.kyori.adventure.text.Component.text("Successfully written chunk information!", net.kyori.adventure.text.format.NamedTextColor.GREEN));
                  } catch (Throwable thr) {
@@ -50,7 +50,7 @@ index 6f86f25efbd4e6e79476c1563dc8f4c114c10695..0c798ad8e1de9f74b02151c5f9ce01a2
                      sender.sendMessage(net.kyori.adventure.text.Component.text("Failed to dump chunk information, see console", net.kyori.adventure.text.format.NamedTextColor.RED));
                  }
              };
-@@ -769,9 +763,9 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+@@ -771,9 +765,9 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
                      result.append("; ");
                  }
  
@@ -62,7 +62,7 @@ index 6f86f25efbd4e6e79476c1563dc8f4c114c10695..0c798ad8e1de9f74b02151c5f9ce01a2
              }
          }
  
-@@ -818,7 +812,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+@@ -820,7 +814,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
              .runAsync(sync, io.papermc.paper.threadedregions.RegionizedServer.getInstance()::addTask)
              .whenComplete((Void r, Throwable t) -> {
                  if (t != null) {
