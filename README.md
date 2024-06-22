@@ -14,3 +14,5 @@ All of my other projects are going away, and I'm no longer playing Minecraft, bu
 
 👉 [Patch List](PATCH-LIST.md)
 
+
+👉 [Wiki](https://github.com/LevelTranic/LevelBukkit/wiki)

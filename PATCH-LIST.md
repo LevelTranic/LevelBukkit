@@ -2,7 +2,7 @@
 Patches held upstream are not listed here. 
 
 
-If you want to check what patches we have upstream, you can check it out at [Luminol](https://github.com/LuminolMC/Luminol/tree/ver/1.20.4/patches).
+If you want to check what patches we have upstream, you can check it out at [Luminol](https://github.com/LuminolMC/Luminol/tree/ver/1.20.6/patches).
 
 
 ## Server
@@ -43,7 +43,7 @@ If you want to check what patches we have upstream, you can check it out at [Lum
 - Cache world generator sea level
 - Cache coordinate key used for nearby players when ticking chunks
 - Elytra check Optimise, and hand swing Optimize
-- Faster sequencing of futures for chunk structure gen
+- ~~Faster sequencing of futures for chunk structure gen~~
 - HashedList Optimize
 - Improve map-saving performance
 - Lobotomize stuck villagers (off by default)
