@@ -5,7 +5,7 @@ Subject: [PATCH] Divine: Feature secure seed
 
 
 diff --git a/src/main/java/net/minecraft/server/Main.java b/src/main/java/net/minecraft/server/Main.java
-index 5443013060b62e3bfcc51cddca96d1c0bc59fe72..7d3b8a0cb8fe81c946d8947c50a1907c72741e19 100644
+index 244a19ecd0234fa1d7a6ecfea20751595688605d..c4a8560c90f8979d68b75fd71b3b79f90757575d 100644
 --- a/src/main/java/net/minecraft/server/Main.java
 +++ b/src/main/java/net/minecraft/server/Main.java
 @@ -119,6 +119,8 @@ public class Main {
@@ -47,7 +47,7 @@ index 0b500b19a99fa6c2740c0db350a166462668df9c..501424c353a60e9ab7b1f9193604b020
          }));
      }
 diff --git a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
-index 6f86f25efbd4e6e79476c1563dc8f4c114c10695..d7299d46ac7d718d59bd6fb14859f77273e10aab 100644
+index 7991026d6ab467b1e889d56815bded3700ae5765..93905d059a732697c39325ec5ab00ce0047cc43e 100644
 --- a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
 +++ b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
 @@ -224,6 +224,8 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
@@ -109,7 +109,7 @@ index 9d10cdacb3aed2c00dc60aeb6f2cbeb48905e21f..a196f647118a12e2cacca8fabb7819a1
              return GsonHelper.parse(!s1.isEmpty() ? s1 : "{}");
          }, new JsonObject()), (String) this.get("level-type", (s1) -> {
 diff --git a/src/main/java/net/minecraft/server/level/ServerChunkCache.java b/src/main/java/net/minecraft/server/level/ServerChunkCache.java
-index 634f60b86d43eb1542a8899ceb764ecce34f80ee..a517d9dbb2e3ba018025b350ba81aefb52ebdf48 100644
+index 67e23add4ca538083b5beb54833e1776efcb4a80..4a5f5592adb07d58022e2aded4a8ae4956b5f1a6 100644
 --- a/src/main/java/net/minecraft/server/level/ServerChunkCache.java
 +++ b/src/main/java/net/minecraft/server/level/ServerChunkCache.java
 @@ -15,6 +15,7 @@ import java.util.function.BooleanSupplier;
@@ -688,7 +688,7 @@ index 70dbf7267b43357578c07fcd46618f656410a8e2..69f19b7b6305598f79c5c23118d22231
          Rotation rotation = Rotation.getRandom(worldgenRandom);
          StructureTemplatePool structureTemplatePool = structurePool.unwrapKey()
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftChunk.java b/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
-index 061f7ef0138d4b8d528c7aa71ec5660c1d7e3b27..e3d93cf569c62f68e2b330c029b19e29bcaed865 100644
+index 3b972bf05d9ee79f2cdfc9b5a81692c229a5662e..de1f1982368e624f362c5dbd36181127cf18fd0a 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
 +++ b/src/main/java/org/bukkit/craftbukkit/CraftChunk.java
 @@ -5,20 +5,14 @@ import com.google.common.base.Predicates;
@@ -721,7 +721,7 @@ index 061f7ef0138d4b8d528c7aa71ec5660c1d7e3b27..e3d93cf569c62f68e2b330c029b19e29
  import net.minecraft.world.level.levelgen.Heightmap;
  import net.minecraft.world.level.levelgen.WorldgenRandom;
  import net.minecraft.world.level.lighting.LevelLightEngine;
-@@ -202,7 +194,10 @@ public class CraftChunk implements Chunk {
+@@ -203,7 +195,10 @@ public class CraftChunk implements Chunk {
      @Override
      public boolean isSlimeChunk() {
          // 987234911L is deterimined in EntitySlime when seeing if a slime can spawn in a chunk
@@ -734,10 +734,10 @@ index 061f7ef0138d4b8d528c7aa71ec5660c1d7e3b27..e3d93cf569c62f68e2b330c029b19e29
  
      @Override
 diff --git a/src/main/java/org/bukkit/craftbukkit/CraftServer.java b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
-index 440c91e2f77f7cfd1e3112460b23a1c66d6c6fc6..247c4bf018815d22660a36b8f6d35465521c6ab9 100644
+index 58fdc637490f815109a5925e5af1d86edb9f7d60..b32a547785c6fddf4dfb295be85c20b6b6b35406 100644
 --- a/src/main/java/org/bukkit/craftbukkit/CraftServer.java
 +++ b/src/main/java/org/bukkit/craftbukkit/CraftServer.java
-@@ -111,6 +111,7 @@ import net.minecraft.world.level.storage.PlayerDataStorage;
+@@ -112,6 +112,7 @@ import net.minecraft.world.level.storage.PlayerDataStorage;
  import net.minecraft.world.level.storage.PrimaryLevelData;
  import net.minecraft.world.level.validation.ContentValidationException;
  import net.minecraft.world.phys.Vec3;
@@ -745,7 +745,7 @@ index 440c91e2f77f7cfd1e3112460b23a1c66d6c6fc6..247c4bf018815d22660a36b8f6d35465
  import org.bukkit.BanList;
  import org.bukkit.Bukkit;
  import org.bukkit.ChatColor;
-@@ -260,6 +261,7 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
+@@ -261,6 +262,7 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
  import org.yaml.snakeyaml.error.MarkedYAMLException;
  
  import net.md_5.bungee.api.chat.BaseComponent; // Spigot
@@ -753,7 +753,7 @@ index 440c91e2f77f7cfd1e3112460b23a1c66d6c6fc6..247c4bf018815d22660a36b8f6d35465
  
  import javax.annotation.Nullable; // Paper
  import javax.annotation.Nonnull; // Paper
-@@ -1378,7 +1380,7 @@ public final class CraftServer implements Server {
+@@ -1402,7 +1404,7 @@ public final class CraftServer implements Server {
              iregistrycustom_dimension = leveldataanddimensions.dimensions().dimensionsRegistryAccess();
          } else {
              LevelSettings worldsettings;
