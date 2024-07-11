@@ -6,7 +6,7 @@ exit_on_error() {
 # git reset HEAD --hard
 
 oldHash=$(grep "luminolCommit = " gradle.properties | cut -d "=" -f2)
-newHash=$(curl -s https://api.github.com/repos/LuminolMC/Luminol/commits/main | jq -r .sha)
+newHash=$(curl -s https://api.github.com/repos/LuminolMC/Luminol/commits/ver/1.20.6 | jq -r .sha)
 
 if [ "$oldHash" = "$newHash" ]; then
     echo "Upstream has not updated!"
