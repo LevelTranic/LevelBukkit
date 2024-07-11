@@ -12,14 +12,14 @@ $fileContent = Get-Content -Path "gradle.properties"
 
 $oldHash = $null
 foreach ($line in $fileContent) {
-    if ($line -match "^spRef = (.*)$") {
+    if ($line -match "^luminolCommit = (.*)$") {
         $oldHash = $matches[1].Trim()
         break
     }
 }
 
 if (-not $oldHash) {
-    Write-Host "Error: Could not find 'spRef' in gradle.properties."
+    Write-Host "Error: Could not find 'luminolCommit' in gradle.properties."
     exit 1
 }
 
