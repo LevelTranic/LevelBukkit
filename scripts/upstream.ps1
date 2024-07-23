@@ -1,3 +1,5 @@
+#!/usr/bin/env pwsh
+
 function exit_on_error {
     param (
         [string]$message
