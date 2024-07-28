@@ -2,9 +2,8 @@ name: LevelBukkit Server - ver/1.20.6
 
 on:
   push:
-    branches: [ "ver/1.20.6" ]
+    branches: [ "**" ]
   pull_request:
-    branches: [ "ver/1.20.6" ]
 
 permissions: write-all
 
