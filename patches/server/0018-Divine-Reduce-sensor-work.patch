@@ -7,7 +7,7 @@ Original project: Bloom-host/Petal
 Link: https://github.com/Bloom-host/Petal
 
 diff --git a/src/main/java/net/minecraft/world/entity/LivingEntity.java b/src/main/java/net/minecraft/world/entity/LivingEntity.java
-index 148e6880ee90be7a4b5523b9768dff720b91592c..5d74190ca751e025e833fa39af0f5067e9ef892b 100644
+index fc4f65d61fa21ed40c561596840e993f03bde648..b4c4437e5580c0010bf84a9c7178e89d43f57c80 100644
 --- a/src/main/java/net/minecraft/world/entity/LivingEntity.java
 +++ b/src/main/java/net/minecraft/world/entity/LivingEntity.java
 @@ -126,6 +126,7 @@ import net.minecraft.world.phys.HitResult;

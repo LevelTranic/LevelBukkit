@@ -6,7 +6,7 @@ Subject: [PATCH] Graphite: Player Skin API
 Ability to change a player's skin easily through new API
 
 diff --git a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
-index d7299d46ac7d718d59bd6fb14859f77273e10aab..d91e4a0f53a155ac9468ca7311e7e5c91fc3007e 100644
+index 93905d059a732697c39325ec5ab00ce0047cc43e..f1c0192dca086355961709e1c6de11aac79a068f 100644
 --- a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
 +++ b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
 @@ -1,20 +1,14 @@
@@ -72,7 +72,7 @@ index d7299d46ac7d718d59bd6fb14859f77273e10aab..d91e4a0f53a155ac9468ca7311e7e5c9
              })
              .join();
 diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
-index ae53333f8ebffea8874259495026484b003d1ad9..b60ca43bc161abff975d3b88036e320e94d11299 100644
+index a3aca277422d623c6998bbbe5d9574cd1e10f544..3895ebf1ba3156ce346a6d632ca39c70f92c4067 100644
 --- a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
 +++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
 @@ -159,7 +159,6 @@ import org.bukkit.craftbukkit.map.CraftMapView;
