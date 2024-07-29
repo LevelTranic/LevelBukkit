@@ -7,7 +7,7 @@ Original project: https://github.com/fxmorin/carpet-fixes
 Improves: [Blast]Furnace/Campfire/Smoker/Stonecutter/Crafting/Sheep Color Choosing
 
 diff --git a/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java b/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java
-index a31326e24cb68472c81cd781c5e3041772712862..a6dd4a621372afe10439e1ec3306b5b6d7d671c6 100644
+index 9d0ac3fb52a76a97bf954fbc5175cea90d385d8c..b98aa5d3e50ba21dcd314d7ac8ceca6f856327da 100644
 --- a/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java
 +++ b/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java
 @@ -12,13 +12,9 @@ import com.google.gson.JsonObject;

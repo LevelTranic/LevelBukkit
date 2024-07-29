@@ -30,7 +30,7 @@ index f164256d59b761264876ca0c85f812d101bfd5de..10465a33d90a1e43b9dbd7764c895dd3
          final TrackedChunk chunk = this.byChunk.get(CoordinateUtils.getChunkKey(chunkX, chunkZ));
  
 diff --git a/src/main/java/net/minecraft/server/level/ServerChunkCache.java b/src/main/java/net/minecraft/server/level/ServerChunkCache.java
-index 1cb09933aa4fa9f766c92ce000aed103fb2a5f54..634f60b86d43eb1542a8899ceb764ecce34f80ee 100644
+index 69feb8ee4dd959554a6fb9ccae78e32870b0e7b3..67e23add4ca538083b5beb54833e1776efcb4a80 100644
 --- a/src/main/java/net/minecraft/server/level/ServerChunkCache.java
 +++ b/src/main/java/net/minecraft/server/level/ServerChunkCache.java
 @@ -571,7 +571,7 @@ public class ServerChunkCache extends ChunkSource {
