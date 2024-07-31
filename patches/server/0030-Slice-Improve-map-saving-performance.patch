@@ -5,10 +5,10 @@ Subject: [PATCH] Slice: Improve map-saving performance
 
 
 diff --git a/src/main/java/net/minecraft/world/level/saveddata/maps/MapItemSavedData.java b/src/main/java/net/minecraft/world/level/saveddata/maps/MapItemSavedData.java
-index 6b131c112ca227f9f910d5d88cf8314cc088be03..832cd19e25232ab60ace35d305aa910241536138 100644
+index 684a0a4c7583da882687e010e2f2e051804b6602..e5840a739b816a390ec241d41b1a22b881bed62c 100644
 --- a/src/main/java/net/minecraft/world/level/saveddata/maps/MapItemSavedData.java
 +++ b/src/main/java/net/minecraft/world/level/saveddata/maps/MapItemSavedData.java
-@@ -351,7 +351,7 @@ public class MapItemSavedData extends SavedData {
+@@ -352,7 +352,7 @@ public class MapItemSavedData extends SavedData {
              --this.trackedDecorationCount;
          }
  

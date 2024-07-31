@@ -1,0 +1,270 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: 404Setup <153366651+404Setup@users.noreply.github.com>
+Date: Wed, 31 Jul 2024 16:49:30 +0800
+Subject: [PATCH] LevelBukkit Config
+
+
+diff --git a/src/main/java/net/minecraft/server/Main.java b/src/main/java/net/minecraft/server/Main.java
+index 581bd217304e0f9e0b2113c335694805dfb4e2a1..cd78fa9ab57ea3b13ceb35fc4a0dd054a6077302 100644
+--- a/src/main/java/net/minecraft/server/Main.java
++++ b/src/main/java/net/minecraft/server/Main.java
+@@ -120,6 +120,8 @@ public class Main {
+                 JvmProfiler.INSTANCE.start(Environment.SERVER);
+             }
+ 
++            one.tranic.levelpowered.bukkit.config.LevelBukkitConfig.load(); // LevelBukkit - Load Config
++
+             io.papermc.paper.plugin.PluginInitializerManager.load(optionset); // Paper
+             Bootstrap.bootStrap();
+             Bootstrap.validate();
+diff --git a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
+index 79b79a5d41dc3568ae6a3d7701e6ac6b91045e36..a1fcd27fb6f2270ad09b5b8696ce1c40012cdf7c 100644
+--- a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
++++ b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
+@@ -228,6 +228,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+         // Paper end - initialize global and world-defaults configuration
+         me.earthme.luminol.config.LuminolConfig.loadConfig(); //Luminol - load config file
+         me.earthme.luminol.config.LuminolConfig.setupLatch(); //Luminol - load config file
++        one.tranic.levelpowered.bukkit.config.LevelBukkitConfig.setCommand(); // LevelBukkit - setup commands
+         this.server.spark.enableEarlyIfRequested(); // Paper - spark
+         // Paper start - fix converting txt to json file; convert old users earlier after PlayerList creation but before file load/save
+         if (this.convertOldUsers()) {
+diff --git a/src/main/kotlin/one/tranic/levelpowered/bukkit/commands/ConfigCommand.kt b/src/main/kotlin/one/tranic/levelpowered/bukkit/commands/ConfigCommand.kt
+new file mode 100644
+index 0000000000000000000000000000000000000000..de24d4bbca72a36dd0d97da82a11840fd2a1150c
+--- /dev/null
++++ b/src/main/kotlin/one/tranic/levelpowered/bukkit/commands/ConfigCommand.kt
+@@ -0,0 +1,34 @@
++package one.tranic.levelpowered.bukkit.commands
++
++import one.tranic.levelpowered.bukkit.config.LevelBukkitConfig
++import org.bukkit.command.Command
++import org.bukkit.command.CommandSender
++import net.kyori.adventure.text.Component
++import net.kyori.adventure.text.format.TextColor
++
++class ConfigCommand : Command("lbcfg") {
++    init {
++        this.permission = "levelbukkit.commands.cfg"
++        this.setDescription("Manage config file")
++        this.setUsage("/lbcfg")
++    }
++
++    override fun execute(sender: CommandSender, commandLabel: String, args: Array<String>): Boolean {
++        if (!this.testPermission(sender)) {
++            sender.sendMessage(
++                Component
++                    .text("No permission to execute this command!")
++                    .color(TextColor.color(255, 0, 0))
++            )
++        }
++
++        LevelBukkitConfig.reload()
++
++        sender.sendMessage(
++            Component
++                .text("Reloaded LevelBukkit config file!")
++                .color(TextColor.color(0, 255, 0))
++        )
++        return true
++    }
++}
+\ No newline at end of file
+diff --git a/src/main/kotlin/one/tranic/levelpowered/bukkit/config/LevelBukkitConfig.kt b/src/main/kotlin/one/tranic/levelpowered/bukkit/config/LevelBukkitConfig.kt
+new file mode 100644
+index 0000000000000000000000000000000000000000..76e9e8f7396b21829b28eb7d57cdadf6d2f49495
+--- /dev/null
++++ b/src/main/kotlin/one/tranic/levelpowered/bukkit/config/LevelBukkitConfig.kt
+@@ -0,0 +1,191 @@
++package one.tranic.levelpowered.bukkit.config
++
++import gg.pufferfish.pufferfish.simd.SIMDDetection
++import net.minecraft.server.MinecraftServer
++import one.tranic.levelpowered.bukkit.commands.ConfigCommand
++import org.bukkit.Bukkit
++import org.bukkit.configuration.file.YamlConfiguration;
++import java.io.File
++
++object LevelBukkitConfig {
++    var logger: org.slf4j.Logger = MinecraftServer.LOGGER
++    var secureSeed: Boolean? = null;
++
++    @JvmStatic
++    fun setCommand() {
++        Bukkit.getCommandMap().register("lbcfg", "levelbukkit", ConfigCommand())
++    }
++
++    @JvmStatic
++    fun load() {
++        reload()
++        // Pufferfish start
++        // Attempt to detect vectorization
++        runCatching {
++            SIMDDetection.isEnabled = SIMDDetection.canEnable(logger)
++            SIMDDetection.versionLimited = SIMDDetection.getJavaVersion() < 17
++        }.getOrElse {
++            it.printStackTrace()
++        }
++
++        if (SIMDDetection.isEnabled) {
++            logger.info("SIMD operations detected as functional. Will replace some operations with faster versions.")
++        } else if (SIMDDetection.versionLimited) {
++            logger.warn("Will not enable SIMD! These optimizations are only safely supported on Java 17+.")
++        } else {
++            logger.warn("SIMD operations are available for your server, but are not configured!")
++            logger.warn("To enable additional optimizations, add \"--add-modules=jdk.incubator.vector\" to your startup flags, BEFORE the \"-jar\".")
++            logger.warn("If you have already added this flag, then SIMD operations are not supported on your JVM or CPU.")
++            logger.warn("Debug: Java: " + System.getProperty("java.version") + ", test run: " + SIMDDetection.testRun)
++        }
++    }
++
++    private fun addDefault(configFile: File, configuration: YamlConfiguration) {
++        // LevelBukkit start
++        configuration.addDefault("level.fix.disable-respawn-ceiling", false)
++        configuration.addDefault("level.fix.anvil-drop.enabled", false)
++        configuration.addDefault("level.fix.anvil-drop.debug", false)
++        // LevelBukkit end
++
++        // LevelBukkit: Divine start
++        configuration.addDefault("divine.secure-seed", false)
++        // LevelBukkit: Divine end
++
++        // LevelBukkit: Leaves start
++        configuration.addDefault("leaves.flatten-triangular-distribution", false)
++        configuration.addDefault("leaves.cache-world-generator-sea-level", false)
++        configuration.addDefault("leaves.vanilla-hopper", false)
++        // LevelBukkit: Leaves end
++
++        // LevelBukkit: Purpur start
++        configuration.addDefault("purpur.farmland-gets-moist-from-below", true)
++        configuration.addDefault("purpur.sensor-optimization", true)
++
++        configuration.addDefault("purpur.visibility-percent.skeleton-head", 0.5)
++        configuration.addDefault("purpur.visibility-percent.zombie-head", 0.5)
++        configuration.addDefault("purpur.visibility-percent.creeper-head", 0.5)
++        configuration.addDefault("purpur.visibility-percent.piglin-head", 0.5)
++
++        configuration.addDefault("purpur.villager-lobotomize.check-interval", 100)
++        configuration.addDefault("purpur.villager-lobotomize.enabled", false)
++        configuration.addDefault("purpur.villager-lobotomize.wait-until-trade-locked", false)
++        // LevelBukkit: Purpur end
++
++        configuration.options().copyDefaults(true)
++        configuration.save(configFile)
++    }
++
++    private fun loadConfigValue(configuration: YamlConfiguration) {
++        // LevelBukkit start
++        Level.Fix.tryFixAnvilDrop = configuration.getBoolean("level.fix.anvil-drop.enabled")
++        Level.Fix.tryFixAnvilDropDebug = configuration.getBoolean("level.fix.anvil-drop.debug")
++        Level.Fix.disableRespawnCeiling = configuration.getBoolean("level.fix.disable-respawn-ceiling")
++        // LevelBukkit end
++
++        // LevelBukkit: Divine start
++        Divine.secureSeed = configuration.getBoolean("divine.secure-seed")
++        // LevelBukkit: Divine end
++
++        // LevelBukkit: Leaves start
++        Leaves.flattenTriangularDistribution = configuration.getBoolean("leaves.flatten-triangular-distribution")
++        Leaves.cacheWorldGeneratorSeaLevel = configuration.getBoolean("leaves.cache-world-generator-sea-level")
++        Leaves.vanillaHopper = configuration.getBoolean("leaves.vanilla-hopper")
++        // LevelBukkit: Leaves end
++
++        // LevelBukkit: Purpur start
++        Purpur.World.farmlandGetsMoistFromBelow =
++            configuration.getBoolean("purpur.farmland-gets-moist-from-below")
++        Purpur.World.sensorOptimization = configuration.getBoolean("purpur.sensor-optimization")
++
++        Purpur.World.skeletonHeadVisibilityPercent =
++            configuration.getDouble("purpur.visibility-percent.skeleton-head")
++        Purpur.World.zombieHeadVisibilityPercent =
++            configuration.getDouble("purpur.visibility-percent.zombie-head")
++        Purpur.World.creeperHeadVisibilityPercent =
++            configuration.getDouble("purpur.visibility-percent.creeper-head")
++        Purpur.World.piglinHeadVisibilityPercent =
++            configuration.getDouble("purpur.visibility-percent.piglin-head")
++
++        Purpur.World.villagerLobotomizeCheckInterval =
++            configuration.getInt("purpur.villager-lobotomize.check-interval")
++        Purpur.World.villagerLobotomizeEnabled = configuration.getBoolean("purpur.villager-lobotomize.enabled")
++        Purpur.World.villagerLobotomizeWaitUntilTradeLocked =
++            configuration.getBoolean("purpur.villager-lobotomize.wait-until-trade-locked")
++        // LevelBukkit: Purpur end
++    }
++
++    @JvmStatic
++    fun reload() {
++        runCatching {
++            val configFile = File("levelbukkit.yml")
++            if (!configFile.exists()) {
++                configFile.createNewFile()
++            }
++            val configuration = YamlConfiguration.loadConfiguration(configFile)
++            addDefault(configFile, configuration)
++            loadConfigValue(configuration)
++        }.getOrElse {
++            throw RuntimeException(it)
++        }
++    }
++
++    object Level {
++        object Fix {
++            @JvmField
++            var disableRespawnCeiling: Boolean = false
++
++            @JvmField
++            var tryFixAnvilDrop: Boolean = false
++
++            @JvmField
++            var tryFixAnvilDropDebug: Boolean = false
++        }
++    }
++
++    object Divine {
++        @JvmField
++        var secureSeed: Boolean = false
++    }
++
++    object Leaves {
++        @JvmField
++        var flattenTriangularDistribution: Boolean = false
++
++        @JvmField
++        var cacheWorldGeneratorSeaLevel: Boolean = false
++
++        @JvmField
++        var vanillaHopper: Boolean = false
++    }
++
++    class Purpur {
++        object World {
++            @JvmField
++            var farmlandGetsMoistFromBelow: Boolean = true
++
++            @JvmField
++            var sensorOptimization: Boolean = true
++
++            @JvmField
++            var skeletonHeadVisibilityPercent: Double = 0.0
++
++            @JvmField
++            var zombieHeadVisibilityPercent: Double = 0.5
++
++            @JvmField
++            var creeperHeadVisibilityPercent: Double = 0.5
++
++            @JvmField
++            var piglinHeadVisibilityPercent: Double = 0.5
++
++            @JvmField
++            var villagerLobotomizeCheckInterval: Int = 100
++
++            @JvmField
++            var villagerLobotomizeEnabled: Boolean = false
++
++            @JvmField
++            var villagerLobotomizeWaitUntilTradeLocked: Boolean = false
++        }
++    }
++}
+\ No newline at end of file

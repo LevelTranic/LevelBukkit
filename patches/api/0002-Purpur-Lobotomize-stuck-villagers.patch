@@ -1,14 +1,14 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: 404Setup <153366651+404Setup@users.noreply.github.com>
-Date: Fri, 31 May 2024 20:37:27 +0800
+From: BillyGalbreath <Blake.Galbreath@Gmail.com>
+Date: Mon, 24 Jan 2022 20:42:22 -0600
 Subject: [PATCH] Purpur: Lobotomize stuck villagers
 
 
 diff --git a/src/main/java/org/bukkit/entity/Villager.java b/src/main/java/org/bukkit/entity/Villager.java
-index 3bc24457d143449e6a338d79becf7c39b9f81054..2a8c609478945cb9abf438479528a9a2e68f5253 100644
+index 444744ea6f5921b0ae229995f8b15ea9d980c402..fed29b4e6673d182428c7ae6f6e3665382d9898b 100644
 --- a/src/main/java/org/bukkit/entity/Villager.java
 +++ b/src/main/java/org/bukkit/entity/Villager.java
-@@ -161,6 +161,9 @@ public interface Villager extends AbstractVillager {
+@@ -165,6 +165,9 @@ public interface Villager extends AbstractVillager {
      @Nullable
      public ZombieVillager zombify();
  

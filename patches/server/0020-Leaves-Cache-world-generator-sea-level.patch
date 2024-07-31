@@ -6,10 +6,10 @@ Subject: [PATCH] Leaves: Cache world generator sea level
 This patch is Powered by Gale(https://github.com/GaleMC/Gale)
 
 diff --git a/src/main/java/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java b/src/main/java/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java
-index 8ce870a5341a61fbbaf42021ef7f7f615a6a3e09..6fdde9f77ab478aaaa6afc9ce049c4992770696c 100644
+index 68be0d51aa64b5d917fb53dbbbdf8966d4f4abd8..51f4dae861b286b3c06ee4e91d000bfc671a9a2d 100644
 --- a/src/main/java/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java
 +++ b/src/main/java/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java
-@@ -48,6 +48,7 @@ import net.minecraft.world.level.dimension.DimensionType;
+@@ -47,6 +47,7 @@ import net.minecraft.world.level.dimension.DimensionType;
  import net.minecraft.world.level.levelgen.blending.Blender;
  import net.minecraft.world.level.levelgen.carver.CarvingContext;
  import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
@@ -17,7 +17,7 @@ index 8ce870a5341a61fbbaf42021ef7f7f615a6a3e09..6fdde9f77ab478aaaa6afc9ce049c499
  import org.apache.commons.lang3.mutable.MutableObject;
  
  public final class NoiseBasedChunkGenerator extends ChunkGenerator {
-@@ -62,12 +63,17 @@ public final class NoiseBasedChunkGenerator extends ChunkGenerator {
+@@ -61,12 +62,17 @@ public final class NoiseBasedChunkGenerator extends ChunkGenerator {
      private static final BlockState AIR = Blocks.AIR.defaultBlockState();
      public final Holder<NoiseGeneratorSettings> settings;
      private final Supplier<Aquifer.FluidPicker> globalFluidPicker;
@@ -36,7 +36,7 @@ index 8ce870a5341a61fbbaf42021ef7f7f615a6a3e09..6fdde9f77ab478aaaa6afc9ce049c499
          });
      }
  
-@@ -394,7 +400,9 @@ public final class NoiseBasedChunkGenerator extends ChunkGenerator {
+@@ -409,7 +415,9 @@ public final class NoiseBasedChunkGenerator extends ChunkGenerator {
  
      @Override
      public int getSeaLevel() {

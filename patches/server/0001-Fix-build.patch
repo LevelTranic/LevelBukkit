@@ -6,7 +6,7 @@ Subject: [PATCH] Fix-build
 and add kotlin support
 
 diff --git a/build.gradle.kts b/build.gradle.kts
-index 0f543eccedc7191f8c391583af30231c8b68b2a4..cb4619078f5715c377e7ed57454332687be35687 100644
+index f657ee64810d1c02a967b9262b95fbc65eb3fce2..a1f1077f20091ee3a1305c72442fd01dcd33b901 100644
 --- a/build.gradle.kts
 +++ b/build.gradle.kts
 @@ -4,6 +4,9 @@ import java.time.Instant
@@ -29,9 +29,9 @@ index 0f543eccedc7191f8c391583af30231c8b68b2a4..cb4619078f5715c377e7ed5745433268
      // Paper start
      implementation("org.jline:jline-terminal-jansi:3.21.0")
 @@ -66,6 +69,14 @@ dependencies {
-     implementation("io.papermc:reflection-rewriter-runtime:$reflectionRewriterVersion")
-     implementation("io.papermc:reflection-rewriter-proxy-generator:$reflectionRewriterVersion")
-     // Paper end - Remap reflection
+     implementation("me.lucko:spark-api:0.1-20240720.200737-2")
+     implementation("me.lucko:spark-paper:1.10.84-20240720.204128-1")
+     // Paper end - spark
 +
 +    // LevelBukkit start
 +    implementation(kotlin("reflect"))

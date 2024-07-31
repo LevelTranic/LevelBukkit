@@ -1,4 +1,4 @@
-name: LevelBukkit Server - ver/1.20.6
+name: LevelBukkit Server - ver/1.21.0
 
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
-          gradle-version: 8.7
+          gradle-version: 8.8
       - name: Setup Powershell
         run: |
           wget https://github.com/PowerShell/PowerShell/releases/download/v7.4.4/powershell_7.4.4-1.deb_amd64.deb
@@ -38,7 +38,7 @@ jobs:
       - name: SetENV
         run: pwsh scripts/SetEnv.ps1
       - name: Upload to Mars API
-        run: pwsh scripts/create_build.ps1 ${{ env.mcversion }} ${{ secrets.MARS_TOKEN }}
+        run: pwsh scripts/create_build.ps1 ${{ env.mcversion }} ${{ secrets.MARS_TOKEN }} experimental
       - name: Upload Artifact
         uses: "actions/upload-artifact@v4"
         with:

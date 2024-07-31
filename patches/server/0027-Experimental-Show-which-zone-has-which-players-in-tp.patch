@@ -6,7 +6,7 @@ Subject: [PATCH] Experimental: Show which zone has which players in tps
 
 
 diff --git a/src/main/java/io/papermc/paper/threadedregions/commands/CommandServerHealth.java b/src/main/java/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
-index 0b48f45760829f1f4813b5f0f23e920dca7b1c45..72dc7c75428bfe0317132db1b8266a16a486dd07 100644
+index 012d3a7da7fe483393a0888c823bd2e78f5c3908..6ce10734ba77fd27993fec5b390156b4c1014300 100644
 --- a/src/main/java/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
 +++ b/src/main/java/io/papermc/paper/threadedregions/commands/CommandServerHealth.java
 @@ -16,6 +16,7 @@ import net.kyori.adventure.text.format.NamedTextColor;

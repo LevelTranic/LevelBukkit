@@ -1,81 +1,15 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: 404Setup <153366651+404Setup@users.noreply.github.com>
-Date: Mon, 10 Jun 2024 16:58:23 +0800
+From: MrFishCakes <FinlayOxby@outlook.com>
+Date: Sun, 30 Jul 2023 22:56:26 +0100
 Subject: [PATCH] Graphite: Player Skin API
 
 Ability to change a player's skin easily through new API
 
-diff --git a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
-index 93905d059a732697c39325ec5ab00ce0047cc43e..f1c0192dca086355961709e1c6de11aac79a068f 100644
---- a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
-+++ b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
-@@ -1,20 +1,14 @@
- package net.minecraft.server.dedicated;
- 
--import com.google.common.collect.Lists;
- import com.mojang.authlib.GameProfile;
- import com.mojang.datafixers.DataFixer;
- import com.mojang.logging.LogUtils;
--import java.io.BufferedReader;
- import java.io.BufferedWriter;
- import java.io.IOException;
--import java.io.InputStreamReader;
- import java.net.InetAddress;
- import java.net.Proxy;
--import java.nio.charset.StandardCharsets;
- import java.nio.file.Files;
- import java.nio.file.Path;
--import java.util.Collections;
--import java.util.List;
- import java.util.Locale;
- import java.util.Optional;
- import java.util.function.BooleanSupplier;
-@@ -302,8 +296,8 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
-             // Spigot start
-             // Paper start - Add Velocity IP Forwarding Support
-             if (usingProxy) {
--                DedicatedServer.LOGGER.warn("Whilst this makes it possible to use " + proxyFlavor + ", unless access to your server is properly restricted, it also opens up the ability for hackers to connect with any username they choose.");
--                DedicatedServer.LOGGER.warn("Please see " + proxyLink + " for further information.");
-+                DedicatedServer.LOGGER.warn("Whilst this makes it possible to use {}, unless access to your server is properly restricted, it also opens up the ability for hackers to connect with any username they choose.", proxyFlavor);
-+                DedicatedServer.LOGGER.warn("Please see {} for further information.", proxyLink);
-             // Paper end - Add Velocity IP Forwarding Support
-             } else {
-                 DedicatedServer.LOGGER.warn("While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.");
-@@ -494,7 +488,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
-                     io.papermc.paper.util.MCUtil.dumpChunks(file, true);
-                     sender.sendMessage(net.kyori.adventure.text.Component.text("Successfully written chunk information!", net.kyori.adventure.text.format.NamedTextColor.GREEN));
-                 } catch (Throwable thr) {
--                    MinecraftServer.LOGGER.warn("Failed to dump chunk information to file " + file.toString(), thr);
-+                    MinecraftServer.LOGGER.warn("Failed to dump chunk information to file {}", file, thr);
-                     sender.sendMessage(net.kyori.adventure.text.Component.text("Failed to dump chunk information, see console", net.kyori.adventure.text.format.NamedTextColor.RED));
-                 }
-             };
-@@ -771,9 +765,9 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
-                     result.append("; ");
-                 }
- 
--                result.append(plugins[i].getDescription().getName());
-+                result.append(plugins[i].getPluginMeta().getName());
-                 result.append(" ");
--                result.append(plugins[i].getDescription().getVersion().replaceAll(";", ","));
-+                result.append(plugins[i].getPluginMeta().getVersion().replaceAll(";", ","));
-             }
-         }
- 
-@@ -820,7 +814,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
-             .runAsync(sync, io.papermc.paper.threadedregions.RegionizedServer.getInstance()::addTask)
-             .whenComplete((Void r, Throwable t) -> {
-                 if (t != null) {
--                    LOGGER.error("Error handling command for rcon: " + s, t);
-+                    LOGGER.error("Error handling command for rcon: {}", s, t);
-                 }
-             })
-             .join();
 diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
-index a3aca277422d623c6998bbbe5d9574cd1e10f544..3895ebf1ba3156ce346a6d632ca39c70f92c4067 100644
+index 9097f5c05e625bb798cc1dd030f176cdaee1ddde..d6f54454c5a23c7a9c5d1bac40df7e4babc029fe 100644
 --- a/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
 +++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftPlayer.java
-@@ -159,7 +159,6 @@ import org.bukkit.craftbukkit.map.CraftMapView;
+@@ -161,7 +161,6 @@ import org.bukkit.craftbukkit.map.CraftMapView;
  import org.bukkit.craftbukkit.map.RenderData;
  import org.bukkit.craftbukkit.potion.CraftPotionEffectType;
  import org.bukkit.craftbukkit.potion.CraftPotionUtil;
@@ -83,7 +17,7 @@ index a3aca277422d623c6998bbbe5d9574cd1e10f544..3895ebf1ba3156ce346a6d632ca39c70
  import org.bukkit.craftbukkit.scoreboard.CraftScoreboard;
  import org.bukkit.craftbukkit.util.CraftChatMessage;
  import org.bukkit.craftbukkit.util.CraftLocation;
-@@ -172,7 +171,6 @@ import org.bukkit.event.player.PlayerExpCooldownChangeEvent;
+@@ -174,7 +173,6 @@ import org.bukkit.event.player.PlayerExpCooldownChangeEvent;
  import org.bukkit.event.player.PlayerHideEntityEvent;
  import org.bukkit.event.player.PlayerRegisterChannelEvent;
  import org.bukkit.event.player.PlayerShowEntityEvent;
@@ -91,7 +25,7 @@ index a3aca277422d623c6998bbbe5d9574cd1e10f544..3895ebf1ba3156ce346a6d632ca39c70
  import org.bukkit.event.player.PlayerTeleportEvent;
  import org.bukkit.event.player.PlayerUnregisterChannelEvent;
  import org.bukkit.inventory.EquipmentSlot;
-@@ -185,7 +183,6 @@ import org.bukkit.plugin.Plugin;
+@@ -187,7 +185,6 @@ import org.bukkit.plugin.Plugin;
  import org.bukkit.plugin.messaging.StandardMessenger;
  import org.bukkit.potion.PotionEffect;
  import org.bukkit.potion.PotionEffectType;
@@ -99,7 +33,7 @@ index a3aca277422d623c6998bbbe5d9574cd1e10f544..3895ebf1ba3156ce346a6d632ca39c70
  import org.bukkit.scoreboard.Scoreboard;
  import org.jetbrains.annotations.NotNull;
  
-@@ -531,6 +528,126 @@ public class CraftPlayer extends CraftHumanEntity implements Player {
+@@ -533,6 +530,126 @@ public class CraftPlayer extends CraftHumanEntity implements Player {
      }
      // Paper end
  
@@ -226,15 +160,3 @@ index a3aca277422d623c6998bbbe5d9574cd1e10f544..3895ebf1ba3156ce346a6d632ca39c70
      @Override
      public String getDisplayName() {
          if(true) return io.papermc.paper.adventure.DisplayNames.getLegacy(this); // Paper
-@@ -627,10 +744,9 @@ public class CraftPlayer extends CraftHumanEntity implements Player {
- 
-     @Override
-     public boolean equals(Object obj) {
--        if (!(obj instanceof OfflinePlayer)) {
-+        if (!(obj instanceof OfflinePlayer other)) {
-             return false;
-         }
--        OfflinePlayer other = (OfflinePlayer) obj;
-         if ((this.getUniqueId() == null) || (other.getUniqueId() == null)) {
-             return false;
-         }

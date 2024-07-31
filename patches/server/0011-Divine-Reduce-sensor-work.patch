@@ -7,10 +7,10 @@ Original project: Bloom-host/Petal
 Link: https://github.com/Bloom-host/Petal
 
 diff --git a/src/main/java/net/minecraft/world/entity/LivingEntity.java b/src/main/java/net/minecraft/world/entity/LivingEntity.java
-index fc4f65d61fa21ed40c561596840e993f03bde648..b4c4437e5580c0010bf84a9c7178e89d43f57c80 100644
+index c55cba8e036962f1f98f6902216eea3d4ac3d7ac..a302cc9c0c676b85e97bbaf6ede4cee19f390237 100644
 --- a/src/main/java/net/minecraft/world/entity/LivingEntity.java
 +++ b/src/main/java/net/minecraft/world/entity/LivingEntity.java
-@@ -126,6 +126,7 @@ import net.minecraft.world.phys.HitResult;
+@@ -132,6 +132,7 @@ import net.minecraft.world.phys.HitResult;
  import net.minecraft.world.phys.Vec3;
  import net.minecraft.world.scores.PlayerTeam;
  import net.minecraft.world.scores.Scoreboard;
@@ -18,7 +18,7 @@ index fc4f65d61fa21ed40c561596840e993f03bde648..b4c4437e5580c0010bf84a9c7178e89d
  import org.slf4j.Logger;
  
  // CraftBukkit start
-@@ -1072,11 +1073,28 @@ public abstract class LivingEntity extends Entity implements Attackable {
+@@ -1050,11 +1051,28 @@ public abstract class LivingEntity extends Entity implements Attackable {
          }
  
          if (entity != null) {

@@ -5,10 +5,10 @@ Subject: [PATCH] Divine: Fix MC-93826
 
 
 diff --git a/src/main/java/net/minecraft/world/entity/animal/Animal.java b/src/main/java/net/minecraft/world/entity/animal/Animal.java
-index 081d1e38b7b1f286e138b0981aaa760e58761215..9423317d78834791d22db901e434fdaf8b339fd4 100644
+index 1808e1b01afa3041a54c9c9a7586d4d61960527a..832514eb59c0bff83909d18c34be3cd8b252db1f 100644
 --- a/src/main/java/net/minecraft/world/entity/animal/Animal.java
 +++ b/src/main/java/net/minecraft/world/entity/animal/Animal.java
-@@ -42,6 +42,7 @@ public abstract class Animal extends AgeableMob {
+@@ -43,6 +43,7 @@ public abstract class Animal extends AgeableMob {
      @Nullable
      public UUID loveCause;
      public ItemStack breedItem; // CraftBukkit - Add breedItem variable
@@ -16,7 +16,7 @@ index 081d1e38b7b1f286e138b0981aaa760e58761215..9423317d78834791d22db901e434fdaf
  
      protected Animal(EntityType<? extends Animal> type, Level world) {
          super(type, world);
-@@ -72,7 +73,11 @@ public abstract class Animal extends AgeableMob {
+@@ -73,7 +74,11 @@ public abstract class Animal extends AgeableMob {
                  double d1 = this.random.nextGaussian() * 0.02D;
                  double d2 = this.random.nextGaussian() * 0.02D;
  

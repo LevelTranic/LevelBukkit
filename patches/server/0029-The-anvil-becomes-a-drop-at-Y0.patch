@@ -8,53 +8,54 @@ try fix: https://github.com/PaperMC/Folia/issues/217
 This fix may work, but its implementation is not elegant, so it will not be submitted upstream
 
 diff --git a/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java b/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java
-index d504d10fbe45dfe3f2f3d08d2473df6cd18f6dcf..3927d5c739f51135bb3f29156d82f53929aeefcc 100644
+index 65582bd070b1a5a963abca1e91ff05bf177942c0..c8eb3780e74d7e7ab1a6dfec016460348d487885 100644
 --- a/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java
 +++ b/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java
-@@ -18,6 +18,7 @@ import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
- import net.minecraft.network.syncher.EntityDataAccessor;
- import net.minecraft.network.syncher.EntityDataSerializers;
+@@ -1,7 +1,6 @@
+ package net.minecraft.world.entity.item;
+ 
+ import com.mojang.logging.LogUtils;
+-import java.util.Iterator;
+ import java.util.function.Predicate;
+ import javax.annotation.Nullable;
+ import net.minecraft.CrashReportCategory;
+@@ -20,6 +19,7 @@ import net.minecraft.network.syncher.EntityDataSerializers;
  import net.minecraft.network.syncher.SynchedEntityData;
+ import net.minecraft.resources.ResourceKey;
+ import net.minecraft.server.level.ServerEntity;
 +import net.minecraft.server.MinecraftServer;
  import net.minecraft.server.level.ServerLevel;
  import net.minecraft.tags.BlockTags;
  import net.minecraft.tags.FluidTags;
-@@ -47,6 +48,8 @@ import net.minecraft.world.level.material.Fluids;
- import net.minecraft.world.phys.BlockHitResult;
- import net.minecraft.world.phys.HitResult;
- import net.minecraft.world.phys.Vec3;
-+import one.tranic.levelpowered.bukkit.config.LevelBukkitConfig;
-+import org.bukkit.Material;
- import org.slf4j.Logger;
+@@ -187,13 +187,27 @@ public class FallingBlockEntity extends Entity {
+                 } else {
+                     BlockState iblockdata = this.level().getBlockState(blockposition);
  
- // CraftBukkit start;
-@@ -185,10 +188,25 @@ public class FallingBlockEntity extends Entity {
++                    boolean isAnvil = ((iblockdata.getBlock().equals(Blocks.ANVIL) ||
++                            iblockdata.getBlock().equals(Blocks.CHIPPED_ANVIL) ||
++                            iblockdata.getBlock().equals(Blocks.DAMAGED_ANVIL))
++                            && (blockposition.getY() == 0 || blockposition.getY() == -1));
++
                      this.setDeltaMovement(this.getDeltaMovement().multiply(0.7D, -0.5D, 0.7D));
                      if (!iblockdata.is(Blocks.MOVING_PISTON)) {
                          if (!this.cancelDrop) {
 +                            // LevelBukkit start: try fix: https://github.com/PaperMC/Folia/issues/217
-+                            if (LevelBukkitConfig.Level.Fix.tryFixAnvilDrop)
-+                                if ((
-+                                        iblockdata.getBukkitMaterial().equals(Material.ANVIL) ||
-+                                                iblockdata.getBukkitMaterial().equals(Material.CHIPPED_ANVIL) ||
-+                                                iblockdata.getBukkitMaterial().equals(Material.DAMAGED_ANVIL)
-+                                )) {
-+                                    iblockdata = Blocks.VOID_AIR.defaultBlockState();
-+                                }
++                            if (one.tranic.levelpowered.bukkit.config.LevelBukkitConfig.Level.Fix.tryFixAnvilDrop && isAnvil)
++                                iblockdata = Blocks.VOID_AIR.defaultBlockState();
 +                            // LevelBukkit end: try fix: https://github.com/PaperMC/Folia/issues/217
                              boolean flag2 = iblockdata.canBeReplaced((BlockPlaceContext) (new DirectionalPlaceContext(this.level(), blockposition, Direction.DOWN, ItemStack.EMPTY, Direction.UP)));
                              boolean flag3 = FallingBlock.isFree(this.level().getBlockState(blockposition.below())) && (!flag || !flag1);
                              boolean flag4 = this.blockState.canSurvive(this.level(), blockposition) && !flag3;
  
 +                            // LevelBukkit start: try fix: https://github.com/PaperMC/Folia/issues/217
-+                            if (LevelBukkitConfig.Level.Fix.tryFixAnvilDropDebug)
++                            if (one.tranic.levelpowered.bukkit.config.LevelBukkitConfig.Level.Fix.tryFixAnvilDropDebug)
 +                                MinecraftServer.LOGGER.info("BlockState at {}: {}, Can be replaced: {}", blockposition, iblockdata, flag2);
 +                            // LevelBukkit end: try fix: https://github.com/PaperMC/Folia/issues/217
 +
                              if (flag2 && flag4) {
                                  if (this.blockState.hasProperty(BlockStateProperties.WATERLOGGED) && this.level().getFluidState(blockposition).getType() == Fluids.WATER) {
                                      this.blockState = (BlockState) this.blockState.setValue(BlockStateProperties.WATERLOGGED, true);
-@@ -212,11 +230,8 @@ public class FallingBlockEntity extends Entity {
+@@ -217,11 +231,8 @@ public class FallingBlockEntity extends Entity {
  
                                          if (tileentity != null) {
                                              CompoundTag nbttagcompound = tileentity.saveWithoutMetadata(this.level().registryAccess());
@@ -67,11 +68,11 @@ index d504d10fbe45dfe3f2f3d08d2473df6cd18f6dcf..3927d5c739f51135bb3f29156d82f539
                                                  nbttagcompound.put(s, this.blockData.get(s).copy());
                                              }
  
-@@ -230,11 +245,18 @@ public class FallingBlockEntity extends Entity {
+@@ -235,11 +246,18 @@ public class FallingBlockEntity extends Entity {
                                          }
                                      }
                                  } else if (this.dropItem && this.level().getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
-+                                    if (LevelBukkitConfig.Level.Fix.tryFixAnvilDropDebug)
++                                    if (one.tranic.levelpowered.bukkit.config.LevelBukkitConfig.Level.Fix.tryFixAnvilDropDebug)
 +                                        MinecraftServer.LOGGER.info("Dropping at y=0 or other position, blockState: {}, position: {}, with setBlock is false", this.blockState, blockposition);
                                      this.discard(EntityRemoveEvent.Cause.DROP); // CraftBukkit - add Bukkit remove cause
                                      this.callOnBrokenAfterFall(block, blockposition);
@@ -79,10 +80,21 @@ index d504d10fbe45dfe3f2f3d08d2473df6cd18f6dcf..3927d5c739f51135bb3f29156d82f539
                                  }
                              } else {
 +                                // LevelBukkit start: try fix: https://github.com/PaperMC/Folia/issues/217
-+                                if (LevelBukkitConfig.Level.Fix.tryFixAnvilDropDebug)
++                                if (one.tranic.levelpowered.bukkit.config.LevelBukkitConfig.Level.Fix.tryFixAnvilDropDebug)
 +                                    MinecraftServer.LOGGER.info("Dropping at y=0 or other position, blockState: {}, position: {}", this.blockState, blockposition);
 +                                // LevelBukkit end: try fix: https://github.com/PaperMC/Folia/issues/217
 +
                                  this.discard(EntityRemoveEvent.Cause.DROP); // CraftBukkit - add Bukkit remove cause
                                  if (this.dropItem && this.level().getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
                                      this.callOnBrokenAfterFall(block, blockposition);
+@@ -279,9 +297,7 @@ public class FallingBlockEntity extends Entity {
+                 Block block = this.blockState.getBlock();
+                 DamageSource damagesource1;
+ 
+-                if (block instanceof Fallable) {
+-                    Fallable fallable = (Fallable) block;
+-
++                if (block instanceof Fallable fallable) {
+                     damagesource1 = fallable.getFallDamageSource(this);
+                 } else {
+                     damagesource1 = this.damageSources().fallingBlock(this);

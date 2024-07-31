@@ -5,10 +5,10 @@ Subject: [PATCH] Leaves: Placing locked hopper no longer send NC updates
 
 
 diff --git a/src/main/java/net/minecraft/world/level/Level.java b/src/main/java/net/minecraft/world/level/Level.java
-index 75ecbdb5bdacb4d4b27d60fe1c1a35c3a9c16207..09a2a0e4cbc1cf2ae75ac5e13ad932cd6614674c 100644
+index 4bb14874912557008fab7361754f2d2eb98fc5aa..73e451c7d4a4b3ac2b0054a11a64e198af487ba3 100644
 --- a/src/main/java/net/minecraft/world/level/Level.java
 +++ b/src/main/java/net/minecraft/world/level/Level.java
-@@ -54,6 +54,7 @@ import net.minecraft.world.level.biome.BiomeManager;
+@@ -55,6 +55,7 @@ import net.minecraft.world.level.biome.BiomeManager;
  import net.minecraft.world.level.block.BaseFireBlock;
  import net.minecraft.world.level.block.Block;
  import net.minecraft.world.level.block.Blocks;
@@ -16,7 +16,7 @@ index 75ecbdb5bdacb4d4b27d60fe1c1a35c3a9c16207..09a2a0e4cbc1cf2ae75ac5e13ad932cd
  import net.minecraft.world.level.block.entity.BlockEntity;
  import net.minecraft.world.level.block.entity.TickingBlockEntity;
  import net.minecraft.world.level.block.state.BlockState;
-@@ -1035,6 +1036,9 @@ public abstract class Level implements LevelAccessor, AutoCloseable {
+@@ -1147,6 +1148,9 @@ public abstract class Level implements LevelAccessor, AutoCloseable, ca.spottedl
  
              if ((i & 1) != 0) {
                  this.blockUpdated(blockposition, iblockdata1.getBlock());
