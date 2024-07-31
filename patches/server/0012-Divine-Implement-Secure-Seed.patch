@@ -28,10 +28,10 @@ index 0b500b19a99fa6c2740c0db350a166462668df9c..01e664f6fda985b8d4653d19022a40ed
          }));
      }
 diff --git a/src/main/java/net/minecraft/server/level/ServerChunkCache.java b/src/main/java/net/minecraft/server/level/ServerChunkCache.java
-index 135fa024d81b962761f0edc6896a2a507b6981f9..81d9c8a3a81361b8fcb727be2e6ab8e37e3021eb 100644
+index 9f7a89d07295223689d2d2beb14c4ec78eb6aa3c..ec676f4d02c061c9283057ca834828d4bd3ad297 100644
 --- a/src/main/java/net/minecraft/server/level/ServerChunkCache.java
 +++ b/src/main/java/net/minecraft/server/level/ServerChunkCache.java
-@@ -598,8 +598,8 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+@@ -607,8 +607,8 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
          return this.mainThreadProcessor.getPendingTasksCount();
      }
  
