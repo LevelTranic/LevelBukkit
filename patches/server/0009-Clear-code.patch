@@ -313,7 +313,7 @@ index bc391d27399d8c22e78735ca39aa8ab45efb6413..2a67ec1d3b159e86dfbf52def12a5d44
  // CraftBukkit end
  
 diff --git a/src/main/java/net/minecraft/server/MinecraftServer.java b/src/main/java/net/minecraft/server/MinecraftServer.java
-index d933895e833bea1720cc32256e98e0fe3638f4eb..55d2d501d4f4886172dd8d2301f9029a4df1db6f 100644
+index 37e7e88fa75dda6c2b59ed610ec3ae2136c653a5..f32bfce7435bf2224310bde022e3a8898034845d 100644
 --- a/src/main/java/net/minecraft/server/MinecraftServer.java
 +++ b/src/main/java/net/minecraft/server/MinecraftServer.java
 @@ -3,9 +3,6 @@ package net.minecraft.server;
@@ -353,7 +353,7 @@ index d933895e833bea1720cc32256e98e0fe3638f4eb..55d2d501d4f4886172dd8d2301f9029a
  import org.bukkit.event.server.ServerLoadEvent;
  // CraftBukkit end
  
-@@ -1528,11 +1520,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+@@ -1529,11 +1521,7 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
          } else {
              boolean ret = false; // Paper - force execution of all worlds, do not just bias the first
              if (this.tickRateManager.isSprinting() || this.haveTime()) {

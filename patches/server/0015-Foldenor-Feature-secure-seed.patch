@@ -787,7 +787,7 @@ index ea13a3b409b8a4a6a77071c700b4dd0a33b02716..a56103e905d817bdf0590564ac2fdd6f
      }
  }
 diff --git a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
-index 49555381641e9cf9a5c3f00db1e193c9d992637b..95412b82f58b968537c29d020a9cdf1aecae5b7d 100644
+index 04cf704af4def0b6fb4fbdedb4c9cdaa4216bc46..c7036e8d2d05c6302c1a2f3e3ad8d5d58abc21fe 100644
 --- a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
 +++ b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
 @@ -204,13 +204,16 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
@@ -871,7 +871,7 @@ index 4d199839b6a2551783a8ed98ce181cc92e56d0a7..9251367430d2e94aefc705cc8b6c5a04
      }
  
 diff --git a/src/main/java/net/minecraft/server/level/ServerLevel.java b/src/main/java/net/minecraft/server/level/ServerLevel.java
-index ba33c107cfbe9920fc33375daf8e6b62cc794d98..8dde55d7bf12e63e1a50b74cb45020ac17654d20 100644
+index 3ab3e61879e5b2ab93fae9ace79deec9305b0df9..8e8dbf95c6553cc0910f66ab04e13c72de2dca07 100644
 --- a/src/main/java/net/minecraft/server/level/ServerLevel.java
 +++ b/src/main/java/net/minecraft/server/level/ServerLevel.java
 @@ -6,6 +6,7 @@ import com.google.common.collect.Lists;
@@ -890,7 +890,7 @@ index ba33c107cfbe9920fc33375daf8e6b62cc794d98..8dde55d7bf12e63e1a50b74cb45020ac
 +            net.edenor.foldenor.secureseed.Globals.setupGlobals(this);
          boolean flag2 = minecraftserver.forceSynchronousWrites();
          DataFixer datafixer = minecraftserver.getFixerUpper();
-         this.entityStorage = new EntityRegionFileStorage(convertable_conversionsession.getDimensionPath(resourcekey).resolve("entities"), flag2); // Paper - rewrite chunk system  //EntityPersistentStorage<Entity> entitypersistentstorage = new EntityStorage(this, convertable_conversionsession.getDimensionPath(resourcekey).resolve("entities"), datafixer, flag2, minecraftserver);
+         this.entityStorage = new EntityRegionFileStorage(me.earthme.luminol.config.modules.misc.RegionFormatConfig.regionFormatType, me.earthme.luminol.config.modules.misc.RegionFormatConfig.linearCompressionLevel, me.earthme.luminol.config.modules.misc.RegionFormatConfig.linearCrashOnBrokenSymlink, convertable_conversionsession.getDimensionPath(resourcekey).resolve("entities"), flag2); // Paper - rewrite chunk system  //EntityPersistentStorage<Entity> entitypersistentstorage = new EntityStorage(this, convertable_conversionsession.getDimensionPath(resourcekey).resolve("entities"), datafixer, flag2, minecraftserver); // LinearPurpur
 diff --git a/src/main/java/net/minecraft/world/entity/monster/Slime.java b/src/main/java/net/minecraft/world/entity/monster/Slime.java
 index 3d9107d2c19a09215445aa0e0aacc32f9f82a536..1031b7a22f39c715b8cc9186648b59a2fdd69b76 100644
 --- a/src/main/java/net/minecraft/world/entity/monster/Slime.java

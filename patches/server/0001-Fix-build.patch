@@ -6,7 +6,7 @@ Subject: [PATCH] Fix-build
 and add kotlin support
 
 diff --git a/build.gradle.kts b/build.gradle.kts
-index 247598b6c73aca3743f4b16b47520f8ba16b2ed0..63936505233a62a716eaf9514bb3783b5fae47f7 100644
+index 4d2651315d4d26de9ff7f4504d1e4e9a77fb9a89..14b9e2d8a87a5d2478ea83c8fb3313df834f152e 100644
 --- a/build.gradle.kts
 +++ b/build.gradle.kts
 @@ -4,6 +4,8 @@ plugins {
@@ -27,7 +27,7 @@ index 247598b6c73aca3743f4b16b47520f8ba16b2ed0..63936505233a62a716eaf9514bb3783b
      implementation("io.papermc.paper:paper-mojangapi:${project.version}") {
          exclude("io.papermc.paper", "paper-api")
      }
-@@ -51,6 +53,14 @@ dependencies {
+@@ -55,6 +57,14 @@ dependencies {
      }
      // Paper end - Use Velocity cipher
  
@@ -42,7 +42,7 @@ index 247598b6c73aca3743f4b16b47520f8ba16b2ed0..63936505233a62a716eaf9514bb3783b
      runtimeOnly("org.apache.maven:maven-resolver-provider:3.9.6")
      runtimeOnly("org.apache.maven.resolver:maven-resolver-connector-basic:1.9.18")
      runtimeOnly("org.apache.maven.resolver:maven-resolver-transport-http:1.9.18")
-@@ -76,7 +86,7 @@ tasks.jar {
+@@ -80,7 +90,7 @@ tasks.jar {
          attributes(
              "Main-Class" to "org.bukkit.craftbukkit.Main",
              "Implementation-Title" to "CraftBukkit",
@@ -51,7 +51,7 @@ index 247598b6c73aca3743f4b16b47520f8ba16b2ed0..63936505233a62a716eaf9514bb3783b
              "Implementation-Vendor" to date, // Paper
              "Specification-Title" to "Bukkit",
              "Specification-Version" to project.version,
-@@ -103,6 +113,16 @@ publishing {
+@@ -107,6 +117,16 @@ publishing {
      }
  }
  
