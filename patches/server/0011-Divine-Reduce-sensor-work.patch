@@ -7,14 +7,14 @@ Original project: Bloom-host/Petal
 Link: https://github.com/Bloom-host/Petal
 
 diff --git a/src/main/java/net/minecraft/world/entity/LivingEntity.java b/src/main/java/net/minecraft/world/entity/LivingEntity.java
-index c55cba8e036962f1f98f6902216eea3d4ac3d7ac..a302cc9c0c676b85e97bbaf6ede4cee19f390237 100644
+index c55cba8e036962f1f98f6902216eea3d4ac3d7ac..8574b7e071684a0a4faa47939d969b81a649c13e 100644
 --- a/src/main/java/net/minecraft/world/entity/LivingEntity.java
 +++ b/src/main/java/net/minecraft/world/entity/LivingEntity.java
 @@ -132,6 +132,7 @@ import net.minecraft.world.phys.HitResult;
  import net.minecraft.world.phys.Vec3;
  import net.minecraft.world.scores.PlayerTeam;
  import net.minecraft.world.scores.Scoreboard;
-+import one.tranic.levelpowered.bukkit.config.LevelBukkitConfig;
++import one.tranic.bukkit.config.LevelBukkitConfig;
  import org.slf4j.Logger;
  
  // CraftBukkit start
@@ -27,16 +27,16 @@ index c55cba8e036962f1f98f6902216eea3d4ac3d7ac..a302cc9c0c676b85e97bbaf6ede4cee1
 -
 -            if (entitytypes == EntityType.SKELETON && itemstack.is(Items.SKELETON_SKULL) || entitytypes == EntityType.ZOMBIE && itemstack.is(Items.ZOMBIE_HEAD) || entitytypes == EntityType.PIGLIN && itemstack.is(Items.PIGLIN_HEAD) || entitytypes == EntityType.PIGLIN_BRUTE && itemstack.is(Items.PIGLIN_HEAD) || entitytypes == EntityType.CREEPER && itemstack.is(Items.CREEPER_HEAD)) {
 -                d0 *= 0.5D;
-+            if (LevelBukkitConfig.Purpur.World.sensorOptimization) {
++            if (LevelBukkitConfig.Optimize.sensor) {
 +                // Purpur start
 +                if (entitytypes == EntityType.SKELETON && this.getItemBySlot(EquipmentSlot.HEAD).is(Items.SKELETON_SKULL)) { // DivineMC - Reduce sensor work
-+                    d0 *= LevelBukkitConfig.Purpur.World.skeletonHeadVisibilityPercent;
++                    d0 *= LevelBukkitConfig.Optimize.VisibilityPercent.skeletonHead;
 +                } else if (entitytypes == EntityType.ZOMBIE && this.getItemBySlot(EquipmentSlot.HEAD).is(Items.ZOMBIE_HEAD)) { // DivineMC - Reduce sensor work
-+                    d0 *= LevelBukkitConfig.Purpur.World.zombieHeadVisibilityPercent;
++                    d0 *= LevelBukkitConfig.Optimize.VisibilityPercent.zombieHead;
 +                } else if (entitytypes == EntityType.CREEPER && this.getItemBySlot(EquipmentSlot.HEAD).is(Items.CREEPER_HEAD)) { // DivineMC - Reduce sensor work
-+                    d0 *= LevelBukkitConfig.Purpur.World.creeperHeadVisibilityPercent;
++                    d0 *= LevelBukkitConfig.Optimize.VisibilityPercent.creeperHead;
 +                } else if ((entitytypes == EntityType.PIGLIN || entitytypes == EntityType.PIGLIN_BRUTE) && this.getItemBySlot(EquipmentSlot.HEAD).is(Items.PIGLIN_HEAD)) { // DivineMC - Reduce sensor work
-+                    d0 *= LevelBukkitConfig.Purpur.World.piglinHeadVisibilityPercent;
++                    d0 *= LevelBukkitConfig.Optimize.VisibilityPercent.piglinHead;
 +                }
 +                // Purpur end
 +            } else {

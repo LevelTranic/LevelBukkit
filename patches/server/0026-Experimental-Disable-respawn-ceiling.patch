@@ -8,7 +8,7 @@ This feature is not yet complete, but no major bugs have been found.
 Note that you should set spawnRadius to at least 1, not 0, and the spawn point range should be at least 3*3 (or more)
 
 diff --git a/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java b/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java
-index 5bfdd772f2e8933acca69ed62c04755a5655fa94..fc57655ffe9dd3e48ebcb6d56b876492569c67f5 100644
+index 5bfdd772f2e8933acca69ed62c04755a5655fa94..7d2b57048424c4c53b5ac0b068f93faf355935cb 100644
 --- a/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java
 +++ b/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java
 @@ -1,6 +1,8 @@
@@ -16,7 +16,7 @@ index 5bfdd772f2e8933acca69ed62c04755a5655fa94..fc57655ffe9dd3e48ebcb6d56b876492
  
  import javax.annotation.Nullable;
 +
-+import one.tranic.levelpowered.bukkit.config.LevelBukkitConfig;
++import one.tranic.bukkit.config.LevelBukkitConfig;
  import net.minecraft.SharedConstants;
  import net.minecraft.core.BlockPos;
  import net.minecraft.core.Direction;
@@ -31,7 +31,7 @@ index 5bfdd772f2e8933acca69ed62c04755a5655fa94..fc57655ffe9dd3e48ebcb6d56b876492
 +        // LevelBukkit start: disable respawn ceiling
 +        int i = bl ?
 +                world.getChunkSource().getGenerator().getSpawnHeight(world) :
-+                LevelBukkitConfig.Level.Fix.disableRespawnCeiling ?
++                LevelBukkitConfig.Feature.disableRespawnCeiling ?
 +                        world.levelData.getSpawnPos().getY() :
 +                        levelChunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x & 15, z & 15);
 +        // LevelBukkit end: disable respawn ceiling

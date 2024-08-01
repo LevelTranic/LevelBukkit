@@ -5,7 +5,7 @@ Subject: [PATCH] Purpur: Lobotomize stuck villagers
 
 
 diff --git a/src/main/java/net/minecraft/world/entity/npc/Villager.java b/src/main/java/net/minecraft/world/entity/npc/Villager.java
-index 3f4e4b612e127e51b240bca8776f6fc3743bd2d7..cf5d87327b229ad2d355f2a64f305253210317c9 100644
+index 3f4e4b612e127e51b240bca8776f6fc3743bd2d7..4db8723d65dfade1a0585d32e8f75845423ea17e 100644
 --- a/src/main/java/net/minecraft/world/entity/npc/Villager.java
 +++ b/src/main/java/net/minecraft/world/entity/npc/Villager.java
 @@ -143,6 +143,9 @@ public class Villager extends AbstractVillager implements ReputationEventHandler
@@ -23,8 +23,8 @@ index 3f4e4b612e127e51b240bca8776f6fc3743bd2d7..cf5d87327b229ad2d355f2a64f305253
      }
  
 +    private boolean checkLobotomized() {
-+        int interval = one.tranic.levelpowered.bukkit.config.LevelBukkitConfig.Purpur.World.villagerLobotomizeCheckInterval;
-+        boolean shouldCheckForTradeLocked = one.tranic.levelpowered.bukkit.config.LevelBukkitConfig.Purpur.World.villagerLobotomizeWaitUntilTradeLocked;
++        int interval = one.tranic.bukkit.config.LevelBukkitConfig.Optimize.VillagerLobotomize.checkInterval;
++        boolean shouldCheckForTradeLocked = one.tranic.bukkit.config.LevelBukkitConfig.Optimize.VillagerLobotomize.waitUntilTradeLocked;
 +        if (this.notLobotomizedCount > 3) {
 +            // check half as often if not lobotomized for the last 3+ consecutive checks
 +            interval *= 2;
@@ -76,7 +76,7 @@ index 3f4e4b612e127e51b240bca8776f6fc3743bd2d7..cf5d87327b229ad2d355f2a64f305253
          // Paper end
          this.level().getProfiler().push("villagerBrain");
 +        // Purpur start
-+        if (one.tranic.levelpowered.bukkit.config.LevelBukkitConfig.Purpur.World.villagerLobotomizeEnabled) {
++        if (one.tranic.bukkit.config.LevelBukkitConfig.Optimize.VillagerLobotomize.enabled) {
 +            // treat as inactive if lobotomized
 +            inactive = inactive || checkLobotomized();
 +        } else {

@@ -5,39 +5,55 @@ Subject: [PATCH] LevelBukkit Config
 
 
 diff --git a/src/main/java/net/minecraft/server/Main.java b/src/main/java/net/minecraft/server/Main.java
-index 581bd217304e0f9e0b2113c335694805dfb4e2a1..cd78fa9ab57ea3b13ceb35fc4a0dd054a6077302 100644
+index 581bd217304e0f9e0b2113c335694805dfb4e2a1..06923ba8a103af605fca2797c17cdf195f427cab 100644
 --- a/src/main/java/net/minecraft/server/Main.java
 +++ b/src/main/java/net/minecraft/server/Main.java
-@@ -120,6 +120,8 @@ public class Main {
+@@ -59,6 +59,7 @@ import net.minecraft.world.level.storage.LevelResource;
+ import net.minecraft.world.level.storage.LevelStorageSource;
+ import net.minecraft.world.level.storage.LevelSummary;
+ import net.minecraft.world.level.storage.PrimaryLevelData;
++import one.tranic.bukkit.config.LevelBukkitConfig;
+ import org.slf4j.Logger;
+ 
+ // CraftBukkit start
+@@ -120,6 +121,8 @@ public class Main {
                  JvmProfiler.INSTANCE.start(Environment.SERVER);
              }
  
-+            one.tranic.levelpowered.bukkit.config.LevelBukkitConfig.load(); // LevelBukkit - Load Config
++            LevelBukkitConfig.load(); // LevelBukkit - Load Config
 +
              io.papermc.paper.plugin.PluginInitializerManager.load(optionset); // Paper
              Bootstrap.bootStrap();
              Bootstrap.validate();
 diff --git a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
-index 79b79a5d41dc3568ae6a3d7701e6ac6b91045e36..a1fcd27fb6f2270ad09b5b8696ce1c40012cdf7c 100644
+index 79b79a5d41dc3568ae6a3d7701e6ac6b91045e36..d6d95abc0374185df20b6b8e450b5ac415879b22 100644
 --- a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
 +++ b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
-@@ -228,6 +228,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+@@ -57,6 +57,7 @@ import net.minecraft.world.level.GameRules;
+ import net.minecraft.world.level.GameType;
+ import net.minecraft.world.level.block.entity.SkullBlockEntity;
+ import net.minecraft.world.level.storage.LevelStorageSource;
++import one.tranic.bukkit.config.LevelBukkitConfig;
+ import org.slf4j.Logger;
+ 
+ // CraftBukkit start
+@@ -228,6 +229,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
          // Paper end - initialize global and world-defaults configuration
          me.earthme.luminol.config.LuminolConfig.loadConfig(); //Luminol - load config file
          me.earthme.luminol.config.LuminolConfig.setupLatch(); //Luminol - load config file
-+        one.tranic.levelpowered.bukkit.config.LevelBukkitConfig.setCommand(); // LevelBukkit - setup commands
++        LevelBukkitConfig.setCommand(); // LevelBukkit - setup commands
          this.server.spark.enableEarlyIfRequested(); // Paper - spark
          // Paper start - fix converting txt to json file; convert old users earlier after PlayerList creation but before file load/save
          if (this.convertOldUsers()) {
-diff --git a/src/main/kotlin/one/tranic/levelpowered/bukkit/commands/ConfigCommand.kt b/src/main/kotlin/one/tranic/levelpowered/bukkit/commands/ConfigCommand.kt
+diff --git a/src/main/kotlin/one/tranic/bukkit/commands/ConfigCommand.kt b/src/main/kotlin/one/tranic/bukkit/commands/ConfigCommand.kt
 new file mode 100644
-index 0000000000000000000000000000000000000000..de24d4bbca72a36dd0d97da82a11840fd2a1150c
+index 0000000000000000000000000000000000000000..5ca0b7470839835e526e9681b2396a7073116984
 --- /dev/null
-+++ b/src/main/kotlin/one/tranic/levelpowered/bukkit/commands/ConfigCommand.kt
++++ b/src/main/kotlin/one/tranic/bukkit/commands/ConfigCommand.kt
 @@ -0,0 +1,34 @@
-+package one.tranic.levelpowered.bukkit.commands
++package one.tranic.bukkit.commands
 +
-+import one.tranic.levelpowered.bukkit.config.LevelBukkitConfig
++import one.tranic.bukkit.config.LevelBukkitConfig
 +import org.bukkit.command.Command
 +import org.bukkit.command.CommandSender
 +import net.kyori.adventure.text.Component
@@ -70,24 +86,25 @@ index 0000000000000000000000000000000000000000..de24d4bbca72a36dd0d97da82a11840f
 +    }
 +}
 \ No newline at end of file
-diff --git a/src/main/kotlin/one/tranic/levelpowered/bukkit/config/LevelBukkitConfig.kt b/src/main/kotlin/one/tranic/levelpowered/bukkit/config/LevelBukkitConfig.kt
+diff --git a/src/main/kotlin/one/tranic/bukkit/config/LevelBukkitConfig.kt b/src/main/kotlin/one/tranic/bukkit/config/LevelBukkitConfig.kt
 new file mode 100644
-index 0000000000000000000000000000000000000000..76e9e8f7396b21829b28eb7d57cdadf6d2f49495
+index 0000000000000000000000000000000000000000..40568ec05743462686878e63abe039ee864b7a85
 --- /dev/null
-+++ b/src/main/kotlin/one/tranic/levelpowered/bukkit/config/LevelBukkitConfig.kt
-@@ -0,0 +1,191 @@
-+package one.tranic.levelpowered.bukkit.config
++++ b/src/main/kotlin/one/tranic/bukkit/config/LevelBukkitConfig.kt
+@@ -0,0 +1,265 @@
++package one.tranic.bukkit.config
 +
 +import gg.pufferfish.pufferfish.simd.SIMDDetection
 +import net.minecraft.server.MinecraftServer
-+import one.tranic.levelpowered.bukkit.commands.ConfigCommand
++import one.tranic.bukkit.commands.ConfigCommand
 +import org.bukkit.Bukkit
 +import org.bukkit.configuration.file.YamlConfiguration;
 +import java.io.File
 +
 +object LevelBukkitConfig {
 +    var logger: org.slf4j.Logger = MinecraftServer.LOGGER
-+    var secureSeed: Boolean? = null;
++    private const val CONFIG_VERSION = "2.0"
++    private lateinit var configuration: YamlConfiguration
 +
 +    @JvmStatic
 +    fun setCommand() {
@@ -96,6 +113,7 @@ index 0000000000000000000000000000000000000000..76e9e8f7396b21829b28eb7d57cdadf6
 +
 +    @JvmStatic
 +    fun load() {
++        reload()
 +        reload()
 +        // Pufferfish start
 +        // Attempt to detect vectorization
@@ -118,78 +136,112 @@ index 0000000000000000000000000000000000000000..76e9e8f7396b21829b28eb7d57cdadf6
 +        }
 +    }
 +
-+    private fun addDefault(configFile: File, configuration: YamlConfiguration) {
-+        // LevelBukkit start
-+        configuration.addDefault("level.fix.disable-respawn-ceiling", false)
-+        configuration.addDefault("level.fix.anvil-drop.enabled", false)
-+        configuration.addDefault("level.fix.anvil-drop.debug", false)
-+        // LevelBukkit end
++    private fun addDefault(configFile: File) {
++        addDefault(
++            "fix.anvil-drop.enabled", true, listOf(
++                "This fix will attempt to prevent the bug in https://github.com/PaperMC/Folia/issues/217, ",
++                "it may cause some unexpected effects but should be harmless."
++            )
++        )
++        addDefault(
++            "fix.anvil-drop.debug",
++            false,
++            "Whether to print detailed information to the console when this issue is triggered"
++        )
 +
-+        // LevelBukkit: Divine start
-+        configuration.addDefault("divine.secure-seed", false)
-+        // LevelBukkit: Divine end
++        addDefault(
++            "feature.disable-respawn-ceiling", false, "Disable ceiling detection on respawn."
++        )
++        addDefault(
++            "feature.secure-seed", false,
++            listOf(
++                "Changes the seed from 64bit to 1024bit, this will strictly secure your seed, ",
++                "making it almost impossible to crack. ",
++                "Warning: You must delete existing maps to switch the state of the secure seed, ",
++                "and do not modify it during hot loading, otherwise the server will crash and ",
++                "cannot continue to load maps."
++            )
++        )
++        addDefault("feature.farmland-gets-moist-from-below", true)
 +
-+        // LevelBukkit: Leaves start
-+        configuration.addDefault("leaves.flatten-triangular-distribution", false)
-+        configuration.addDefault("leaves.cache-world-generator-sea-level", false)
-+        configuration.addDefault("leaves.vanilla-hopper", false)
-+        // LevelBukkit: Leaves end
++        addDefault(
++            "optimize.flatten-triangular-distribution", false,
++            "Random flatten triangular distribution"
++        )
++        addDefault(
++            "optimize.cache-world-generator-sea-level", false,
++            "Cache world generator sea level"
++        )
++        addDefault("optimize.sensor", true, "Reduce sensor work")
 +
-+        // LevelBukkit: Purpur start
-+        configuration.addDefault("purpur.farmland-gets-moist-from-below", true)
-+        configuration.addDefault("purpur.sensor-optimization", true)
++        addDefault(
++            "vanilla.hopper", false,
++            "Reverted Hopper behavior to vanilla, this doesn't fix all issues."
++        )
 +
-+        configuration.addDefault("purpur.visibility-percent.skeleton-head", 0.5)
-+        configuration.addDefault("purpur.visibility-percent.zombie-head", 0.5)
-+        configuration.addDefault("purpur.visibility-percent.creeper-head", 0.5)
-+        configuration.addDefault("purpur.visibility-percent.piglin-head", 0.5)
++        addDefault("optimize.visibility-percent.skeleton-head", 0.5)
++        addDefault("optimize.visibility-percent.zombie-head", 0.5)
++        addDefault("optimize.visibility-percent.creeper-head", 0.5)
++        addDefault("optimize.visibility-percent.piglin-head", 0.5)
 +
-+        configuration.addDefault("purpur.villager-lobotomize.check-interval", 100)
-+        configuration.addDefault("purpur.villager-lobotomize.enabled", false)
-+        configuration.addDefault("purpur.villager-lobotomize.wait-until-trade-locked", false)
++        addComment(
++            "optimize.visibility-percent", listOf(
++                "Increase or decrease the percentage to make the detection ",
++                "range of the mob smaller or larger when a player is wearing the mobs corresponding head"
++            )
++        )
++
++        addDefault(
++            "optimize.villager-lobotomize.enabled",
++            false,
++            "Lobotomizes the villager if it cannot move (Does not disable trading)"
++        )
++        addDefault(
++            "optimize.villager-lobotomize.wait-until-trade-locked",
++            false,
++            "Wait until a villager has been traded with before lobotomizing"
++        )
++        addDefault(
++            "optimize.villager-lobotomize.check-interval",
++            100,
++            "The interval in ticks to check if a villager is lobotomized"
++        )
 +        // LevelBukkit: Purpur end
 +
 +        configuration.options().copyDefaults(true)
 +        configuration.save(configFile)
 +    }
 +
-+    private fun loadConfigValue(configuration: YamlConfiguration) {
-+        // LevelBukkit start
-+        Level.Fix.tryFixAnvilDrop = configuration.getBoolean("level.fix.anvil-drop.enabled")
-+        Level.Fix.tryFixAnvilDropDebug = configuration.getBoolean("level.fix.anvil-drop.debug")
-+        Level.Fix.disableRespawnCeiling = configuration.getBoolean("level.fix.disable-respawn-ceiling")
-+        // LevelBukkit end
++    private fun loadConfigValue() {
++        Fix.anvilDrop = getBoolean("fix.anvil-drop.enabled")
++        Fix.anvilDropDebug = getBoolean("fix.anvil-drop.debug")
 +
-+        // LevelBukkit: Divine start
-+        Divine.secureSeed = configuration.getBoolean("divine.secure-seed")
-+        // LevelBukkit: Divine end
++        Feature.disableRespawnCeiling = getBoolean("feature.disable-respawn-ceiling")
++        Feature.secureSeed = getBoolean("feature.secure-seed")
++        Feature.farmlandGetsMoistFromBelow =
++            configuration.getBoolean("feature.farmland-gets-moist-from-below")
 +
-+        // LevelBukkit: Leaves start
-+        Leaves.flattenTriangularDistribution = configuration.getBoolean("leaves.flatten-triangular-distribution")
-+        Leaves.cacheWorldGeneratorSeaLevel = configuration.getBoolean("leaves.cache-world-generator-sea-level")
-+        Leaves.vanillaHopper = configuration.getBoolean("leaves.vanilla-hopper")
-+        // LevelBukkit: Leaves end
++        Optimize.flattenTriangularDistribution = getBoolean("optimize.flatten-triangular-distribution")
++        Optimize.cacheWorldGeneratorSeaLevel = getBoolean("optimize.cache-world-generator-sea-level")
 +
-+        // LevelBukkit: Purpur start
-+        Purpur.World.farmlandGetsMoistFromBelow =
-+            configuration.getBoolean("purpur.farmland-gets-moist-from-below")
-+        Purpur.World.sensorOptimization = configuration.getBoolean("purpur.sensor-optimization")
++        Vanilla.hopper = getBoolean("vanilla.hopper")
 +
-+        Purpur.World.skeletonHeadVisibilityPercent =
-+            configuration.getDouble("purpur.visibility-percent.skeleton-head")
-+        Purpur.World.zombieHeadVisibilityPercent =
-+            configuration.getDouble("purpur.visibility-percent.zombie-head")
-+        Purpur.World.creeperHeadVisibilityPercent =
-+            configuration.getDouble("purpur.visibility-percent.creeper-head")
-+        Purpur.World.piglinHeadVisibilityPercent =
-+            configuration.getDouble("purpur.visibility-percent.piglin-head")
++        Optimize.sensor = getBoolean("optimize.sensor")
 +
-+        Purpur.World.villagerLobotomizeCheckInterval =
-+            configuration.getInt("purpur.villager-lobotomize.check-interval")
-+        Purpur.World.villagerLobotomizeEnabled = configuration.getBoolean("purpur.villager-lobotomize.enabled")
-+        Purpur.World.villagerLobotomizeWaitUntilTradeLocked =
-+            configuration.getBoolean("purpur.villager-lobotomize.wait-until-trade-locked")
-+        // LevelBukkit: Purpur end
++        Optimize.VisibilityPercent.skeletonHead =
++            getDouble("optimize.visibility-percent.skeleton-head")
++        Optimize.VisibilityPercent.zombieHead =
++            getDouble("optimize.visibility-percent.zombie-head")
++        Optimize.VisibilityPercent.creeperHead =
++            getDouble("optimize.visibility-percent.creeper-head")
++        Optimize.VisibilityPercent.piglinHead =
++            getDouble("optimize.visibility-percent.piglin-head")
++
++        Optimize.VillagerLobotomize.enabled = getBoolean("optimize.villager-lobotomize.enabled")
++        Optimize.VillagerLobotomize.waitUntilTradeLocked =
++            getBoolean("optimize.villager-lobotomize.wait-until-trade-locked")
++        Optimize.VillagerLobotomize.checkInterval =
++            getInt("optimize.villager-lobotomize.check-interval")
 +    }
 +
 +    @JvmStatic
@@ -199,33 +251,77 @@ index 0000000000000000000000000000000000000000..76e9e8f7396b21829b28eb7d57cdadf6
 +            if (!configFile.exists()) {
 +                configFile.createNewFile()
 +            }
-+            val configuration = YamlConfiguration.loadConfiguration(configFile)
-+            addDefault(configFile, configuration)
-+            loadConfigValue(configuration)
++            configuration = YamlConfiguration.loadConfiguration(configFile)
++            addDefault(configFile)
++            loadConfigValue()
 +        }.getOrElse {
 +            throw RuntimeException(it)
 +        }
 +    }
 +
-+    object Level {
-+        object Fix {
-+            @JvmField
-+            var disableRespawnCeiling: Boolean = false
-+
-+            @JvmField
-+            var tryFixAnvilDrop: Boolean = false
-+
-+            @JvmField
-+            var tryFixAnvilDropDebug: Boolean = false
-+        }
++    private fun addDefault(path: String, value: Any) {
++        configuration.addDefault(path, value)
 +    }
 +
-+    object Divine {
++    private fun addDefault(path: String, value: Any, comment: String) {
++        configuration.addDefault(path, value)
++        configuration.setComments(path, listOf(comment))
++    }
++
++    private fun addComment(path: String, comment: String) {
++        configuration.setComments(path, listOf(comment))
++    }
++
++    private fun addComment(path: String, comment: List<String>) {
++        configuration.setComments(path, comment)
++    }
++
++    private fun addDefault(path: String, value: Any, comment: List<String>) {
++        configuration.addDefault(path, value)
++        configuration.setComments(path, comment)
++    }
++
++    private fun getBoolean(path: String): Boolean {
++        return configuration.getBoolean(path)
++    }
++
++    private fun getDouble(path: String): Double {
++        return configuration.getDouble(path)
++    }
++
++    private fun getInt(path: String): Int {
++        return configuration.getInt(path)
++    }
++
++    private fun getString(path: String): String? {
++        return configuration.getString(path)
++    }
++
++    object Fix {
++        @JvmField
++        var anvilDrop: Boolean = false
++
++        @JvmField
++        var anvilDropDebug: Boolean = false
++    }
++
++    object Feature {
++        @JvmField
++        var disableRespawnCeiling: Boolean = false
++
 +        @JvmField
 +        var secureSeed: Boolean = false
++
++        @JvmField
++        var farmlandGetsMoistFromBelow: Boolean = true
 +    }
 +
-+    object Leaves {
++    object Vanilla {
++        @JvmField
++        var hopper: Boolean = false
++    }
++
++    object Optimize {
 +        @JvmField
 +        var flattenTriangularDistribution: Boolean = false
 +
@@ -233,37 +329,31 @@ index 0000000000000000000000000000000000000000..76e9e8f7396b21829b28eb7d57cdadf6
 +        var cacheWorldGeneratorSeaLevel: Boolean = false
 +
 +        @JvmField
-+        var vanillaHopper: Boolean = false
-+    }
++        var sensor: Boolean = true
 +
-+    class Purpur {
-+        object World {
++        object VisibilityPercent {
 +            @JvmField
-+            var farmlandGetsMoistFromBelow: Boolean = true
++            var skeletonHead: Double = 0.0
 +
 +            @JvmField
-+            var sensorOptimization: Boolean = true
++            var zombieHead: Double = 0.5
 +
 +            @JvmField
-+            var skeletonHeadVisibilityPercent: Double = 0.0
++            var creeperHead: Double = 0.5
 +
 +            @JvmField
-+            var zombieHeadVisibilityPercent: Double = 0.5
++            var piglinHead: Double = 0.5
++        }
++
++        object VillagerLobotomize {
++            @JvmField
++            var enabled = false
 +
 +            @JvmField
-+            var creeperHeadVisibilityPercent: Double = 0.5
++            var waitUntilTradeLocked = false
 +
 +            @JvmField
-+            var piglinHeadVisibilityPercent: Double = 0.5
-+
-+            @JvmField
-+            var villagerLobotomizeCheckInterval: Int = 100
-+
-+            @JvmField
-+            var villagerLobotomizeEnabled: Boolean = false
-+
-+            @JvmField
-+            var villagerLobotomizeWaitUntilTradeLocked: Boolean = false
++            var checkInterval: Int = 100
 +        }
 +    }
 +}

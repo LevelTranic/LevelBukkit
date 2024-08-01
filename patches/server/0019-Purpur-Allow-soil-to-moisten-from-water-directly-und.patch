@@ -5,14 +5,14 @@ Subject: [PATCH] Purpur: Allow soil to moisten from water directly under it
 
 
 diff --git a/src/main/java/net/minecraft/world/level/block/FarmBlock.java b/src/main/java/net/minecraft/world/level/block/FarmBlock.java
-index edb22983a17cc22ba01ee28a9ebc685aaae117eb..3b1fc764b0c27134704fed72457c86c63c31d6e1 100644
+index edb22983a17cc22ba01ee28a9ebc685aaae117eb..455fdd1714972229534915aa3619a37aac0228b3 100644
 --- a/src/main/java/net/minecraft/world/level/block/FarmBlock.java
 +++ b/src/main/java/net/minecraft/world/level/block/FarmBlock.java
 @@ -30,6 +30,7 @@ import net.minecraft.world.level.pathfinder.PathComputationType;
  import net.minecraft.world.phys.shapes.CollisionContext;
  import net.minecraft.world.phys.shapes.VoxelShape;
  // CraftBukkit start
-+import one.tranic.levelpowered.bukkit.config.LevelBukkitConfig;
++import one.tranic.bukkit.config.LevelBukkitConfig;
  import org.bukkit.event.entity.EntityInteractEvent;
  import org.bukkit.craftbukkit.event.CraftEventFactory;
  // CraftBukkit end
@@ -21,7 +21,7 @@ index edb22983a17cc22ba01ee28a9ebc685aaae117eb..3b1fc764b0c27134704fed72457c86c6
          }
  
 -        return false;
-+        return (LevelBukkitConfig.Purpur.World.farmlandGetsMoistFromBelow && world.getFluidState(pos.relative(Direction.DOWN)).is(FluidTags.WATER)); // Purpur;
++        return (LevelBukkitConfig.Feature.farmlandGetsMoistFromBelow && world.getFluidState(pos.relative(Direction.DOWN)).is(FluidTags.WATER)); // Purpur;
          // Paper end - Perf: remove abstract block iteration
      }
  

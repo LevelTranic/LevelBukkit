@@ -6,13 +6,13 @@ Subject: [PATCH] Leaves: Random flatten triangular distribution
 This patch is Powered by Carpet-TIS-Addition(https://github.com/plusls/Carpet-TIS-Addition)
 
 diff --git a/src/main/java/net/minecraft/util/RandomSource.java b/src/main/java/net/minecraft/util/RandomSource.java
-index 9c6f5b55b1f1376fa75e216cd366ee47c79fafc4..a99545b22e94b5ea696730a4506d2d4b4cf1c331 100644
+index 9c6f5b55b1f1376fa75e216cd366ee47c79fafc4..1ecac9c8d1016e83e53f01974e6c64d0a01e04e8 100644
 --- a/src/main/java/net/minecraft/util/RandomSource.java
 +++ b/src/main/java/net/minecraft/util/RandomSource.java
 @@ -1,5 +1,6 @@
  package net.minecraft.util;
  
-+import one.tranic.levelpowered.bukkit.config.LevelBukkitConfig;
++import one.tranic.bukkit.config.LevelBukkitConfig;
  import io.netty.util.internal.ThreadLocalRandom;
  import net.minecraft.world.level.levelgen.LegacyRandomSource;
  import net.minecraft.world.level.levelgen.PositionalRandomFactory;
@@ -22,7 +22,7 @@ index 9c6f5b55b1f1376fa75e216cd366ee47c79fafc4..a99545b22e94b5ea696730a4506d2d4b
      default double triangle(double mode, double deviation) {
 -        return mode + deviation * (this.nextDouble() - this.nextDouble());
 +        // Leaves start - flattenTriangularDistribution
-+        if (LevelBukkitConfig.Leaves.flattenTriangularDistribution) {
++        if (LevelBukkitConfig.Optimize.flattenTriangularDistribution) {
 +            this.nextDouble();
 +            return mode + deviation * (-1 + this.nextDouble() * 2);
 +        } else {
