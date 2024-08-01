@@ -18,6 +18,14 @@
     <br/><br/>
 </div>
 
+<div align=center>
+    <h2>Features</h2>
+    <li>Lobotomize stuck villagers</li>
+    <li>Implement Secure Seed</li>
+    <li>Optional vanilla implementation</li>
+    <li>Optional performance optimizations</li>
+    <li>And more....</li>
+</div>
 
 👉 [Patch List](PATCH-LIST.md)
 

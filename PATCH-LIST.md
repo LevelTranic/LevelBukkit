@@ -18,7 +18,6 @@ If you want to check what patches we have upstream, you can check it out at [Lum
 - https://github.com/PlazmaMC/PlazmaBukkit
 
 ### Folia Bukkit
-- https://github.com/Edenor-Minecraft/Foldenor
 - https://github.com/LuminolMC/Luminol
 
 ## Mods
