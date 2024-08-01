@@ -28,10 +28,10 @@ index 0b500b19a99fa6c2740c0db350a166462668df9c..01e664f6fda985b8d4653d19022a40ed
          }));
      }
 diff --git a/src/main/java/net/minecraft/server/level/ServerChunkCache.java b/src/main/java/net/minecraft/server/level/ServerChunkCache.java
-index 9f7a89d07295223689d2d2beb14c4ec78eb6aa3c..ec676f4d02c061c9283057ca834828d4bd3ad297 100644
+index 135fa024d81b962761f0edc6896a2a507b6981f9..81d9c8a3a81361b8fcb727be2e6ab8e37e3021eb 100644
 --- a/src/main/java/net/minecraft/server/level/ServerChunkCache.java
 +++ b/src/main/java/net/minecraft/server/level/ServerChunkCache.java
-@@ -607,8 +607,8 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
+@@ -598,8 +598,8 @@ public class ServerChunkCache extends ChunkSource implements ca.spottedleaf.moon
          return this.mainThreadProcessor.getPendingTasksCount();
      }
  
@@ -43,10 +43,10 @@ index 9f7a89d07295223689d2d2beb14c4ec78eb6aa3c..ec676f4d02c061c9283057ca834828d4
  
      public ChunkGeneratorStructureState getGeneratorState() {
 diff --git a/src/main/java/net/minecraft/server/level/ServerLevel.java b/src/main/java/net/minecraft/server/level/ServerLevel.java
-index 872762938eb234a1143a8c265463407128be76c4..8647df9ed5b2f59dc47ac7c34fff7574946af11e 100644
+index 6f4d5312c8140e0a49646e4f069b027a9e1bd5ad..10750e9c771894703c0396e5d5715a9fce16ee49 100644
 --- a/src/main/java/net/minecraft/server/level/ServerLevel.java
 +++ b/src/main/java/net/minecraft/server/level/ServerLevel.java
-@@ -618,6 +618,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ca.spottedleaf.
+@@ -614,6 +614,7 @@ public class ServerLevel extends Level implements WorldGenLevel, ca.spottedleaf.
              chunkgenerator = new org.bukkit.craftbukkit.generator.CustomChunkGenerator(this, chunkgenerator, gen);
          }
          // CraftBukkit end
