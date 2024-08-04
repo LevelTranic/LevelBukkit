@@ -12,5 +12,6 @@
 
 LevelBukkit 1.20.4 has reached the end of its life and will no longer be maintained.
 
-👉 [Patch List](PATCH-LIST.md)
+👉 [Download](https://tranic.one/downloads/levelbukkit)
 
+👉 [Wiki](https://github.com/LevelTranic/LevelBukkit/wiki)
