@@ -6,7 +6,7 @@ Subject: [PATCH] Fix-build
 and add kotlin support
 
 diff --git a/build.gradle.kts b/build.gradle.kts
-index f657ee64810d1c02a967b9262b95fbc65eb3fce2..a1f1077f20091ee3a1305c72442fd01dcd33b901 100644
+index c2d3d699edfd60d773af96116c5663c812c691e9..524404ce77a6f48f35bd618b020db6bb9ad0587d 100644
 --- a/build.gradle.kts
 +++ b/build.gradle.kts
 @@ -4,6 +4,9 @@ import java.time.Instant
@@ -28,7 +28,7 @@ index f657ee64810d1c02a967b9262b95fbc65eb3fce2..a1f1077f20091ee3a1305c72442fd01d
      implementation("com.electronwill.night-config:toml:3.6.6") // Luminol - Night config
      // Paper start
      implementation("org.jline:jline-terminal-jansi:3.21.0")
-@@ -66,6 +69,14 @@ dependencies {
+@@ -70,6 +73,14 @@ dependencies {
      implementation("me.lucko:spark-api:0.1-20240720.200737-2")
      implementation("me.lucko:spark-paper:1.10.84-20240720.204128-1")
      // Paper end - spark
@@ -43,7 +43,7 @@ index f657ee64810d1c02a967b9262b95fbc65eb3fce2..a1f1077f20091ee3a1305c72442fd01d
  }
  
  paperweight {
-@@ -85,14 +96,14 @@ tasks.jar {
+@@ -89,14 +100,14 @@ tasks.jar {
          val gitBranch = git("rev-parse", "--abbrev-ref", "HEAD").getText().trim() // Paper
          attributes(
              "Main-Class" to "org.bukkit.craftbukkit.Main",
@@ -63,7 +63,7 @@ index f657ee64810d1c02a967b9262b95fbc65eb3fce2..a1f1077f20091ee3a1305c72442fd01d
              "Build-Number" to (build ?: ""),
              "Build-Time" to Instant.now().toString(),
              "Git-Branch" to gitBranch, // Paper
-@@ -105,6 +116,17 @@ tasks.jar {
+@@ -109,6 +120,17 @@ tasks.jar {
      }
  }
  
