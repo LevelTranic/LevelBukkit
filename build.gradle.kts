@@ -89,7 +89,7 @@ paperweight {
 }
 
 tasks.generateDevelopmentBundle {
-    apiCoordinates.set("one.tranic.levelpowered.bukkit:levelbukkit-api")
+    apiCoordinates.set("one.tranic.bukkit:levelbukkit-api")
     libraryRepositories.addAll(
         "https://repo.maven.apache.org/maven2/",
         paperMavenPublicUrl,

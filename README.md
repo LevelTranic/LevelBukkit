@@ -27,5 +27,6 @@
     <li>And more....</li>
 </div>
 
+👉 [Download](https://tranic.one/downloads/levelbukkit)
 
 👉 [Wiki](https://github.com/LevelTranic/LevelBukkit/wiki)
