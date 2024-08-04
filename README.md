@@ -27,7 +27,5 @@
     <li>And more....</li>
 </div>
 
-👉 [Patch List](PATCH-LIST.md)
-
 
 👉 [Wiki](https://github.com/LevelTranic/LevelBukkit/wiki)
