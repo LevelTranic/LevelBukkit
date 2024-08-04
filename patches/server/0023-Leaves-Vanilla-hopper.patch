@@ -6,7 +6,7 @@ Subject: [PATCH] Leaves: Vanilla hopper
 This is a temporary solution designed to attempt to restore the vanilla behavior of the funnel while preserving optimizations as much as possible. It should ultimately be replaced by the optimization solution provided by lithium.
 
 diff --git a/src/main/java/net/minecraft/world/level/block/entity/HopperBlockEntity.java b/src/main/java/net/minecraft/world/level/block/entity/HopperBlockEntity.java
-index 636865c710c4509e7d73ad27cf20aa713b48147e..1e62457528ef13498204aff1f088548530ee9c61 100644
+index 09410e95ebb0fd0089c924f39914287465a453bd..55d1f059094b60b7b3212b4c01be427bf1fe354d 100644
 --- a/src/main/java/net/minecraft/world/level/block/entity/HopperBlockEntity.java
 +++ b/src/main/java/net/minecraft/world/level/block/entity/HopperBlockEntity.java
 @@ -29,6 +29,7 @@ import net.minecraft.world.level.block.ChestBlock;
@@ -25,7 +25,7 @@ index 636865c710c4509e7d73ad27cf20aa713b48147e..1e62457528ef13498204aff1f0885485
  import org.bukkit.event.inventory.InventoryPickupItemEvent;
  import org.bukkit.inventory.Inventory;
  // CraftBukkit end
-@@ -326,41 +326,50 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+@@ -300,41 +300,50 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
          ItemStack movedItem = origItemStack;
          final int originalItemCount = origItemStack.getCount();
          final int movedItemCount = Math.min(level.spigotConfig.hopperAmount, originalItemCount);
