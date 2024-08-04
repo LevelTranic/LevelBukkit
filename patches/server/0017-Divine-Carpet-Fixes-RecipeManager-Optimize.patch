@@ -7,7 +7,7 @@ Original project: https://github.com/fxmorin/carpet-fixes
 Improves: [Blast]Furnace/Campfire/Smoker/Stonecutter/Crafting/Sheep Color Choosing
 
 diff --git a/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java b/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java
-index 9d0ac3fb52a76a97bf954fbc5175cea90d385d8c..b98aa5d3e50ba21dcd314d7ac8ceca6f856327da 100644
+index 9d0ac3fb52a76a97bf954fbc5175cea90d385d8c..75cf15dd076577c73e3c1b00621ee31ece6f2eb1 100644
 --- a/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java
 +++ b/src/main/java/net/minecraft/world/item/crafting/RecipeManager.java
 @@ -12,13 +12,9 @@ import com.google.gson.JsonObject;
@@ -48,7 +48,7 @@ index 9d0ac3fb52a76a97bf954fbc5175cea90d385d8c..b98aa5d3e50ba21dcd314d7ac8ceca6f
  
      public <C extends Container, T extends Recipe<C>> List<RecipeHolder<T>> getAllRecipesFor(RecipeType<T> type) {
 -        return List.copyOf(this.byType(type));
-+        return one.tranic.levelpowered.bukkit.config.LevelBukkitConfig.Divine.recipeManagerOptimization ? new ArrayList<>(this.byType(type)) : List.copyOf(this.byType(type)); // DivineMC - Carpet-Fixes: RecipeManager Optimize
++        return one.tranic.bukkit.config.LevelBukkitConfig.Optimize.recipeManager ? new ArrayList<>(this.byType(type)) : List.copyOf(this.byType(type)); // DivineMC - Carpet-Fixes: RecipeManager Optimize
      }
  
      public <C extends Container, T extends Recipe<C>> List<RecipeHolder<T>> getRecipesFor(RecipeType<T> type, C inventory, Level world) {

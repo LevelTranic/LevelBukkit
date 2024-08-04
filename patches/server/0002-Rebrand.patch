@@ -106,7 +106,7 @@ index 94e7c8910e3623163528a844fd7a08b3ffe5826b..efaf1850323bcc67870c0151b663ccff
      @ConfigInfo(baseName = "vanilla_spoof")
      public static boolean fakeVanilla = false;
 diff --git a/src/main/java/org/bukkit/craftbukkit/util/Versioning.java b/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
-index 9699d7dcca5cf67f50ad05c0e875de424a4e00c5..e2dc994fa25721d1fd5b8ec7576e0f4c67a3add1 100644
+index 9699d7dcca5cf67f50ad05c0e875de424a4e00c5..018d3599f68e791e194149702c6ad728597c9139 100644
 --- a/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
 +++ b/src/main/java/org/bukkit/craftbukkit/util/Versioning.java
 @@ -11,7 +11,7 @@ public final class Versioning {
@@ -114,7 +114,7 @@ index 9699d7dcca5cf67f50ad05c0e875de424a4e00c5..e2dc994fa25721d1fd5b8ec7576e0f4c
          String result = "Unknown-Version";
  
 -        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/me.earthme.luminol/luminol-api/pom.properties"); // Folia //Luminol
-+        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/one.tranic.levelpowered.bukkit/levelbukkit-api/pom.properties"); // Folia //Luminol //LevelBukkit
++        InputStream stream = Bukkit.class.getClassLoader().getResourceAsStream("META-INF/maven/one.tranic.bukkit/levelbukkit-api/pom.properties"); // Folia //Luminol //LevelBukkit
          Properties properties = new Properties();
  
          if (stream != null) {

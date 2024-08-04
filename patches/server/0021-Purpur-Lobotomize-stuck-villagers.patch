@@ -5,14 +5,14 @@ Subject: [PATCH] Purpur: Lobotomize stuck villagers
 
 
 diff --git a/src/main/java/net/minecraft/world/entity/npc/Villager.java b/src/main/java/net/minecraft/world/entity/npc/Villager.java
-index c4b7fd6c9d0f26361295a70d63f6fc080063d129..ada6fc73638ee8848bf77cb6921b87f7a7e2ad41 100644
+index c4b7fd6c9d0f26361295a70d63f6fc080063d129..f145b07426f98297faf4d31fbd7b3862731e188a 100644
 --- a/src/main/java/net/minecraft/world/entity/npc/Villager.java
 +++ b/src/main/java/net/minecraft/world/entity/npc/Villager.java
 @@ -8,6 +8,7 @@ import com.mojang.datafixers.util.Pair;
  import com.mojang.logging.LogUtils;
  import com.mojang.serialization.DataResult;
  import com.mojang.serialization.Dynamic;
-+import one.tranic.levelpowered.bukkit.config.LevelBukkitConfig;
++import one.tranic.bukkit.config.LevelBukkitConfig;
  import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
  import java.util.Iterator;
  import java.util.List;
@@ -32,8 +32,8 @@ index c4b7fd6c9d0f26361295a70d63f6fc080063d129..ada6fc73638ee8848bf77cb6921b87f7
      }
  
 +    private boolean checkLobotomized() {
-+        int interval = LevelBukkitConfig.Purpur.World.villagerLobotomizeCheckInterval;
-+        boolean shouldCheckForTradeLocked = LevelBukkitConfig.Purpur.World.villagerLobotomizeWaitUntilTradeLocked;
++        int interval = LevelBukkitConfig.Optimize.VillagerLobotomize.checkInterval;
++        boolean shouldCheckForTradeLocked = LevelBukkitConfig.Optimize.VillagerLobotomize.waitUntilTradeLocked;
 +        if (this.notLobotomizedCount > 3) {
 +            // check half as often if not lobotomized for the last 3+ consecutive checks
 +            interval *= 2;
@@ -85,7 +85,7 @@ index c4b7fd6c9d0f26361295a70d63f6fc080063d129..ada6fc73638ee8848bf77cb6921b87f7
          // Paper end
          this.level().getProfiler().push("villagerBrain");
          // Pufferfish start
-+        if (LevelBukkitConfig.Purpur.World.villagerLobotomizeEnabled) {
++        if (LevelBukkitConfig.Optimize.VillagerLobotomize.enabled) {
 +            // treat as inactive if lobotomized
 +            inactive = inactive || checkLobotomized();
 +        } else {

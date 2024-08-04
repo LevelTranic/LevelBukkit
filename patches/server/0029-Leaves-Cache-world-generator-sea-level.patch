@@ -6,14 +6,14 @@ Subject: [PATCH] Leaves: Cache world generator sea level
 This patch is Powered by Gale(https://github.com/GaleMC/Gale)
 
 diff --git a/src/main/java/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java b/src/main/java/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java
-index 8ce870a5341a61fbbaf42021ef7f7f615a6a3e09..6fdde9f77ab478aaaa6afc9ce049c4992770696c 100644
+index 8ce870a5341a61fbbaf42021ef7f7f615a6a3e09..d71a3ce68bc00ef09ab9fc3b5460444e96cd132e 100644
 --- a/src/main/java/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java
 +++ b/src/main/java/net/minecraft/world/level/levelgen/NoiseBasedChunkGenerator.java
 @@ -48,6 +48,7 @@ import net.minecraft.world.level.dimension.DimensionType;
  import net.minecraft.world.level.levelgen.blending.Blender;
  import net.minecraft.world.level.levelgen.carver.CarvingContext;
  import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
-+import one.tranic.levelpowered.bukkit.config.LevelBukkitConfig;
++import one.tranic.bukkit.config.LevelBukkitConfig;
  import org.apache.commons.lang3.mutable.MutableObject;
  
  public final class NoiseBasedChunkGenerator extends ChunkGenerator {
@@ -42,7 +42,7 @@ index 8ce870a5341a61fbbaf42021ef7f7f615a6a3e09..6fdde9f77ab478aaaa6afc9ce049c499
      public int getSeaLevel() {
 -        return ((NoiseGeneratorSettings) this.settings.value()).seaLevel();
 +        // Leaves start - cache world generator sea level
-+        return LevelBukkitConfig.Leaves.cacheWorldGeneratorSeaLevel ? cachedSeaLevel: this.settings.value().seaLevel();
++        return LevelBukkitConfig.Optimize.cacheWorldGeneratorSeaLevel ? cachedSeaLevel: this.settings.value().seaLevel();
 +        // Leaves end - cache world generator sea level
      }
  

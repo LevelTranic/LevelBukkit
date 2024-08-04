@@ -8,7 +8,7 @@ try fix: https://github.com/PaperMC/Folia/issues/217
 This fix may work, but its implementation is not elegant, so it will not be submitted upstream
 
 diff --git a/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java b/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java
-index d504d10fbe45dfe3f2f3d08d2473df6cd18f6dcf..3927d5c739f51135bb3f29156d82f53929aeefcc 100644
+index d504d10fbe45dfe3f2f3d08d2473df6cd18f6dcf..30b9f63c05e518b3361029c065240b249a3bdb59 100644
 --- a/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java
 +++ b/src/main/java/net/minecraft/world/entity/item/FallingBlockEntity.java
 @@ -18,6 +18,7 @@ import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
@@ -23,7 +23,7 @@ index d504d10fbe45dfe3f2f3d08d2473df6cd18f6dcf..3927d5c739f51135bb3f29156d82f539
  import net.minecraft.world.phys.BlockHitResult;
  import net.minecraft.world.phys.HitResult;
  import net.minecraft.world.phys.Vec3;
-+import one.tranic.levelpowered.bukkit.config.LevelBukkitConfig;
++import one.tranic.bukkit.config.LevelBukkitConfig;
 +import org.bukkit.Material;
  import org.slf4j.Logger;
  
@@ -33,7 +33,7 @@ index d504d10fbe45dfe3f2f3d08d2473df6cd18f6dcf..3927d5c739f51135bb3f29156d82f539
                      if (!iblockdata.is(Blocks.MOVING_PISTON)) {
                          if (!this.cancelDrop) {
 +                            // LevelBukkit start: try fix: https://github.com/PaperMC/Folia/issues/217
-+                            if (LevelBukkitConfig.Level.Fix.tryFixAnvilDrop)
++                            if (LevelBukkitConfig.Fix.anvilDrop)
 +                                if ((
 +                                        iblockdata.getBukkitMaterial().equals(Material.ANVIL) ||
 +                                                iblockdata.getBukkitMaterial().equals(Material.CHIPPED_ANVIL) ||
@@ -47,7 +47,7 @@ index d504d10fbe45dfe3f2f3d08d2473df6cd18f6dcf..3927d5c739f51135bb3f29156d82f539
                              boolean flag4 = this.blockState.canSurvive(this.level(), blockposition) && !flag3;
  
 +                            // LevelBukkit start: try fix: https://github.com/PaperMC/Folia/issues/217
-+                            if (LevelBukkitConfig.Level.Fix.tryFixAnvilDropDebug)
++                            if (LevelBukkitConfig.Fix.anvilDropDebug)
 +                                MinecraftServer.LOGGER.info("BlockState at {}: {}, Can be replaced: {}", blockposition, iblockdata, flag2);
 +                            // LevelBukkit end: try fix: https://github.com/PaperMC/Folia/issues/217
 +
@@ -71,7 +71,7 @@ index d504d10fbe45dfe3f2f3d08d2473df6cd18f6dcf..3927d5c739f51135bb3f29156d82f539
                                          }
                                      }
                                  } else if (this.dropItem && this.level().getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
-+                                    if (LevelBukkitConfig.Level.Fix.tryFixAnvilDropDebug)
++                                    if (LevelBukkitConfig.Fix.anvilDropDebug)
 +                                        MinecraftServer.LOGGER.info("Dropping at y=0 or other position, blockState: {}, position: {}, with setBlock is false", this.blockState, blockposition);
                                      this.discard(EntityRemoveEvent.Cause.DROP); // CraftBukkit - add Bukkit remove cause
                                      this.callOnBrokenAfterFall(block, blockposition);
@@ -79,7 +79,7 @@ index d504d10fbe45dfe3f2f3d08d2473df6cd18f6dcf..3927d5c739f51135bb3f29156d82f539
                                  }
                              } else {
 +                                // LevelBukkit start: try fix: https://github.com/PaperMC/Folia/issues/217
-+                                if (LevelBukkitConfig.Level.Fix.tryFixAnvilDropDebug)
++                                if (LevelBukkitConfig.Fix.anvilDropDebug)
 +                                    MinecraftServer.LOGGER.info("Dropping at y=0 or other position, blockState: {}, position: {}", this.blockState, blockposition);
 +                                // LevelBukkit end: try fix: https://github.com/PaperMC/Folia/issues/217
 +
