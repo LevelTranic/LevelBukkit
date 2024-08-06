@@ -26,23 +26,15 @@ index 581bd217304e0f9e0b2113c335694805dfb4e2a1..06923ba8a103af605fca2797c17cdf19
              Bootstrap.bootStrap();
              Bootstrap.validate();
 diff --git a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
-index 79b79a5d41dc3568ae6a3d7701e6ac6b91045e36..d6d95abc0374185df20b6b8e450b5ac415879b22 100644
+index cd28f741343c443ff4728fc0aa5526b6d66d2d9b..285c1a983fa51265a28b539856c6381e3b813375 100644
 --- a/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
 +++ b/src/main/java/net/minecraft/server/dedicated/DedicatedServer.java
-@@ -57,6 +57,7 @@ import net.minecraft.world.level.GameRules;
- import net.minecraft.world.level.GameType;
- import net.minecraft.world.level.block.entity.SkullBlockEntity;
- import net.minecraft.world.level.storage.LevelStorageSource;
-+import one.tranic.bukkit.config.LevelBukkitConfig;
- import org.slf4j.Logger;
- 
- // CraftBukkit start
-@@ -228,6 +229,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
+@@ -228,6 +228,7 @@ public class DedicatedServer extends MinecraftServer implements ServerInterface
          // Paper end - initialize global and world-defaults configuration
          me.earthme.luminol.config.LuminolConfig.loadConfig(); //Luminol - load config file
          me.earthme.luminol.config.LuminolConfig.setupLatch(); //Luminol - load config file
-+        LevelBukkitConfig.setCommand(); // LevelBukkit - setup commands
-         this.server.spark.enableEarlyIfRequested(); // Paper - spark
++        one.tranic.bukkit.config.LevelBukkitConfig.setCommand(); // LevelBukkit - setup commands
+         if (false) this.server.spark.enableEarlyIfRequested(); // Paper - spark // Luminol - Force disable builtin spark
          // Paper start - fix converting txt to json file; convert old users earlier after PlayerList creation but before file load/save
          if (this.convertOldUsers()) {
 diff --git a/src/main/kotlin/one/tranic/bukkit/commands/ConfigCommand.kt b/src/main/kotlin/one/tranic/bukkit/commands/ConfigCommand.kt
