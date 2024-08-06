@@ -88,13 +88,12 @@ index 0000000000000000000000000000000000000000..5ca0b7470839835e526e9681b2396a70
 \ No newline at end of file
 diff --git a/src/main/kotlin/one/tranic/bukkit/config/LevelBukkitConfig.kt b/src/main/kotlin/one/tranic/bukkit/config/LevelBukkitConfig.kt
 new file mode 100644
-index 0000000000000000000000000000000000000000..40568ec05743462686878e63abe039ee864b7a85
+index 0000000000000000000000000000000000000000..9aa435caf682705e79c6dbe17aa26e187e01e2a2
 --- /dev/null
 +++ b/src/main/kotlin/one/tranic/bukkit/config/LevelBukkitConfig.kt
-@@ -0,0 +1,265 @@
+@@ -0,0 +1,245 @@
 +package one.tranic.bukkit.config
 +
-+import gg.pufferfish.pufferfish.simd.SIMDDetection
 +import net.minecraft.server.MinecraftServer
 +import one.tranic.bukkit.commands.ConfigCommand
 +import org.bukkit.Bukkit
@@ -115,25 +114,6 @@ index 0000000000000000000000000000000000000000..40568ec05743462686878e63abe039ee
 +    fun load() {
 +        reload()
 +        reload()
-+        // Pufferfish start
-+        // Attempt to detect vectorization
-+        runCatching {
-+            SIMDDetection.isEnabled = SIMDDetection.canEnable(logger)
-+            SIMDDetection.versionLimited = SIMDDetection.getJavaVersion() < 17
-+        }.getOrElse {
-+            it.printStackTrace()
-+        }
-+
-+        if (SIMDDetection.isEnabled) {
-+            logger.info("SIMD operations detected as functional. Will replace some operations with faster versions.")
-+        } else if (SIMDDetection.versionLimited) {
-+            logger.warn("Will not enable SIMD! These optimizations are only safely supported on Java 17+.")
-+        } else {
-+            logger.warn("SIMD operations are available for your server, but are not configured!")
-+            logger.warn("To enable additional optimizations, add \"--add-modules=jdk.incubator.vector\" to your startup flags, BEFORE the \"-jar\".")
-+            logger.warn("If you have already added this flag, then SIMD operations are not supported on your JVM or CPU.")
-+            logger.warn("Debug: Java: " + System.getProperty("java.version") + ", test run: " + SIMDDetection.testRun)
-+        }
 +    }
 +
 +    private fun addDefault(configFile: File) {
