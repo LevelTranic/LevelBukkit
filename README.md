@@ -6,11 +6,10 @@
     <a href="https://github.com/404Setup/LevelBukkit/releases"><img src="https://img.shields.io/github/release-date/404Setup/LevelBukkit?style=flat-square" alt=""></a>
     <a href="https://github.com/404Setup/LevelBukkit/releases"><img src="https://img.shields.io/github/v/release/404Setup/LevelBukkit?style=flat-square" alt=""></a>
     <br /><br />
-    <p>for personal learning to use high performance <a href="https://github.com/PaperMC/Folia">Folia</a>/<a href="https://github.com/LuminolMC/Luminol/blob/ver/1.20.6/README_EN.md">Luminol</a> Fork.</p>
 </div>
 
 
-LevelBukkit 1.20.4 has reached the end of its life and will no longer be maintained.
+**LevelBukkit 1.20.4 has reached the end of its life and will no longer be maintained.**
 
 👉 [Download](https://tranic.one/downloads/levelbukkit)
 
