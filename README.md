@@ -1,6 +1,6 @@
 <div align=center>
     <img src="public/LevelBukkit.png" alt="">
-    <h2>LevelBukkit 1.21</h2>
+    <h2>LevelBukkit 1.21 (Beta)</h2>
     <br /><br />
     <img src="https://img.shields.io/github/commit-activity/w/LevelTranic/LevelBukkit?style=flat-square" alt="">
     <img src="https://img.shields.io/github/downloads/LevelTranic/LevelBukkit/total?style=flat-square" alt="">
@@ -9,6 +9,10 @@
     <br /><br />
     <p>for personal learning to use high performance <a href="https://github.com/PaperMC/Folia">Folia</a>/<a href="https://github.com/LuminolMC/Luminol/blob/ver/1.20.6/README_EN.md">Luminol</a> Fork.</p>
 </div>
+
+> Folia 1.21 is very unstable and destroy most vanilla 
+> patch. You should continue to use 1.20.6 until most 
+> of the problems are repaired.
 
 <div align=center>
     <h2>Tranic Server</h2>
