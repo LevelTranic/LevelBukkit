@@ -72,10 +72,10 @@ index 0000000000000000000000000000000000000000..5ca0b7470839835e526e9681b2396a70
 \ No newline at end of file
 diff --git a/src/main/kotlin/one/tranic/bukkit/config/LevelBukkitConfig.kt b/src/main/kotlin/one/tranic/bukkit/config/LevelBukkitConfig.kt
 new file mode 100644
-index 0000000000000000000000000000000000000000..94344ae28f5fbc96c1e14035881c0662288f88a0
+index 0000000000000000000000000000000000000000..755cdc692b1f51ad6092c68dcaf1bce1fbc61481
 --- /dev/null
 +++ b/src/main/kotlin/one/tranic/bukkit/config/LevelBukkitConfig.kt
-@@ -0,0 +1,276 @@
+@@ -0,0 +1,272 @@
 +package one.tranic.bukkit.config
 +
 +import gg.pufferfish.pufferfish.simd.SIMDDetection
@@ -147,9 +147,8 @@ index 0000000000000000000000000000000000000000..94344ae28f5fbc96c1e14035881c0662
 +            )
 +        )
 +        addDefault("feature.farmland-gets-moist-from-below", true)
-+
 +        addDefault(
-+            "vanilla.hopper", false,
++            "feature.vanilla-hopper", false,
 +            "Reverted Hopper behavior to vanilla, this doesn't fix all issues."
 +        )
 +
@@ -212,8 +211,7 @@ index 0000000000000000000000000000000000000000..94344ae28f5fbc96c1e14035881c0662
 +        Feature.secureSeed = getBoolean("feature.secure-seed")
 +        Feature.farmlandGetsMoistFromBelow =
 +            configuration.getBoolean("feature.farmland-gets-moist-from-below")
-+
-+        Vanilla.hopper = getBoolean("vanilla.hopper")
++        Feature.vanillaHopper = getBoolean("feature.vanilla-hopper")
 +
 +        Optimize.flattenTriangularDistribution = getBoolean("optimize.flatten-triangular-distribution")
 +        Optimize.cacheWorldGeneratorSeaLevel = getBoolean("optimize.cache-world-generator-sea-level")
@@ -306,11 +304,9 @@ index 0000000000000000000000000000000000000000..94344ae28f5fbc96c1e14035881c0662
 +
 +        @JvmField
 +        var farmlandGetsMoistFromBelow: Boolean = true
-+    }
 +
-+    object Vanilla {
 +        @JvmField
-+        var hopper: Boolean = false
++        var vanillaHopper = false
 +    }
 +
 +    object Optimize {
