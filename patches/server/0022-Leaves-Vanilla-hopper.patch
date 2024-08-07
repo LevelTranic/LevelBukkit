@@ -40,7 +40,7 @@ index 09410e95ebb0fd0089c924f39914287465a453bd..55d1f059094b60b7b3212b4c01be427b
 -                // No plugin could of relied on the behavior of false as the other call
 -                // site for IMIE did not exhibit the same behavior
 +        // Leaves start - fix vanilla
-+        if (LevelBukkitConfig.Vanilla.hopper && movedItem.getCount() <= movedItemCount) {
++        if (LevelBukkitConfig.Feature.vanillaHopper && movedItem.getCount() <= movedItemCount) {
 +            movedItem = origItemStack.copy();
 +            final ItemStack remainingItem = addItem(container, hopper,  container.removeItem(i, movedItemCount), null);
 +            if (remainingItem.isEmpty()) {

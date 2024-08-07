@@ -80,10 +80,10 @@ index 0000000000000000000000000000000000000000..5ca0b7470839835e526e9681b2396a70
 \ No newline at end of file
 diff --git a/src/main/kotlin/one/tranic/bukkit/config/LevelBukkitConfig.kt b/src/main/kotlin/one/tranic/bukkit/config/LevelBukkitConfig.kt
 new file mode 100644
-index 0000000000000000000000000000000000000000..9aa435caf682705e79c6dbe17aa26e187e01e2a2
+index 0000000000000000000000000000000000000000..98093d23c84e6104788402fde9d4a7bbe5d6a13f
 --- /dev/null
 +++ b/src/main/kotlin/one/tranic/bukkit/config/LevelBukkitConfig.kt
-@@ -0,0 +1,245 @@
+@@ -0,0 +1,241 @@
 +package one.tranic.bukkit.config
 +
 +import net.minecraft.server.MinecraftServer
@@ -135,6 +135,10 @@ index 0000000000000000000000000000000000000000..9aa435caf682705e79c6dbe17aa26e18
 +            )
 +        )
 +        addDefault("feature.farmland-gets-moist-from-below", true)
++        addDefault(
++            "feature.vanillaHopper", false,
++            "Reverted Hopper behavior to vanilla, this doesn't fix all issues."
++        )
 +
 +        addDefault(
 +            "optimize.flatten-triangular-distribution", false,
@@ -145,11 +149,6 @@ index 0000000000000000000000000000000000000000..9aa435caf682705e79c6dbe17aa26e18
 +            "Cache world generator sea level"
 +        )
 +        addDefault("optimize.sensor", true, "Reduce sensor work")
-+
-+        addDefault(
-+            "vanilla.hopper", false,
-+            "Reverted Hopper behavior to vanilla, this doesn't fix all issues."
-+        )
 +
 +        addDefault("optimize.visibility-percent.skeleton-head", 0.5)
 +        addDefault("optimize.visibility-percent.zombie-head", 0.5)
@@ -192,11 +191,10 @@ index 0000000000000000000000000000000000000000..9aa435caf682705e79c6dbe17aa26e18
 +        Feature.secureSeed = getBoolean("feature.secure-seed")
 +        Feature.farmlandGetsMoistFromBelow =
 +            configuration.getBoolean("feature.farmland-gets-moist-from-below")
++        Feature.vanillaHopper = getBoolean("feature.vanillaHopper")
 +
 +        Optimize.flattenTriangularDistribution = getBoolean("optimize.flatten-triangular-distribution")
 +        Optimize.cacheWorldGeneratorSeaLevel = getBoolean("optimize.cache-world-generator-sea-level")
-+
-+        Vanilla.hopper = getBoolean("vanilla.hopper")
 +
 +        Optimize.sensor = getBoolean("optimize.sensor")
 +
@@ -286,11 +284,9 @@ index 0000000000000000000000000000000000000000..9aa435caf682705e79c6dbe17aa26e18
 +
 +        @JvmField
 +        var farmlandGetsMoistFromBelow: Boolean = true
-+    }
 +
-+    object Vanilla {
 +        @JvmField
-+        var hopper: Boolean = false
++        var vanillaHopper = false
 +    }
 +
 +    object Optimize {
