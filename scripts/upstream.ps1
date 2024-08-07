@@ -27,6 +27,11 @@ if (-not $oldHash) {
 
 $newHash = (Invoke-RestMethod -Uri "https://api.github.com/repos/LuminolMC/Luminol/commits/ver/1.20.4").sha
 
+if (-not $newHash) {
+    Write-Error "Failure to get key information in the API"
+    exit 1
+}
+
 if ($oldHash -eq $newHash) {
     Write-Host "Upstream has not updated!"
     exit 0
