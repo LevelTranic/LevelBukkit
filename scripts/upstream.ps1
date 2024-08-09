@@ -25,7 +25,7 @@ if (-not $oldHash) {
     exit 1
 }
 
-$newHash = (Invoke-RestMethod -Uri "https://api.github.com/repos/LuminolMC/Luminol/commits/dev/1.21").sha
+$newHash = (Invoke-RestMethod -Uri "https://api.github.com/repos/LuminolMC/Luminol/commits/dev/1.21.1").sha
 
 if (-not $newHash) {
     Write-Error "Failure to get key information in the API"

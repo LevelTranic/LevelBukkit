@@ -1,6 +1,6 @@
 <div align=center>
     <img src="public/LevelBukkit.png" alt="">
-    <h2>LevelBukkit 1.21 (Beta)</h2>
+    <h2>LevelBukkit 1.21.1 (Beta)</h2>
     <br /><br />
     <img src="https://img.shields.io/github/commit-activity/w/LevelTranic/LevelBukkit?style=flat-square" alt="">
     <img src="https://img.shields.io/github/downloads/LevelTranic/LevelBukkit/total?style=flat-square" alt="">
