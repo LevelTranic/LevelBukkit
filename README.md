@@ -9,9 +9,7 @@
     <br /><br />
 </div>
 
-> Folia 1.21 is very unstable and destroy most vanilla 
-> patch. You should continue to use 1.20.6 until most 
-> of the problems are repaired.
+> **1.21 has been abandoned, please turn to 1.21.1**
 
 <div align=center>
     <h2>Tranic Server</h2>
