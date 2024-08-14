@@ -30,4 +30,4 @@
 
 👉 [Download](https://tranic.one/downloads/levelbukkit)
 
-👉 [Wiki](https://github.com/LevelTranic/LevelBukkit/wiki)
+👉 [Wiki](https://docs.tranic.one/levelbukkit)
