@@ -9,12 +9,12 @@
     <br /><br />
 </div>
 
+----
+> Now mainly maintain Vine Server, there is no time to add changes to LevelBukkit.
+
 <div align=center>
-    <h2>Tranic Server</h2>
-    <a title="Vine for MultiPaper/ShreddedPaper" href="https://github.com/LevelTranic/Vine"><img width="30%" src="public/Vine-Banner.png" alt=""/></a>
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-    <a title="LevelBukkit for PaperMC/Folia & LuminolMC/Luminol" href="https://github.com/LevelTranic/LevelBukkit"><img width="30%" src="public/LevelBukkit-Banner.png" alt=""/></a>
-    <br/><br/>
+    <h2>Download</h2>
+    <p><a target="_blank" href="https://tranic.one/downloads/levelbukkit">Click To Download</a></p>
 </div>
 
 <div align=center>
@@ -26,6 +26,15 @@
     <li>And more....</li>
 </div>
 
-👉 [Download](https://tranic.one/downloads/levelbukkit)
+<div align=center>
+    <h2>Tranic Server</h2>
+    <a title="Vine for MultiPaper/ShreddedPaper" href="https://github.com/LevelTranic/Vine"><img width="30%" src="public/Vine-Banner.png" alt=""/></a>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    <a title="LevelBukkit for PaperMC/Folia & LuminolMC/Luminol" href="https://github.com/LevelTranic/LevelBukkit"><img width="30%" src="public/LevelBukkit-Banner.png" alt=""/></a>
+    <br/><br/>
+</div>
 
-👉 [Wiki](https://github.com/LevelTranic/LevelBukkit/wiki)
+<div align=center>
+    <h2>Contact Us</h2>
+    <p>Our Discord server is still under construction and I don't have that much time to maintain it all. For now, I recommend filing issues on Github as much as possible.</p>
+</div>
