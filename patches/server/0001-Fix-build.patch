@@ -6,7 +6,7 @@ Subject: [PATCH] Fix-build
 and add kotlin support
 
 diff --git a/build.gradle.kts b/build.gradle.kts
-index 1049681dfa7e48b4b6c29f4b1a09c689ac918500..fdaac794f89cb18fc63105082aa53047f777a14d 100644
+index 83b8495bd52ad9ea38e9001a7ab209bf8ecdbe86..6be568b0235fb3792e8e4179667d37fbd5fa640c 100644
 --- a/build.gradle.kts
 +++ b/build.gradle.kts
 @@ -4,6 +4,9 @@ import java.time.Instant
@@ -30,7 +30,7 @@ index 1049681dfa7e48b4b6c29f4b1a09c689ac918500..fdaac794f89cb18fc63105082aa53047
      implementation("org.jline:jline-terminal-jansi:3.21.0")
 @@ -70,6 +73,14 @@ dependencies {
      implementation("me.lucko:spark-api:0.1-20240720.200737-2")
-     implementation("me.lucko:spark-paper:1.10.84-20240720.204128-1")
+     implementation("me.lucko:spark-paper:1.10.99-SNAPSHOT")
      // Paper end - spark
 +
 +    // LevelBukkit start
