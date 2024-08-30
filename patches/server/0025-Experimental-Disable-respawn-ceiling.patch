@@ -8,44 +8,58 @@ This feature is not yet complete, but no major bugs have been found.
 Note that you should set spawnRadius to at least 1, not 0, and the spawn point range should be at least 3*3 (or more)
 
 diff --git a/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java b/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java
-index 5bfdd772f2e8933acca69ed62c04755a5655fa94..7d2b57048424c4c53b5ac0b068f93faf355935cb 100644
+index 5bfdd772f2e8933acca69ed62c04755a5655fa94..4af6d90fb4a77ad4f58cea637e3599fa8c30aa4c 100644
 --- a/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java
 +++ b/src/main/java/net/minecraft/server/level/PlayerRespawnLogic.java
-@@ -1,6 +1,8 @@
+@@ -1,6 +1,9 @@
  package net.minecraft.server.level;
  
  import javax.annotation.Nullable;
 +
++import net.minecraft.world.level.block.Blocks;
 +import one.tranic.bukkit.config.LevelBukkitConfig;
  import net.minecraft.SharedConstants;
  import net.minecraft.core.BlockPos;
  import net.minecraft.core.Direction;
-@@ -16,14 +18,17 @@ public class PlayerRespawnLogic {
+@@ -16,14 +19,31 @@ public class PlayerRespawnLogic {
      protected static BlockPos getOverworldRespawnPos(ServerLevel world, int x, int z) {
          boolean bl = world.dimensionType().hasCeiling();
          LevelChunk levelChunk = world.getChunk(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(z));
 -        int i = bl ? world.getChunkSource().getGenerator().getSpawnHeight(world) : levelChunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x & 15, z & 15);
 -        if (i < world.getMinBuildHeight()) {
 -            return null;
--        } else {
 +        // LevelBukkit start: disable respawn ceiling
-+        int i = bl ?
-+                world.getChunkSource().getGenerator().getSpawnHeight(world) :
-+                LevelBukkitConfig.Feature.disableRespawnCeiling ?
-+                        world.levelData.getSpawnPos().getY() :
-+                        levelChunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x & 15, z & 15);
++        int i;
++        if (bl) {
++            i = world.getChunkSource().getGenerator().getSpawnHeight(world);
+         } else {
+-            int j = levelChunk.getHeight(Heightmap.Types.WORLD_SURFACE, x & 15, z & 15);
+-            if (j <= i && j > levelChunk.getHeight(Heightmap.Types.OCEAN_FLOOR, x & 15, z & 15)) {
+-                return null;
++            // Vine start - Safe respawn
++            if (LevelBukkitConfig.Feature.disableRespawnCeiling) {
++                i = world.levelData.getSpawnPos().getY();
++                for (int w = 0; w < 10; w++) {
++                    BlockPos block = new BlockPos(x, i, z);
++                    if (world.getBlockState(block).getBlock() == Blocks.AIR) {
++                        break;
++                    }
++                    i = i + 3;
++                }
++                // Vine end - Safe respawn
+             } else {
++                i = levelChunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x & 15, z & 15);
++            }
++        }
 +        // LevelBukkit end: disable respawn ceiling
 +
 +        if (i >= world.getMinBuildHeight()) {
-             int j = levelChunk.getHeight(Heightmap.Types.WORLD_SURFACE, x & 15, z & 15);
--            if (j <= i && j > levelChunk.getHeight(Heightmap.Types.OCEAN_FLOOR, x & 15, z & 15)) {
--                return null;
--            } else {
++            int j = levelChunk.getHeight(Heightmap.Types.WORLD_SURFACE, x & 15, z & 15);
 +            if (j > i || j <= levelChunk.getHeight(Heightmap.Types.OCEAN_FLOOR, x & 15, z & 15)) {
                  BlockPos.MutableBlockPos mutableBlockPos = new BlockPos.MutableBlockPos();
  
                  for (int k = i + 1; k >= world.getMinBuildHeight(); k--) {
-@@ -38,9 +43,9 @@ public class PlayerRespawnLogic {
+@@ -38,9 +58,9 @@ public class PlayerRespawnLogic {
                      }
                  }
  
