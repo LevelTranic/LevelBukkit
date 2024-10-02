@@ -11,11 +11,7 @@
 
 ----
 
-> Folia 1.21 is very unstable and destroy most vanilla 
-> patch. You should continue to use 1.20.6 until most 
-> of the problems are repaired.
-> 
-> Now mainly maintain Vine Server, there is no time to add changes to LevelBukkit.
+> LevelBukkit is abandoned. I have a lot of other work to do and can no longer take care of this old and neglected project. LevelBukkit will now be archived and will no longer provide any updates, good night.
 
 <div align=center>
     <h2>Download</h2>
